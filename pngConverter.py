@@ -33,6 +33,7 @@ class OutputVariable(Enum):
     Snc = "snc"
     Tos = "tos"
     MLotst = "mlotst"
+    Pfts = "pfts"
     Siconc = "siconc"
     Liconc = "liconc"
     Height = "height"

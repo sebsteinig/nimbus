@@ -7,6 +7,9 @@ import os
 import shutil
 from typing import Tuple
 from cdo import Cdo
+import tomli
+import argparse
+from argparse import RawDescriptionHelpFormatter
 
 @dataclass
 class Variable:
@@ -237,7 +240,7 @@ def convertExpId(env:Environment,expId:ExpId,variable:Variable):
         oss=[variable.output_stream],\
         statistics=[Statistic.TimeMean])
     
-    env.init(expId)
+    
     
     #annual_subtree,remaining = tree.split_by(Annual)
     monthly_subtree,_ = tree.split_by(Month)
@@ -260,13 +263,53 @@ def convertExpId(env:Environment,expId:ExpId,variable:Variable):
             output_variable=variable.output_variable.value,\
             output_dir=env.path_out_png(expId,""))
     
+def load_variables():
+    with open("./variables.toml",mode="rb") as fp:
+        config = tomli.load(fp)
+    variables = {}
+    for variable in config["variables"]:
+        variables[variable["output_variable"]] = \
+            Variable(\
+                named_input_variable=variable["named_input_variable"],\
+                output_stream=OutputStream(variable["output_stream"]),\
+                output_variable=pngConverter.OutputVariable(variable["output_variable"]),\
+                realm=Realm(variable["realm"]),\
+                )
+    return variables
 
-
-def main():
+def get_active_variables(args,variables):
+    if args.all:
+        raise Exception("NOT IMPLEMENTED : cannot use all variable yet")
+        return list(variables.values())
+    res = []
+    input_variables = args.output_variables.strip().split(",")
+    for output_variable in input_variables:
+        if output_variable in variables:
+            res.append(variables[output_variable])
+        else :
+            raise Exception(f"Wrong variable name : {output_variable}")
+            
+    return res
+def main(args):
     env = Environment.init_environment("./climatearchive_sample_data/data/")
+    
+    variables = load_variables()
+    variables = get_active_variables(args,variables)
+ 
     for expid in env.exps:
-        convertExpId(env,expid,Variable(pngConverter.OutputVariable.Clt,Realm.Athmosphere,OutputStream("pd"),"totCloud_mm_ua"))
+        env.init(expid)
+        
+    for expid in env.exps:
+        for variable in variables:
+            convertExpId(env,expid,variable)
 
 
 if __name__ == "__main__" :
-    main()
+    parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
+    parser.add_argument('--output_variables', dest = 'output_variables', help = 'select variables')
+    parser.add_argument('--all',"-a", action = 'store_true', help = 'takes all variables')
+
+    args = parser.parse_args()
+    if args.output_variables is None and not args.all:
+        raise Exception(f"Missing arguments \n {parser.format_help()}")
+    main(args)
