@@ -22,7 +22,7 @@ class Environment:
     exp_inidata_dir:Dict[ExpId,str]
     tmp_dir:str
     out_dir:str
-    
+    exps:List[ExpId]
     @staticmethod
     def clean(folder:str):
         if os.path.exists(folder):
@@ -33,6 +33,7 @@ class Environment:
         tree = fileSelector.ModelTree()
         exp_climate_dir = {}
         exp_inidata_dir = {}
+        exps = []
         for file in os.listdir(folder):
             d = os.path.join(folder, file)
             if os.path.isdir(d) and ruleExpID(file,0) is not None:
@@ -45,6 +46,7 @@ class Environment:
                     exp_climate_dir[exp_id] = climate_folder
                     #TODO : do the same thing for inidata
                     exp_inidata_dir[exp_id] = inidata_folder
+                    exps.append(exp_id)
             tmp_dir = "./tmp"
             output_dir ="./out"
             Environment.clean(tmp_dir)
@@ -54,7 +56,8 @@ class Environment:
             exp_climate_dir=exp_climate_dir,\
             exp_inidata_dir=exp_inidata_dir,\
             tmp_dir=tmp_dir,\
-            out_dir=output_dir)      
+            out_dir=output_dir,\
+            exps=exps)      
         
     def tmp_subfolder(self,*folder:str):
         return os.path.join(self.tmp_dir,*folder)
@@ -229,18 +232,22 @@ def save(expId:ExpId,env:Environment,files:List[str]):
     return output_files
 
 def convertExpId(env:Environment,expId:ExpId,variable:Variable):
-    tree = env.tree.subtree(expIds=[expId],realms=[variable.realm],oss=[variable.output_stream],statistics=[Statistic.TimeMean])
+    tree = env.tree.subtree(expIds=[expId],\
+        realms=[variable.realm],\
+        oss=[variable.output_stream],\
+        statistics=[Statistic.TimeMean])
+    
     env.init(expId)
     
-    annual_subtree,remaining = tree.split_by(Annual)
-    monthly_subtree,_ = remaining.split_by(Month)
+    #annual_subtree,remaining = tree.split_by(Annual)
+    monthly_subtree,_ = tree.split_by(Month)
     monthly_subtree.sort()
     
     preprocess = preprocess_pipeline(variable)
     
-    files = copy_to_tmp(env, annual_subtree.select())
+    #files = copy_to_tmp(env, annual_subtree.select())
     #files.extend(concatenate(env,monthly_subtree.select()))
-    files.extend([file for file in monthly_subtree.map(fileSelector.StatisticTree,concatenate(env))])
+    files = [file for file in monthly_subtree.map(fileSelector.StatisticTree,concatenate(env))]
     
     
     preprocessed_files = preprocess(variable,expId,env,files)
@@ -257,7 +264,8 @@ def convertExpId(env:Environment,expId:ExpId,variable:Variable):
 
 def main():
     env = Environment.init_environment("./climatearchive_sample_data/data/")
-    convertExpId(env,ExpId("texpa1"),Variable(pngConverter.OutputVariable.Clt,Realm.Athmosphere,OutputStream("pd"),"totCloud_mm_ua"))
+    for expid in env.exps:
+        convertExpId(env,expid,Variable(pngConverter.OutputVariable.Clt,Realm.Athmosphere,OutputStream("pd"),"totCloud_mm_ua"))
 
 
 if __name__ == "__main__" :
