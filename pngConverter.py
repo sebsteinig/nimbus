@@ -1,4 +1,10 @@
-from pngConverter_old import *
+import numpy as np
+from netCDF4 import Dataset
+from PIL import Image
+from typing import Tuple
+import random
+
+
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
 
@@ -7,30 +13,27 @@ def save(output : np.ndarray, output_file : str, mode = 'L'):
     img_ym = Image.fromarray(np.uint8(out), mode)
     img_ym.save(output_file + ".png")
 
-def eval_shape(size:int) -> Tuple(bool, bool, dict):
+def eval_shape(input:np.ndarray) -> tuple[bool, bool, dict]:
     res = {}
     levelExists = False
-    timeExists = False
-    match size:
+    match len (np.shape(input[0])):
         case 4:
-            res["level"] = np.shape(input[0])[0]
-            res["time"] = np.shape(input[0])[1]
+            res["level"] = input[0].shape[0]
+            res["time"] = input[0].shape[1]
             levelExists = True
             timeExists = True
-            start = 2 
         case 3 :
-            res["time"] = np.shape(input[0])[0]
+            res["time"] = input[0].shape[0]
             timeExists = True
-            start = 1
         case 2:
-            start = 0
+            timeExists = False
         case _ :
-            raise TooManyVariables(f"{size} > 4 : there are too many variables")
-    res["latitude"] = np.shape(input[0])[start]
-    res["longitude"] = np.shape(input[0])[start + 1]  
+            raise TooManyVariables(f"{len (np.shape(input[0]))} > 4 : there are too many variables")
+    res["latitude"] = input[0].shape[-2]
+    res["longitude"] = input[0].shape[-1]  
     return timeExists, levelExists, res
 
-def eval_input(size:int) -> Tuple(int, str):
+def eval_input(size:int) -> tuple[int, str]:
     match size:
         case 1 :
             dim = 1
@@ -56,39 +59,39 @@ def shape_output(shapes:dict, timeExists:bool, levelExists:bool, dim:int) -> np.
         
 
 
-def iterate_in_time(time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+def convert_with_time(time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
     for index in range(time):
             if(len(input) == 1) :
-                output[:,index* longitude  : ((index+1)* longitude)] = \
+                output[:,index* longitude  : ((index+1)* longitude), 0] = \
                 np.linalg.norm(input[0][index,:,:]) * 255
-            if numVar == 2 and len(input) == 2:
+            elif numVar == 2 and len(input) == 2:
                 output[:,index* longitude  : ((index+1)* longitude), numVar ] = \
                     np.zeros((latitude, longitude))
             else :
-                output[:,index* longitude : ((index+1)* longitude, numVar )] = \
+                output[:,index* longitude : ((index+1)* longitude), numVar ] = \
                 np.linalg.norm(input[numVar][index,:,:]) * 255 
     return output
 
-def iterate_in_time_and_level(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+def convert_with_time_and_level(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
     for lev in range(level):
         for index in range(time):
             if(len(input) == 1) :
-                output[lev*latitude : (lev+1)*latitude, index* longitude  : ((index+1)* longitude)] = \
-                np.linalg.norm(input[0][lev,index,:,:]) * 255
-            if numVar == 2 and len(input) == 2:
+                output[lev*latitude : (lev+1)*latitude, index* longitude  : ((index+1)* longitude), 0] = \
+                    np.linalg.norm(input[0][lev,index,:,:]) * 255
+            elif numVar == 2 and len(input) == 2:
                 output[lev*latitude : (lev+1)*latitude,index* longitude  : ((index+1)* longitude), numVar ] = \
                     np.zeros((latitude, longitude))
             else :
-                output[lev*latitude : (lev+1)*latitude,index* longitude : ((index+1)* longitude, numVar )] = \
-                np.linalg.norm(input[numVar][lev, index,:,:]) * 255 
+                output[lev*latitude : (lev+1)*latitude,index* longitude : ((index+1)* longitude), numVar ] = \
+                    np.linalg.norm(input[numVar][lev, index,:,:]) * 255 
     return output
 
-def iterate_in_level(level:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+def convert_with_level(level:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
     for lev in range(level):
             if(len(input) == 1) :
-                output[lev*latitude : (lev+1)*latitude, :] = \
+                output[lev*latitude : (lev+1)*latitude, :, 0] = \
                 np.linalg.norm(input[0][lev,:,:]) * 255
-            if numVar == 2 and len(input) == 2:
+            elif numVar == 2 and len(input) == 2:
                 output[lev*latitude : (lev+1)*latitude,:, numVar] = \
                     np.zeros((latitude, longitude))
             else :
@@ -96,10 +99,10 @@ def iterate_in_level(level:int, longitude:int, latitude:int, numVar:int, input:l
                 np.linalg.norm(input[numVar][lev,:,:]) * 255 
     return output
 
-def iterate_in_space_only (longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+def convert_with_space_only (longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
     if(len(input) == 1) :
-        output= np.linalg.norm(input[0]) * 255
-    if numVar == 2 and len(input) == 2:
+        output[:,:, 0]= np.linalg.norm(input[0]) * 255
+    elif numVar == 2 and len(input) == 2:
         output[:,:, numVar] = np.zeros((latitude, longitude))
     else :
         output[:,:, numVar] = np.linalg.norm(input[numVar]) * 255 
@@ -110,19 +113,19 @@ def iterate_in_space_only (longitude:int, latitude:int, numVar:int, input:list, 
 
 def convert(input:list, output_filename:str) -> str:
     dim, mode = eval_input(len(input))
-    timeExists, levelExists, shapes = eval_shape(len (np.shape(input[0])))
+    timeExists, levelExists, shapes = eval_shape(input)
     output = shape_output(shapes, timeExists, levelExists, dim)
     for numVar in range(dim) :
         if timeExists:
             if levelExists :
-                output = iterate_in_time_and_level(shapes["level"], shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
+                output = convert_with_time_and_level(shapes["level"], shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
             else :
-                output = iterate_in_time(shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
+                output = convert_with_time(shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
         else:
             if levelExists:
-                output = iterate_in_level(shapes["level"], shapes["longitude"], shapes["latitude"], numVar, input, output)
+                output = convert_with_level(shapes["level"], shapes["longitude"], shapes["latitude"], numVar, input, output)
             else:
-                output = iterate_in_space_only(shapes["longitude"], shapes["latitude"], numVar, input, output)
+                output = convert_with_space_only(shapes["longitude"], shapes["latitude"], numVar, input, output)
     save(output, output_filename, mode)
     return output_filename
 
@@ -130,32 +133,54 @@ def convert(input:list, output_filename:str) -> str:
 
 
 
-
-
-
-
-
+def test() :
     
-def test(input_file,expId,variable_name,output_variable,output_dir) :
-    with Dataset(input_file,"r",format="NETCDF4") as dataset:
-        print(f"converting {input_file}")
-        env = Environment(dataset)
-        input = env.get(variable_name)
-        assert_input(input,env)
-        if not output_variable in OutputVariable._value2member_map_:
-            raise OutputVariableNotRecognized(f"{output_variable} is not valid output variable")
-        out_meta = env.outputMeta[OutputVariable(output_variable)]
-        preprocess(input,env,out_meta,None)
-        
-        mean = np.nanmean(input.data, axis=env.rank(input,Dimension.Time))
-        mean = norm(mean, out_meta.bound[0],  out_meta.bound[1]) * 255
-        mean = clean(mean)
-        input.data = np.squeeze(input.data)
-        convert(input, env, out_meta, "o.pf.test")
+    #tests : input with np.ndarray of shape 3 (time, latitude, longitude)
+    input = [np.random.uniform(size=(12,70,90))*255]
+    convert(input, "test1D")
+
+    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
+    convert(input, "test2D")
+
+    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
+    convert(input, "test3D")
+
+    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, \
+             np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
+    convert(input, "test4D")
+    
+    #tests : input with np.ndarray of shape 2 (lat, lon)
+    input = [np.random.uniform(size=(70,90))*255]
+    convert(input, "test1Dshape2")
+
+    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
+    convert(input, "test2Dshape2")
+
+    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
+    convert(input, "test3Dshape2")
+
+    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255,\
+              np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
+    convert(input, "test4Dshape2")
+
+    #tests : input with np.ndarray of shape 4 (level, time, lat, lon)
+    input = [np.random.uniform(size=(100, 12,70,90))*255]
+    convert(input, "test1Dshape4")
+
+    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
+    convert(input, "test2Dshape4")
+
+    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
+    convert(input, "test3Dshape4")
+
+    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255,\
+              np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
+    convert(input, "test4Dshape4")
+    
+    #tests that don't pass
+    #convert([np.random.uniform(size=(100, 12,70,90, 10))*255], "shouldntPass")
+    #convert([np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, \
+    #         np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255], "no")
 
 if __name__ == "__main__":
-    input_file = "texpa1o.pf.clim.masked.shifted.nc"
-    expId = "texpa1"
-    variable_name = "temp_mm_uo"
-    output_variable = "tos"
-    test(input_file,expId,variable_name,output_variable,"./")
+    test()
