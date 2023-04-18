@@ -34,6 +34,18 @@ class Environment:
             shutil.rmtree(folder)
         os.mkdir(folder)
     @staticmethod
+    def init_filesystem():
+        tmp_dir = "./tmp"
+        output_dir ="./out"
+        Environment.clean(tmp_dir)
+        Environment.clean(output_dir)
+        return Environment(tree=None,\
+            exp_climate_dir=None,\
+            exp_inidata_dir=None,\
+            tmp_dir=tmp_dir,\
+            out_dir=output_dir,\
+            exps=None)     
+    @staticmethod
     def init_environment(folder:str):
         tree = fileSelector.ModelTree()
         exp_climate_dir = {}
@@ -52,10 +64,10 @@ class Environment:
                     #TODO : do the same thing for inidata
                     exp_inidata_dir[exp_id] = inidata_folder
                     exps.append(exp_id)
-            tmp_dir = "./tmp"
-            output_dir ="./out"
-            Environment.clean(tmp_dir)
-            Environment.clean(output_dir)
+        tmp_dir = "./tmp"
+        output_dir ="./out"
+        Environment.clean(tmp_dir)
+        Environment.clean(output_dir)
             
         return Environment(tree=tree,\
             exp_climate_dir=exp_climate_dir,\
@@ -68,17 +80,40 @@ class Environment:
         return os.path.join(self.tmp_dir,*folder)
     def out_subfolder(self,*folder:str):
         return os.path.join(self.out_dir,*folder)
+    
     def path_climate(self,expId:ExpId,file:str):
         return os.path.join(self.exp_climate_dir[expId],file)
+    
     def path_init(self,expId:ExpId,file:str):
         return os.path.join(self.exp_inidata_dir[expId],file)
+    
     def path_tmp_netcdf(self,expId:ExpId,file:str):
+        if expId is None:
+            return os.path.join(self.tmp_subfolder("files","netcdf"),file)
         return os.path.join(self.tmp_subfolder(expId.name,"netcdf"),file)
+    
     def path_out_netcdf(self,expId:ExpId,file:str):
+        if expId is None:
+            return os.path.join(self.out_subfolder("files","netcdf"),file)
         return os.path.join(self.out_subfolder(expId.name,"netcdf"),file)
+    
     def path_out_png(self,expId:ExpId,file:str):
+        if expId is None:
+            return os.path.join(self.out_subfolder("files","png"),file)
         return os.path.join(self.out_subfolder(expId.name,"png"),file)
+    def path_tmp_png(self,expId:ExpId,file:str):
+        if expId is None:
+            return os.path.join(self.tmp_subfolder("files","png"),file)
+        return os.path.join(self.tmp_subfolder(expId.name,"png"),file)
     def init(self,expId:ExpId):
+        if expId is None:
+            Environment.clean(self.tmp_subfolder("files"))
+            Environment.clean(self.tmp_subfolder("files","png"))
+            Environment.clean(self.tmp_subfolder("files","netcdf"))
+            Environment.clean(self.out_subfolder("files"))
+            Environment.clean(self.out_subfolder("files","png"))
+            Environment.clean(self.out_subfolder("files","netcdf"))
+            return
         Environment.clean(self.tmp_subfolder(expId.name))
         Environment.clean(self.tmp_subfolder(expId.name,"png"))
         Environment.clean(self.tmp_subfolder(expId.name,"netcdf"))
@@ -121,7 +156,7 @@ def concatenate(env:Environment):
         cdo.cat(input = input_files, output = clim_path)
         for tmp_path in input_files:
             os.remove(tmp_path)
-        return clim_path,model
+        return clim_path
     return map
        
 def copy_to_tmp(env:Environment,modelnames:List[ModelName]):
@@ -231,59 +266,65 @@ def save(expId:ExpId,env:Environment,files:List[str]):
     output_files = []
     for inputs in files:
         tmp = []
-        for input in inputs:
-            path,name = input
+        for path in inputs:
+            name = os.path.basename(path)
             output = env.path_out_netcdf(expId,name)
             shutil.copyfile(path, output)
+            print(f"\tsave : {output}")
             tmp.append(output)
         output_files.append(tmp)
     return output_files
 
 def convertExpId(env:Environment,expId:ExpId,request:Request):
+    print(f"Converting {expId.name} ...")
     tree = env.tree.subtree(expIds=[expId],\
         realms=[request.realm],\
         oss=[request.output_stream],\
         statistics=[Statistic.TimeMean])
     
-    
-    
-    #annual_subtree,remaining = tree.split_by(Annual)
     monthly_subtree,_ = tree.split_by(Month)
     monthly_subtree.sort()
-    
-    #preprocess = preprocess_pipeline(request)
-    
-    #files = copy_to_tmp(env, annual_subtree.select())
-    #files.extend(concatenate(env,monthly_subtree.select()))
     files = [file for file in monthly_subtree.map(fileSelector.StatisticTree,concatenate(env))]
     
-    
-    #preprocessed_files = preprocess(request,expId,env,files)
-    
-    #nc_files = save(expId,env,preprocessed_files)
     
     def _save(files):
         return save(expId,env,files)
     
+    def get_inidata_file(*sub_name:str):
+        return env.path_init(expId,env.inidata_file(expId,sub_name))
+    
     args = {
         "expId":expId,
+        "env":env,
+        "inidata":get_inidata_file
+    }
+    inputs = request.variable.open(files,args,_save)
+    
+    output_dir=env.path_out_png(expId,"")
+    output_file=os.path.join(output_dir,f"{expId.name}.{request.variable.name}")
+    for input in inputs:
+        pngConverter.convert(input,output_file)
+    
+def convertFile(file:str,request:Request):
+    env = Environment.init_filesystem()
+    env.init(None)
+    filename = os.path.splitext(os.path.basename(file))[0]
+    print(f"Converting {filename} ...")
+    
+    def _save(files):
+        return save(None,env,files)
+    
+    args = {
+        "expId":None,
         "env":env
     }
     
-    inputs = request.variable.open(files,args,_save)
+    inputs = request.variable.open(file,args,_save)
     
+    output_dir=env.path_out_png(None,"")
+    output_file=os.path.join(output_dir,f"{filename}")
     for input in inputs:
-        pngConverter.convert(input)
-    
-    """
-    for input_file in nc_files:
-        pngConverter.convert_to_png(input_file=input_file[0],\
-            expId=expId.name,\
-            variable_name=variable.named_input_variable,\
-            output_variable=variable.output_variable.value,\
-            output_dir=env.path_out_png(expId,""))
-    """
-    
+        pngConverter.convert(input,output_file)
 def load_variables():
     with open("./variables.toml",mode="rb") as fp:
         config = tomli.load(fp)
@@ -312,23 +353,29 @@ def get_active_variables(args,variables):
             
     return res
 def main(args):
-    env = Environment.init_environment("./climatearchive_sample_data/data/")
-    
+    print("Starting conversion to png")
     variables = load_variables()
     variables = get_active_variables(args,variables)
- 
-    for expid in env.exps:
-        env.init(expid)
-        
-    for expid in env.exps:
+    
+    if args.file is not None:
         for variable in variables:
-            convertExpId(env,expid,variable)
-
+            convertFile(args.file,variable)
+    else :
+        env = Environment.init_environment("./climatearchive_sample_data/data/")
+        for expid in env.exps:
+            env.init(expid)
+            
+        for expid in env.exps:
+            for variable in variables:
+                convertExpId(env,expid,variable)
+    print("conversion to png finished ")
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
-    parser.add_argument('--output_variables', dest = 'output_variables', help = 'select variables')
+    parser.add_argument('--output_variables',"-ov", dest = 'output_variables', help = 'select variables')
     parser.add_argument('--all-variables',"-av", action = 'store_true', help = 'takes all variables')
+    parser.add_argument('--file',"-f",dest = "file", help = 'convert the given file')
+    parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
  
     args = parser.parse_args()
     if args.output_variables is None and not args.all:

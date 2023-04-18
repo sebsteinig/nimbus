@@ -3,6 +3,9 @@ from typing import List,Union,Set,Callable,Tuple,Dict
 import numpy as np
 from netCDF4 import Dataset,_netCDF4
 import os
+from cdo import Cdo
+
+
 class IncorrectVariable(Exception):pass
  
 def iter(values:Tuple[Union[str,Set[str]]]):
@@ -87,13 +90,30 @@ class Variable:
                 case files if type(input) is list:
                     variables.extend(self.__multi_open(files))
         return variables
+    
+    @staticmethod
+    def exec_preprocessing(files:list,selected_variable:str,output_dir:str,preprocess:Callable,extra:dict):
+        cdo = Cdo()
+        output_files = []
+        for input in files :
+            #name = os.path.splitext(os.path.basename(input))[0]
+            output = os.path.join(output_dir,os.path.basename(input))
+            preprocessed = preprocess(cdo,selected_variable,input,output,extra)
+            if type(preprocessed) is str:
+                preprocessed = [preprocessed]
+            output_files.append(preprocessed)
+        return output_files
+    
+    def open(self,input:Union[str,List[str]],args:dict,save:Callable[[List[str]],None]) -> List[np.ndarray]:
+        selected_variable = csv(self.stored_as)
         
-    def open(self,input:Union[str,list],args:Dict,save:Callable[[List[str]],None]) -> List[np.ndarray]:
-        args["selected_variable"] = csv(self.stored_as)
-        print(f"open input : {input}")
-        preprocessed_input = self.preprocess(args,input)
+        if type(input) is str:
+            input = [input]
+        output_dir = args["env"].path_tmp_netcdf(args["expId"],"")
+        
+        preprocessed_input = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,args)
         preprocessed_input = save(preprocessed_input)
-        print(f"open preprocessed input : {preprocessed_input}")
+        
         match preprocessed_input:
             case file if type(preprocessed_input) is str:
                 return self.__single_open(file)
