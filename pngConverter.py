@@ -2,37 +2,40 @@ import numpy as np
 from netCDF4 import Dataset
 from PIL import Image
 from typing import Tuple
+import os
 import random
-
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
 
+def clean(output : np.ndarray) -> np.ndarray:
+    output[output > 255] = 255
+    output[output < 0] = 0
+    output[np.isnan(output)] = 0
+    return output
+
 def save(output : np.ndarray, output_file : str, mode = 'L'):
-    out = np.squeeze(output)
-    #print(np.uint8(out))
+    out = clean(output)
+    out = np.squeeze(out)
     img_ym = Image.fromarray(np.uint8(out), mode)
     img_ym.save(output_file + ".png")
 
 def eval_shape(input:np.ndarray) -> tuple[bool, bool, dict]:
-    res = {}
-    levelExists = False
-    match len (np.shape(input[0])):
+    level, time = 1, 1
+    latitude = input[0].shape[-2]
+    longitude = input[0].shape[-1]  
+    size = len (np.shape(input[0]))    
+    match size:
         case 4:
-            res["level"] = input[0].shape[0]
-            res["time"] = input[0].shape[1]
-            levelExists = True
-            timeExists = True
+            level = input[0].shape[0]
+            time = input[0].shape[1]
         case 3 :
-            res["time"] = input[0].shape[0]
-            timeExists = True
-        case 2:
-            timeExists = False
+            time = input[0].shape[0]
         case _ :
-            raise TooManyVariables(f"{len (np.shape(input[0]))} > 4 : there are too many variables")
-    res["latitude"] = input[0].shape[-2]
-    res["longitude"] = input[0].shape[-1]  
-    return timeExists, levelExists, res
+            if not(size == 2) :
+                raise TooManyVariables(f"{size} > 4 : there are too many variables")
+    input = np.reshape(input, (len(input), level, time, latitude, longitude))
+    return input, level, time, latitude, longitude
 
 def eval_input(size:int) -> tuple[int, str]:
     match size:
@@ -48,91 +51,39 @@ def eval_input(size:int) -> tuple[int, str]:
         case _:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
-            
-def shape_output(shapes:dict, timeExists:bool, levelExists:bool, dim:int) -> np.ndarray :
-    if timeExists :
-        output = np.zeros( ( shapes["latitude"] * shapes["level"], shapes["longitude"] * shapes["time"], dim) )\
-            if levelExists else np.zeros( ( shapes["latitude"], shapes["longitude"] * shapes["time"], dim) )
-    else :        
-        output = np.zeros( ( shapes["latitude"] * shapes["level"], shapes["longitude"], dim) )\
-            if levelExists else np.zeros( ( shapes["latitude"], shapes["longitude"], dim) )
-    return output
-        
-
-
-def convert_with_time(time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
-    for index in range(time):
-            if(len(input) == 1) :
-                output[:,index* longitude  : ((index+1)* longitude), 0] = \
-                norm(input[0][index,:,:]) * 255
-            elif numVar == 2 and len(input) == 2:
-                output[:,index* longitude  : ((index+1)* longitude), numVar ] = \
-                    np.zeros((latitude, longitude))
-            else :
-                output[:,index* longitude : ((index+1)* longitude), numVar ] = \
-                norm(input[numVar][index,:,:]) * 255 
-    return output
-
-def convert_with_time_and_level(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
-    for lev in range(level):
-        for index in range(time):
-            if(len(input) == 1) :
-                output[lev*latitude : (lev+1)*latitude, index* longitude  : ((index+1)* longitude), 0] = \
-                    norm(input[0][lev,index,:,:]) * 255
-            elif numVar == 2 and len(input) == 2:
-                output[lev*latitude : (lev+1)*latitude,index* longitude  : ((index+1)* longitude), numVar ] = \
-                    np.zeros((latitude, longitude))
-            else :
-                output[lev*latitude : (lev+1)*latitude,index* longitude : ((index+1)* longitude), numVar ] = \
-                    norm(input[numVar][lev, index,:,:]) * 255 
-    return output
-
-def convert_with_level(level:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
-    for lev in range(level):
-            if(len(input) == 1) :
-                output[lev*latitude : (lev+1)*latitude, :, 0] = \
-                norm(input[0][lev,:,:]) * 255
-            elif numVar == 2 and len(input) == 2:
-                output[lev*latitude : (lev+1)*latitude,:, numVar] = \
-                    np.zeros((latitude, longitude))
-            else :
-                output[lev*latitude : (lev+1)*latitude,:, numVar] = \
-                norm(input[numVar][lev,:,:]) * 255 
-    return output
-
+         
 def norm(input:np.ndarray):
     _min = input.min()
     _max = input.max()
     return (input - _min)/(_max - _min)
 
-def convert_with_space_only (longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
-
-    if(len(input) == 1) :
-        output[:,:, 0]= norm(input[0]) * 255
-    elif numVar == 2 and len(input) == 2:
-        output[:,:, numVar] = np.zeros((latitude, longitude))
+def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude):
+    if level == 1 :
+        index_output = np.s_[:,:,numVar] if  time == 1 else\
+             np.s_[:, indexTime * longitude  : ((indexTime+1)* longitude), numVar]
     else :
-        output[:,:, numVar] = norm(input[numVar]) * 255 
+        index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), numVar]
+    return index_output
+
+def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+    for indexLevel in range(level):
+        for indexTime in range(time):
+                if numVar ==2 and len(input) == 2 :
+                      input_data = np.zeros((latitude, longitude))
+                else :
+                    input_data = norm(input[numVar, indexLevel, indexTime, :, :]) * 255
+                index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
+                output[index_output] = input_data
     return output
 
-def convert(input:list, output_filename:str) -> str:
+def convert(input:list, output_filename:str, directory:str = "/") -> str:
     dim, mode = eval_input(len(input))
-    timeExists, levelExists, shapes = eval_shape(input)
-    output = shape_output(shapes, timeExists, levelExists, dim)
+    input, level, time, latitude, longitude = eval_shape(input)
+    output = np.zeros(( latitude * level, longitude * time, dim))
     for numVar in range(dim) :
-        if timeExists:
-            if levelExists :
-                output = convert_with_time_and_level(shapes["level"], shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
-            else :
-                output = convert_with_time(shapes["time"], shapes["longitude"], shapes["latitude"], numVar, input, output)
-        else:
-            if levelExists:
-                output = convert_with_level(shapes["level"], shapes["longitude"], shapes["latitude"], numVar, input, output)
-            else:
-                output = convert_with_space_only(shapes["longitude"], shapes["latitude"], numVar, input, output)
-    save(output, output_filename, mode)
+        output = fill_output(level, time, longitude, latitude, numVar, input, output)
+    save(output, os.path.join(directory, output_filename), mode)
     return output_filename
-
     
 if __name__ == "__main__":
     print("Cannot execute in main")
