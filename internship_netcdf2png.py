@@ -27,7 +27,7 @@ class Environment:
     exp_inidata_dir:Dict[ExpId,str]
     tmp_dir:str
     out_dir:str
-    exps:List[ExpId]
+    exps:Dict[str,ExpId]
     @staticmethod
     def clean(folder:str):
         if os.path.exists(folder):
@@ -50,7 +50,7 @@ class Environment:
         tree = fileSelector.ModelTree()
         exp_climate_dir = {}
         exp_inidata_dir = {}
-        exps = []
+        exps = {}
         for file in os.listdir(folder):
             d = os.path.join(folder, file)
             if os.path.isdir(d) and ruleExpID(file,0) is not None:
@@ -63,7 +63,7 @@ class Environment:
                     exp_climate_dir[exp_id] = climate_folder
                     #TODO : do the same thing for inidata
                     exp_inidata_dir[exp_id] = inidata_folder
-                    exps.append(exp_id)
+                    exps[exp_id.name] = exp_id
         tmp_dir = "./tmp"
         output_dir ="./out"
         Environment.clean(tmp_dir)
@@ -172,96 +172,6 @@ def copy_to_tmp(env:Environment,modelnames:List[ModelName]):
         output_files.append((copy_path,model))
     return output_files
 
-def preprocess_pipeline(variable:Request):
-    match variable.output_variable:
-        case pngConverter.OutputVariable.Tos | pngConverter.OutputRequest.Siconc:
-            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
-                cdo = Cdo()
-                mask_file = env.path_init(expId,Environment.inidata_file(expId,("qrparm","omask")))
-                lsm_var_file = cdo.selvar("lsm", input = mask_file)
-                
-                output_files = []
-                for input in files :
-                    input_path,model = input
-                    #input_path = env.path_tmp_netcdf(expId,input_file)
-                    mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input_path}", options="-r -f nc")
-                    
-                    shifted_name = Environment.rename(*model,"masked","shifted","out")
-                    shifted = env.path_tmp_netcdf(expId,shifted_name)
-                    #cdo.setmisstonn(input = output1, output = prefix + ".clim.nc", options='-r')
-                    cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = shifted)
-                    output_files.append(((shifted,shifted_name),))
-                
-                return output_files
-                
-
-        case pngConverter.OutputVariable.OceanCurrents:
-            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
-                cdo = Cdo()
-                output_files = []
-                for input in files :
-                    input_path,model = input
-                    #input_path = env.path_tmp_netcdf(expId,input_file)
-                    #TODO: check for missing token in the png converter
-                    #clean = cdo.setmisstoc(0, input = input_path, options = "-r")
-
-                    int_levels = "10.0,15.0,25.0,35.1,47.8,67.0,95.8,138.9,203.7,301.0,447.0,666.3,995.5,1500.8,2116.1,2731.4,3346.8,3962.1,4577.4,5192.6"
-                    outTmp = cdo.setmisstoc(0, input = f" -intlevel,{int_levels} -selvar,W_ym_dpth {input_path}")
-                    
-                    remapnn_name = Environment.rename(*model,"remapnn","masked","shifted","out")
-                    remapnn = env.path_tmp_netcdf(expId,remapnn_name)
-                    
-                    w_name = Environment.rename(*model,"W","masked","shifted","out")
-                    wfile = env.path_tmp_netcdf(expId,w_name)
-                    
-                    cdo.sellonlatbox('-180,180,90,-90',input = input_path, output = remapnn)
-                    cdo.sellonlatbox('-180,180,90,-90',input = outTmp, output = wfile)
-                    
-                    output_files.append(((remapnn,remapnn_name),(wfile,w_name)))
-                
-                return output_files
-
-        case pngConverter.OutputVariable.Winds:
-            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
-                cdo = Cdo()
-                output_files = []
-                for input in files :
-                    input_path,model = input
-                    #input_path = env.path_tmp_netcdf(expId,input_file)
-                    name = Environment.rename(*model,"shifted","out")
-                    out = env.path_tmp_netcdf(expId,name)
-                    cdo.sellonlatbox('-180,180,90,-90', input = input_path, output = out)
-                    output_files.append(((out,name),))
-                return output_files
-        case pngConverter.OutputVariable.Liconc:
-                def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
-                    cdo = Cdo()
-                    output_files = []
-                    for input in files :
-                        input_path,model = input
-                        #input_path = env.path_tmp_netcdf(expId,input_file)
-                        sellevel = cdo.sellevel(9, input = input_path)
-                        selvar = cdo.selvar(variable.named_input_variable, input=sellevel)
-                        name = Environment.rename(*model,"out")
-                        out = env.path_tmp_netcdf(expId,name)
-                        cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
-                        output_files.append(((out,name),))
-                    return output_files
-        case _:
-            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
-                cdo = Cdo()
-                output_files = []
-                for input in files :
-                    input_path,model = input
-                    #input_path = env.path_tmp_netcdf(expId,input_file)
-                    selvar = cdo.selvar(variable.named_input_variable, input=input_path)
-                    name = Environment.rename(*model,"out")
-                    out = env.path_tmp_netcdf(expId,name)
-                    cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
-                    output_files.append(((out,name),))
-                return output_files
-    return preprocess
-
 def save(expId:ExpId,env:Environment,files:List[str]):
     output_files = []
     for inputs in files:
@@ -282,7 +192,7 @@ def convertExpId(env:Environment,expId:ExpId,request:Request):
         oss=[request.output_stream],\
         statistics=[Statistic.TimeMean])
     
-    monthly_subtree,_ = tree.split_by(Month)
+    monthly_subtree,_ = tree,1#.split_by(Month)
     monthly_subtree.sort()
     files = [file for file in monthly_subtree.map(fileSelector.StatisticTree,concatenate(env))]
     
@@ -362,10 +272,21 @@ def main(args):
             convertFile(args.file,variable)
     else :
         env = Environment.init_environment("./climatearchive_sample_data/data/")
-        for expid in env.exps:
+        
+        if args.expIds is None:
+            exps = list(env.exps.values())
+        else :
+            exps = []
+            for id in args.expIds.strip().split(",") :
+                if id in env.exps:
+                    exps.append(env.exps[id])
+                else :
+                    raise Exception(f"Wrong experience id : {id}")
+        
+        for expid in exps:
             env.init(expid)
             
-        for expid in env.exps:
+        for expid in exps:
             for variable in variables:
                 convertExpId(env,expid,variable)
     print("conversion to png finished ")
@@ -373,6 +294,7 @@ def main(args):
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
     parser.add_argument('--output_variables',"-ov", dest = 'output_variables', help = 'select variables')
+    parser.add_argument('--experiences',"-e", dest = 'expIds', help = 'select experince')
     parser.add_argument('--all-variables',"-av", action = 'store_true', help = 'takes all variables')
     parser.add_argument('--file',"-f",dest = "file", help = 'convert the given file')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')

@@ -18,7 +18,8 @@ def iter(values:Tuple[Union[str,Set[str]]]):
 def csv(v):
     names = iter(v)
     return next(names) + "".join(f",{name}" for name in names)
-
+def flatten(l):
+    return [item for sublist in l for item in sublist]
 @dataclass
 class Dimension:
     name : str
@@ -50,6 +51,7 @@ class Variable:
     
     def __clean_dimensions(self,variable:_netCDF4.Variable) -> np.ndarray:
         data = variable[:]
+        print(type(data))
         approved = [dim.namespace() for dim in self.dimensions]
         removed = [i for i,name in enumerate(variable.dimensions) \
             if not any(name in names for names in approved)]
@@ -75,6 +77,7 @@ class Variable:
                 for names in self.namespace():
                     name = names & variable_names         
                     if len(name) == 0:
+                        print(variable_names)
                         raise IncorrectVariable(f"No variables match any of the specified names {names}")
                     variable = dataset[list(name)[0]]
                     variable = self.__clean_dimensions(variable)
@@ -83,10 +86,11 @@ class Variable:
         
     def __multi_open(self,inputs:list) -> List[List[np.ndarray]]:
         variables = []
+        print(inputs)
         for input in inputs :
             match input:
                 case file if type(input) is str:
-                    variables.append(self.__single_open(file))
+                    variables.extend(self.__single_open(file))
                 case files if type(input) is list:
                     variables.extend(self.__multi_open(files))
         return variables
@@ -111,14 +115,17 @@ class Variable:
             input = [input]
         output_dir = args["env"].path_tmp_netcdf(args["expId"],"")
         
-        preprocessed_input = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,args)
-        preprocessed_input = save(preprocessed_input)
+        preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,args)
+        preprocessed_inputs = save(preprocessed_inputs)
         
-        match preprocessed_input:
-            case file if type(preprocessed_input) is str:
-                return self.__single_open(file)
-            case files if type(preprocessed_input) is list:
-                return self.__multi_open(files)
+        output = []
+        for preprocessed_input in preprocessed_inputs:
+            match preprocessed_input:
+                case file if type(preprocessed_input) is str:
+                    output.append(self.__single_open(file))
+                case files if type(preprocessed_input) is list:
+                    output.append(self.__multi_open(files))
+        return output
                 
 
 if __name__ == "__main__" :

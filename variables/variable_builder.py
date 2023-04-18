@@ -108,7 +108,7 @@ def builder()->Dict[str,Variable]:
     variables["oceanCurrents"] = Variable(name="oceanCurrents",\
         dimensions=[time,latitude,longitude],\
         preprocess=oceanCurrents,\
-        stored_as=("ucurrTot_ym_dpth",)
+        stored_as=({"ucurrTot_ym_dpth","W_ym_dpth"},)
     )
    
     return variables
