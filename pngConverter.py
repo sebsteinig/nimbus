@@ -10,6 +10,7 @@ class TooManyInputs(Exception):pass
 
 def save(output : np.ndarray, output_file : str, mode = 'L'):
     out = np.squeeze(output)
+    #print(np.uint8(out))
     img_ym = Image.fromarray(np.uint8(out), mode)
     img_ym.save(output_file + ".png")
 
@@ -63,13 +64,13 @@ def convert_with_time(time:int, longitude:int, latitude:int, numVar:int, input:l
     for index in range(time):
             if(len(input) == 1) :
                 output[:,index* longitude  : ((index+1)* longitude), 0] = \
-                np.linalg.norm(input[0][index,:,:]) * 255
+                norm(input[0][index,:,:]) * 255
             elif numVar == 2 and len(input) == 2:
                 output[:,index* longitude  : ((index+1)* longitude), numVar ] = \
                     np.zeros((latitude, longitude))
             else :
                 output[:,index* longitude : ((index+1)* longitude), numVar ] = \
-                np.linalg.norm(input[numVar][index,:,:]) * 255 
+                norm(input[numVar][index,:,:]) * 255 
     return output
 
 def convert_with_time_and_level(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
@@ -77,39 +78,42 @@ def convert_with_time_and_level(level:int, time:int, longitude:int, latitude:int
         for index in range(time):
             if(len(input) == 1) :
                 output[lev*latitude : (lev+1)*latitude, index* longitude  : ((index+1)* longitude), 0] = \
-                    np.linalg.norm(input[0][lev,index,:,:]) * 255
+                    norm(input[0][lev,index,:,:]) * 255
             elif numVar == 2 and len(input) == 2:
                 output[lev*latitude : (lev+1)*latitude,index* longitude  : ((index+1)* longitude), numVar ] = \
                     np.zeros((latitude, longitude))
             else :
                 output[lev*latitude : (lev+1)*latitude,index* longitude : ((index+1)* longitude), numVar ] = \
-                    np.linalg.norm(input[numVar][lev, index,:,:]) * 255 
+                    norm(input[numVar][lev, index,:,:]) * 255 
     return output
 
 def convert_with_level(level:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
     for lev in range(level):
             if(len(input) == 1) :
                 output[lev*latitude : (lev+1)*latitude, :, 0] = \
-                np.linalg.norm(input[0][lev,:,:]) * 255
+                norm(input[0][lev,:,:]) * 255
             elif numVar == 2 and len(input) == 2:
                 output[lev*latitude : (lev+1)*latitude,:, numVar] = \
                     np.zeros((latitude, longitude))
             else :
                 output[lev*latitude : (lev+1)*latitude,:, numVar] = \
-                np.linalg.norm(input[numVar][lev,:,:]) * 255 
+                norm(input[numVar][lev,:,:]) * 255 
     return output
 
+def norm(input:np.ndarray):
+    _min = input.min()
+    _max = input.max()
+    return (input - _min)/(_max - _min)
+
 def convert_with_space_only (longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+
     if(len(input) == 1) :
-        output[:,:, 0]= np.linalg.norm(input[0]) * 255
+        output[:,:, 0]= norm(input[0]) * 255
     elif numVar == 2 and len(input) == 2:
         output[:,:, numVar] = np.zeros((latitude, longitude))
     else :
-        output[:,:, numVar] = np.linalg.norm(input[numVar]) * 255 
+        output[:,:, numVar] = norm(input[numVar]) * 255 
     return output
-
-
-
 
 def convert(input:list, output_filename:str) -> str:
     dim, mode = eval_input(len(input))
@@ -130,57 +134,7 @@ def convert(input:list, output_filename:str) -> str:
     return output_filename
 
     
-
-
-
-def test() :
-    
-    #tests : input with np.ndarray of shape 3 (time, latitude, longitude)
-    input = [np.random.uniform(size=(12,70,90))*255]
-    convert(input, "test1D")
-
-    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
-    convert(input, "test2D")
-
-    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
-    convert(input, "test3D")
-
-    input = [np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, \
-             np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255]
-    convert(input, "test4D")
-    
-    #tests : input with np.ndarray of shape 2 (lat, lon)
-    input = [np.random.uniform(size=(70,90))*255]
-    convert(input, "test1Dshape2")
-
-    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
-    convert(input, "test2Dshape2")
-
-    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
-    convert(input, "test3Dshape2")
-
-    input = [np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255,\
-              np.random.uniform(size=(70,90))*255, np.random.uniform(size=(70,90))*255]
-    convert(input, "test4Dshape2")
-
-    #tests : input with np.ndarray of shape 4 (level, time, lat, lon)
-    input = [np.random.uniform(size=(100, 12,70,90))*255]
-    convert(input, "test1Dshape4")
-
-    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
-    convert(input, "test2Dshape4")
-
-    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
-    convert(input, "test3Dshape4")
-
-    input = [np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255,\
-              np.random.uniform(size=(100, 12,70,90))*255, np.random.uniform(size=(100, 12,70,90))*255]
-    convert(input, "test4Dshape4")
-    
-    #tests that don't pass
-    #convert([np.random.uniform(size=(100, 12,70,90, 10))*255], "shouldntPass")
-    #convert([np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255, \
-    #         np.random.uniform(size=(12,70,90))*255, np.random.uniform(size=(12,70,90))*255], "no")
-
 if __name__ == "__main__":
-    test()
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)
