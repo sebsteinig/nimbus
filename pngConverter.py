@@ -1,9 +1,7 @@
 import numpy as np
-from netCDF4 import Dataset
 from PIL import Image
-from typing import Tuple
+from PIL.PngImagePlugin import PngInfo
 import os
-import random
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -14,11 +12,13 @@ def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 0
     return output
 
-def save(output : np.ndarray, output_file : str, mode = 'L'):
+def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
     out = clean(output)
     out = np.squeeze(out)
     img_ym = Image.fromarray(np.uint8(out), mode)
-    img_ym.save(output_file + ".png")
+    path = os.path.join(directory, output_file + ".png")
+    img_ym.save(path, pnginfo = metadata)
+    return path
 
 def eval_shape(input:np.ndarray) -> tuple[bool, bool, dict]:
     level, time = 1, 1
@@ -79,11 +79,14 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
 def convert(input:list, output_filename:str, directory:str = "/") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
+    metadata = PngInfo()
     output = np.zeros(( latitude * level, longitude * time, dim))
     for numVar in range(dim) :
         output = fill_output(level, time, longitude, latitude, numVar, input, output)
-    save(output, os.path.join(directory, output_filename), mode)
-    return output_filename
+        metadata.add_text(f"min{numVar}", str(input.min()))
+        metadata.add_text(f"max{numVar}", str(input.max()))
+    filename = save(output, output_filename, directory, metadata, mode)
+    return filename
     
 if __name__ == "__main__":
     print("Cannot execute in main")
