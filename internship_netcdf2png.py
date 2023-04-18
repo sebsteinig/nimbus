@@ -10,13 +10,15 @@ from cdo import Cdo
 import tomli
 import argparse
 from argparse import RawDescriptionHelpFormatter
+import variables.variable_builder as vb
+from variables.variable import Variable
+
 
 @dataclass
-class Variable:
-    output_variable:pngConverter.OutputVariable
-    realm:Realm
-    output_stream:OutputStream
-    named_input_variable:str
+class Request:
+    realm: Realm
+    output_stream: OutputStream
+    variable: Variable
 
 @dataclass
 class Environment:
@@ -83,6 +85,18 @@ class Environment:
         Environment.clean(self.out_subfolder(expId.name))
         Environment.clean(self.out_subfolder(expId.name,"png"))
         Environment.clean(self.out_subfolder(expId.name,"netcdf"))
+    @staticmethod
+    def inidata_file(expId:ExpId,name:Tuple[str,str]):
+        return f"{expId.name}.{name[0]}.{name[1]}.nc"
+    @staticmethod
+    def tmp_file(expId:ExpId,*extra:str):
+        suffixes = "".join([f".{e}" for e in extra])
+        return f"{expId.name}{suffixes}.nc"
+    @staticmethod
+    def rename(*segment:str):
+        suffixes = f"{segment[0]}"+ "".join([f".{e}" for e in segment[1:]])
+        return f"{suffixes}.nc"
+    
 def concatenate(env:Environment):  
     def map(leafs:List[fileSelector.AvgPeriodLeaf]):
         cdo = Cdo()
@@ -92,7 +106,7 @@ def concatenate(env:Environment):
             modelname = leaf.modelname
             netcdf_path = env.path_climate(modelname.expId,modelname.filename)
             tmp_path = env.path_tmp_netcdf(modelname.expId,\
-                tmp_file(modelname.expId,\
+                Environment.tmp_file(modelname.expId,\
                     modelname.realm.value,\
                     modelname.output_stream.category,\
                     modelname.statistic.value,\
@@ -103,7 +117,7 @@ def concatenate(env:Environment):
                 leafs[0].modelname.output_stream.category + leafs[0].modelname.statistic.value,\
                 "clim","mm")
         clim_path = env.path_tmp_netcdf(leafs[0].modelname.expId,\
-            rename(*model))
+            Environment.rename(*model))
         cdo.cat(input = input_files, output = clim_path)
         for tmp_path in input_files:
             os.remove(tmp_path)
@@ -118,26 +132,17 @@ def copy_to_tmp(env:Environment,modelnames:List[ModelName]):
                 modelname.output_stream.category + modelname.statistic.value,\
                 "clim","ym")
         copy_path = env.path_tmp_netcdf(modelname.expId,\
-            rename(*model))
+            Environment.rename(*model))
         shutil.copyfile(netcdf_path, copy_path)
         output_files.append((copy_path,model))
     return output_files
-        
-def inidata_file(expId:ExpId,name:Tuple[str,str]):
-    return f"{expId.name}.{name[0]}.{name[1]}.nc"
-def tmp_file(expId:ExpId,*extra:str):
-    suffixes = "".join([f".{e}" for e in extra])
-    return f"{expId.name}{suffixes}.nc"
-def rename(*segment:str):
-    suffixes = f"{segment[0]}"+ "".join([f".{e}" for e in segment[1:]])
-    return f"{suffixes}.nc"
 
-def preprocess_pipeline(variable:Variable):
+def preprocess_pipeline(variable:Request):
     match variable.output_variable:
-        case pngConverter.OutputVariable.Tos | pngConverter.OutputVariable.Siconc:
-            def preprocess(variable:Variable,expId:ExpId,env:Environment,files:List[str]):
+        case pngConverter.OutputVariable.Tos | pngConverter.OutputRequest.Siconc:
+            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
                 cdo = Cdo()
-                mask_file = env.path_init(expId,inidata_file(expId,("qrparm","omask")))
+                mask_file = env.path_init(expId,Environment.inidata_file(expId,("qrparm","omask")))
                 lsm_var_file = cdo.selvar("lsm", input = mask_file)
                 
                 output_files = []
@@ -146,7 +151,7 @@ def preprocess_pipeline(variable:Variable):
                     #input_path = env.path_tmp_netcdf(expId,input_file)
                     mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input_path}", options="-r -f nc")
                     
-                    shifted_name = rename(*model,"masked","shifted","out")
+                    shifted_name = Environment.rename(*model,"masked","shifted","out")
                     shifted = env.path_tmp_netcdf(expId,shifted_name)
                     #cdo.setmisstonn(input = output1, output = prefix + ".clim.nc", options='-r')
                     cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = shifted)
@@ -156,7 +161,7 @@ def preprocess_pipeline(variable:Variable):
                 
 
         case pngConverter.OutputVariable.OceanCurrents:
-            def preprocess(variable:Variable,expId:ExpId,env:Environment,files:List[str]):
+            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
                 cdo = Cdo()
                 output_files = []
                 for input in files :
@@ -168,10 +173,10 @@ def preprocess_pipeline(variable:Variable):
                     int_levels = "10.0,15.0,25.0,35.1,47.8,67.0,95.8,138.9,203.7,301.0,447.0,666.3,995.5,1500.8,2116.1,2731.4,3346.8,3962.1,4577.4,5192.6"
                     outTmp = cdo.setmisstoc(0, input = f" -intlevel,{int_levels} -selvar,W_ym_dpth {input_path}")
                     
-                    remapnn_name = rename(*model,"remapnn","masked","shifted","out")
+                    remapnn_name = Environment.rename(*model,"remapnn","masked","shifted","out")
                     remapnn = env.path_tmp_netcdf(expId,remapnn_name)
                     
-                    w_name = rename(*model,"W","masked","shifted","out")
+                    w_name = Environment.rename(*model,"W","masked","shifted","out")
                     wfile = env.path_tmp_netcdf(expId,w_name)
                     
                     cdo.sellonlatbox('-180,180,90,-90',input = input_path, output = remapnn)
@@ -182,19 +187,19 @@ def preprocess_pipeline(variable:Variable):
                 return output_files
 
         case pngConverter.OutputVariable.Winds:
-            def preprocess(variable:Variable,expId:ExpId,env:Environment,files:List[str]):
+            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
                 cdo = Cdo()
                 output_files = []
                 for input in files :
                     input_path,model = input
                     #input_path = env.path_tmp_netcdf(expId,input_file)
-                    name = rename(*model,"shifted","out")
+                    name = Environment.rename(*model,"shifted","out")
                     out = env.path_tmp_netcdf(expId,name)
                     cdo.sellonlatbox('-180,180,90,-90', input = input_path, output = out)
                     output_files.append(((out,name),))
                 return output_files
         case pngConverter.OutputVariable.Liconc:
-                def preprocess(variable:Variable,expId:ExpId,env:Environment,files:List[str]):
+                def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
                     cdo = Cdo()
                     output_files = []
                     for input in files :
@@ -202,20 +207,20 @@ def preprocess_pipeline(variable:Variable):
                         #input_path = env.path_tmp_netcdf(expId,input_file)
                         sellevel = cdo.sellevel(9, input = input_path)
                         selvar = cdo.selvar(variable.named_input_variable, input=sellevel)
-                        name = rename(*model,"out")
+                        name = Environment.rename(*model,"out")
                         out = env.path_tmp_netcdf(expId,name)
                         cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
                         output_files.append(((out,name),))
                     return output_files
         case _:
-            def preprocess(variable:Variable,expId:ExpId,env:Environment,files:List[str]):
+            def preprocess(variable:Request,expId:ExpId,env:Environment,files:List[str]):
                 cdo = Cdo()
                 output_files = []
                 for input in files :
                     input_path,model = input
                     #input_path = env.path_tmp_netcdf(expId,input_file)
                     selvar = cdo.selvar(variable.named_input_variable, input=input_path)
-                    name = rename(*model,"out")
+                    name = Environment.rename(*model,"out")
                     out = env.path_tmp_netcdf(expId,name)
                     cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
                     output_files.append(((out,name),))
@@ -234,10 +239,10 @@ def save(expId:ExpId,env:Environment,files:List[str]):
         output_files.append(tmp)
     return output_files
 
-def convertExpId(env:Environment,expId:ExpId,variable:Variable):
+def convertExpId(env:Environment,expId:ExpId,request:Request):
     tree = env.tree.subtree(expIds=[expId],\
-        realms=[variable.realm],\
-        oss=[variable.output_stream],\
+        realms=[request.realm],\
+        oss=[request.output_stream],\
         statistics=[Statistic.TimeMean])
     
     
@@ -246,39 +251,55 @@ def convertExpId(env:Environment,expId:ExpId,variable:Variable):
     monthly_subtree,_ = tree.split_by(Month)
     monthly_subtree.sort()
     
-    preprocess = preprocess_pipeline(variable)
+    #preprocess = preprocess_pipeline(request)
     
     #files = copy_to_tmp(env, annual_subtree.select())
     #files.extend(concatenate(env,monthly_subtree.select()))
     files = [file for file in monthly_subtree.map(fileSelector.StatisticTree,concatenate(env))]
     
     
-    preprocessed_files = preprocess(variable,expId,env,files)
+    #preprocessed_files = preprocess(request,expId,env,files)
     
-    nc_files = save(expId,env,preprocessed_files)
+    #nc_files = save(expId,env,preprocessed_files)
+    
+    def _save(files):
+        return save(expId,env,files)
+    
+    args = {
+        "expId":expId,
+        "env":env
+    }
+    
+    inputs = request.variable.open(files,args,_save)
+    
+    for input in inputs:
+        pngConverter.convert(input)
+    
+    """
     for input_file in nc_files:
         pngConverter.convert_to_png(input_file=input_file[0],\
             expId=expId.name,\
             variable_name=variable.named_input_variable,\
             output_variable=variable.output_variable.value,\
             output_dir=env.path_out_png(expId,""))
+    """
     
 def load_variables():
     with open("./variables.toml",mode="rb") as fp:
         config = tomli.load(fp)
     variables = {}
+    clim_variables = vb.builder()
     for variable in config["variables"]:
         variables[variable["output_variable"]] = \
-            Variable(\
-                named_input_variable=variable["named_input_variable"],\
+            Request(\
+                variable=clim_variables[variable["output_variable"]],\
                 output_stream=OutputStream(variable["output_stream"]),\
-                output_variable=pngConverter.OutputVariable(variable["output_variable"]),\
                 realm=Realm(variable["realm"]),\
                 )
     return variables
 
 def get_active_variables(args,variables):
-    if args.all:
+    if args.all_variables:
         raise Exception("NOT IMPLEMENTED : cannot use all variable yet")
         return list(variables.values())
     res = []
@@ -307,8 +328,8 @@ def main(args):
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
     parser.add_argument('--output_variables', dest = 'output_variables', help = 'select variables')
-    parser.add_argument('--all',"-a", action = 'store_true', help = 'takes all variables')
-
+    parser.add_argument('--all-variables',"-av", action = 'store_true', help = 'takes all variables')
+ 
     args = parser.parse_args()
     if args.output_variables is None and not args.all:
         raise Exception(f"Missing arguments \n {parser.format_help()}")
