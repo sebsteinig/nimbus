@@ -53,10 +53,9 @@ def eval_input(size:int) -> tuple[int, str]:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
-def initMetadata(latitude, longitude):
+def initMetadata(latitude, longitude, info):
     metadata = PngInfo()
-    metadata.add_text("latitude", str(latitude))
-    metadata.add_text("longitude", str(longitude))
+    metadata.add_text("info", str(json.dumps(info)))    
     return metadata
 
 def norm(input:np.ndarray,_min,_max):
@@ -93,10 +92,10 @@ def minmax(arr,threshold):
 
 
 
-def convert(input:list, output_filename:str, threshold, directory:str = "") -> str:
+def convert(input:list, output_filename:str, threshold, info, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
-    metadata = initMetadata(latitude, longitude)
+    metadata = initMetadata(latitude, longitude, info)
     output = np.zeros(( latitude * level, longitude * time, dim))
     minmaxVars = []
     for numVar in range(len(input)) :
