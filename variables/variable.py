@@ -129,21 +129,6 @@ class Variable:
                 
 
 if __name__ == "__main__" :
-    time = Dimension(name="time",stored_as="t")
-    latitude = Dimension(name="latitude",stored_as={"latitude","latitude_1"})
-    longitude = Dimension(name="longitude",stored_as="longitude")
-    
-    variable = Variable(name="tas",\
-        stored_as=("iceconc_mm_srf",),\
-        dimensions=[time,latitude,longitude])
-
-    #variable.open("./variables/test.nc",{})
-    
-            
-    for file in os.listdir("../"):
-        print(file)
-        
-    
-    #print([x.shape for x in variable.open("./variables/test.nc",{})])
-    #print(variable.open("./variables/test.nc")[0,:10,:10])
-    pass
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)

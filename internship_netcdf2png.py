@@ -300,6 +300,6 @@ if __name__ == "__main__" :
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
  
     args = parser.parse_args()
-    if args.output_variables is None and not args.all:
+    if args.output_variables is None and not args.all_variables:
         raise Exception(f"Missing arguments \n {parser.format_help()}")
     main(args)

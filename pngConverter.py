@@ -7,10 +7,8 @@ class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
 
 def clean(output : np.ndarray) -> np.ndarray:
-    output[output > 255] = 255
-    output[output < 0] = 0
     output[np.isnan(output)] = 0
-    return output
+    return output.clip(0,254)
 
 def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
     out = clean(output)
@@ -20,22 +18,24 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata : list
     img_ym.save(path, pnginfo = metadata)
     return path
 
-def eval_shape(input:np.ndarray) -> tuple[bool, bool, dict]:
+def eval_shape(input:list) -> tuple[bool, bool, dict]:
     level, time = 1, 1
     latitude = input[0].shape[-2]
     longitude = input[0].shape[-1]  
     size = len (np.shape(input[0]))    
     match size:
         case 4:
-            level = input[0].shape[0]
-            time = input[0].shape[1]
+            level = input[0].shape[1]
+            time = input[0].shape[0]
         case 3 :
             time = input[0].shape[0]
         case _ :
             if not(size == 2) :
                 raise TooManyVariables(f"{size} > 4 : there are too many variables")
-    input = np.reshape(input, (len(input), level, time, latitude, longitude))
-    return input, level, time, latitude, longitude
+    #print(type(input))
+    input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
+    #print(input_reshaped.shape)
+    return input_reshaped, level, time, latitude, longitude
 
 def eval_input(size:int) -> tuple[int, str]:
     match size:
@@ -52,9 +52,7 @@ def eval_input(size:int) -> tuple[int, str]:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
-def norm(input:np.ndarray):
-    _min = input.min()
-    _max = input.max()
+def norm(input:np.ndarray,_min,_max):
     return (input - _min)/(_max - _min)
 
 def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude):
@@ -65,27 +63,36 @@ def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longi
         index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), numVar]
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray) -> np.ndarray:
+def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray,_min,_max) -> np.ndarray:
     for indexLevel in range(level):
         for indexTime in range(time):
                 if numVar ==2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
                 else :
-                    input_data = norm(input[numVar, indexLevel, indexTime, :, :]) * 255
+                    input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 255
                 index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
                 output[index_output] = input_data
     return output
 
-def convert(input:list, output_filename:str, directory:str = "/") -> str:
+
+def minmax(arr,threshold):
+    sorted_flat = np.sort(arr.flatten())
+    n = len(sorted_flat)
+    return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
+
+def convert(input:list, output_filename:str, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
-    input, level, time, latitude, longitude = eval_shape(input)
+    input_reshaped, level, time, latitude, longitude = eval_shape(input)
     metadata = PngInfo()
     output = np.zeros(( latitude * level, longitude * time, dim))
-    for numVar in range(dim) :
-        output = fill_output(level, time, longitude, latitude, numVar, input, output)
-        metadata.add_text(f"min{numVar}", str(input.min()))
-        metadata.add_text(f"max{numVar}", str(input.max()))
+    threshold = 0.95
+    for numVar in range(len(input)) :
+        _min, _max = minmax(input_reshaped[numVar],threshold)
+        output = fill_output(level, time, longitude, latitude, numVar, input_reshaped, output,_min,_max)
+        metadata.add_text(f"min{numVar}", str(_min))
+        metadata.add_text(f"max{numVar}", str(_max))
     filename = save(output, output_filename, directory, metadata, mode)
+    print(f"\tsave : {filename}")
     return filename
     
 if __name__ == "__main__":
