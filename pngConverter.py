@@ -25,8 +25,8 @@ def eval_shape(input:list) -> tuple[bool, bool, dict]:
     size = len (np.shape(input[0]))    
     match size:
         case 4:
-            level = input[0].shape[1]
-            time = input[0].shape[0]
+            level = input[0].shape[0]
+            time = input[0].shape[1]
         case 3 :
             time = input[0].shape[0]
         case _ :
@@ -98,7 +98,6 @@ def convert(input:list, output_filename:str, directory:str = "") -> str:
         output = fill_output(level, time, longitude, latitude, numVar, input, output,_min,_max)
         metadata.add_text(f"min{numVar}", str(_min))
         metadata.add_text(f"max{numVar}", str(_max))
-        print((_min,_max))
     filename = save(output, output_filename, directory, metadata, mode)
     print(f"\tsave : {filename}")
     return filename

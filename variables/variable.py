@@ -30,7 +30,6 @@ class Dimension:
                 return {name}
             case names if type(self.stored_as) is set:
                 return names
-    
 @dataclass
 class Variable:
     name : str
@@ -49,9 +48,40 @@ class Variable:
                     return names
         return tuple(convert(s) for s in self.stored_as)
     
+    def get_depth(self):
+        for dim in self.dimensions:
+            if dim.name == "depth":
+                return dim
+        return None
+    def indexOf(self,name,variable):
+        def get(name):
+            for dim in self.dimensions:
+                if dim.name == name:
+                    return dim
+            return None
+        dim = get(name)
+        if dim is not None:
+            dim = set(variable.dimensions) & dim.namespace()
+            if len(dim) == 0 or dim is None:
+                raise Exception(f"No {name} found")
+            dim_name = list(dim)[0]
+            dim_index = variable.dimensions.index(list(dim)[0])
+            return dim_index,dim_name
+        return None,None
     def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension) -> np.ndarray:
         data = variable[:]
         approved = [dim.namespace() for dim in self.dimensions]
+        
+        depth_index,depth_name = self.indexOf("depth",variable)
+        time_index,time_name = self.indexOf("time",variable)
+        
+        variable_dimensions = list(variable.dimensions)
+        if time_index is not None and depth_name is not None and time_index < depth_index:
+            variable_dimensions[depth_index] = time_name
+            variable_dimensions[time_index] = depth_name
+            data = np.swapaxes(data,time_index,depth_index)
+        #print(data.shape)
+
         removed = [(i,name) for i,name in enumerate(variable.dimensions) \
             if not any(name in names for names in approved)]
         removed.sort(reverse=True)
@@ -66,6 +96,7 @@ class Variable:
         return data
 
     def __single_open(self,file:str) -> List[List[np.ndarray]]:
+        
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
