@@ -20,15 +20,16 @@ def oceanCurrents(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict)
     #clean = cdo.setmisstoc(0, input = input_path, options = "-r")
 
     int_levels = "10.0,15.0,25.0,35.1,47.8,67.0,95.8,138.9,203.7,301.0,447.0,666.3,995.5,1500.8,2116.1,2731.4,3346.8,3962.1,4577.4,5192.6"
-    outTmp = cdo.setmisstoc(0, input = f" -intlevel,{int_levels} -selvar,W_ym_dpth {input}")
-
+    
+    #inputW = cdo.setmisstoc(0, input = f" -intlevel,{int_levels} -selvar,W_ym_dpth {input}")
+    inputRemapnn = input#cdo.selvar("ucurrTot_ym_dpth", input=input)
+    
     remapnn = output.replace(".nc",".remapnn.masked.shifted.out.nc")
+    #wfile = output.replace(".nc",".W.masked.shifted.out.nc")
     
-    wfile = output.replace(".nc",".W.masked.shifted.out.nc")
-    
-    cdo.sellonlatbox('-180,180,90,-90',input = input, output = remapnn)
-    cdo.sellonlatbox('-180,180,90,-90',input = outTmp, output = wfile)       
-    return [remapnn,wfile]
+    cdo.sellonlatbox('-180,180,90,-90',input = inputRemapnn, output = remapnn)
+    #cdo.sellonlatbox('-180,180,90,-90',input = inputW, output = wfile)       
+    return remapnn
 
 def winds(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
     out = output.replace(".nc",".shifted.out.nc")
@@ -51,8 +52,8 @@ def default(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
 def builder()->Dict[str,Variable]:
     time = Dimension(name="time",stored_as="t")
     latitude = Dimension(name="latitude",stored_as={"latitude","latitude_1"})
-    longitude = Dimension(name="longitude",stored_as="longitude")
-    
+    longitude = Dimension(name="longitude",stored_as={"longitude","longitude_1"})
+    depth =  Dimension(name="depth",stored_as={"level","depth","depth_1"})
     variables = {}
     
     variables["clt"] = Variable(name="clt",\
@@ -106,9 +107,9 @@ def builder()->Dict[str,Variable]:
         stored_as=("iceconc_mm_uo",)
     )
     variables["oceanCurrents"] = Variable(name="oceanCurrents",\
-        dimensions=[time,latitude,longitude],\
+        dimensions=[depth,time,latitude,longitude],\
         preprocess=oceanCurrents,\
-        stored_as=({"ucurrTot_ym_dpth","W_ym_dpth"},)
+        stored_as=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
     )
    
     return variables
