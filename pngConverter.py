@@ -52,6 +52,12 @@ def eval_input(size:int) -> tuple[int, str]:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
+def initMetadata(latitude, longitude):
+    metadata = PngInfo()
+    metadata.add_text("latitude", str(latitude))
+    metadata.add_text("longitude", str(longitude))
+    return metadata
+
 def norm(input:np.ndarray,_min,_max):
     return (input - _min)/(_max - _min)
 
@@ -74,23 +80,25 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
                 output[index_output] = input_data
     return output
 
-
 def minmax(arr,threshold):
-    sorted_flat = np.sort(arr.flatten())
+    sorted_flat = np.unique(np.sort(arr.flatten()))
     n = len(sorted_flat)
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
+
+
 def convert(input:list, output_filename:str, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
-    input_reshaped, level, time, latitude, longitude = eval_shape(input)
-    metadata = PngInfo()
+    input, level, time, latitude, longitude = eval_shape(input)
+    metadata = initMetadata(latitude, longitude)
     output = np.zeros(( latitude * level, longitude * time, dim))
-    threshold = 0.95
+    threshold = 0.90
     for numVar in range(len(input)) :
-        _min, _max = minmax(input_reshaped[numVar],threshold)
-        output = fill_output(level, time, longitude, latitude, numVar, input_reshaped, output,_min,_max)
+        _min, _max = minmax(input[numVar],threshold)
+        output = fill_output(level, time, longitude, latitude, numVar, input, output,_min,_max)
         metadata.add_text(f"min{numVar}", str(_min))
         metadata.add_text(f"max{numVar}", str(_max))
+        print((_min,_max))
     filename = save(output, output_filename, directory, metadata, mode)
     print(f"\tsave : {filename}")
     return filename
