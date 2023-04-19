@@ -212,8 +212,8 @@ def convertExpId(env:Environment,expId:ExpId,request:Request, threshold):
     
     output_dir=env.path_out_png(expId,"")
     output_file=os.path.join(output_dir,f"{expId.name}.{request.variable.name}")
-    for input in inputs:
-        pngConverter.convert(input,output_file, threshold)
+    for input,info in inputs:
+        pngConverter.convert(input,output_file, threshold,info)
     
 def convertFile(file:str,request:Request, threshold, clean):
     env = Environment.init_filesystem(clean)
@@ -234,8 +234,8 @@ def convertFile(file:str,request:Request, threshold, clean):
     
     output_dir=env.path_out_png(None,"")
     output_file=os.path.join(output_dir,f"{filename}")
-    for input in inputs:
-        pngConverter.convert(input,output_file, threshold)
+    for input,info in inputs:
+        pngConverter.convert(input,output_file, threshold,info)
 def load_variables():
     with open("./variables.toml",mode="rb") as fp:
         config = tomli.load(fp)

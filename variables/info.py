@@ -158,6 +158,22 @@ class Info:
         time = Info.parseTime(src)
         return Info(grids=grids,verticals=verticals,time=time)
 
+    def to_dict(self):
+        dict = self.__dict__
+        grids, verticals = [], []
+        for g in dict["grids"]:
+            gridDict = g.__dict__
+            axis1 =gridDict["axis"][0].__dict__
+            axis2 = gridDict["axis"][1].__dict__
+            gridDict["axis"] = (axis1, axis2)
+            grids.append(gridDict)
+        for v in dict["verticals"]:
+            verticals.append(v.__dict__)    
+        dict["time"] = dict["time"].__dict__
+        dict["grids"] = grids
+        dict["verticals"] = verticals
+        return dict
+
 def test():
     src = ["Grid coordinates :",\
         "1 : lonlat                   : points=7008 (96x73)",\

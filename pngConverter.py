@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import os
+import json
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -10,14 +11,6 @@ class LongitudeLatitude(Exception):pass
 def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 0
     return output.clip(0,254)
-
-def assert_input(data):
-    if all(x<y for x, y in zip(data, data[1:])):
-        data = np.flip(data,0)
-
-def assert_long_lat(data, limit):
-    if min(data) < (- limit) or max(data) > limit:
-        raise LongitudeLatitude(f"{min(data)} or {max(data)} exceeded the limit {limit}")
 
 def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
     out = clean(output)
@@ -61,10 +54,9 @@ def eval_input(size:int) -> tuple[int, str]:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
-def initMetadata(latitude, longitude):
+def initMetadata(latitude, longitude, info):
     metadata = PngInfo()
-    metadata.add_text("latitude", str(latitude))
-    metadata.add_text("longitude", str(longitude))
+    metadata.add_text("info", str(json.dumps(info.to_dict())))    
     return metadata
 
 def norm(input:np.ndarray,_min,_max):
@@ -78,16 +70,21 @@ def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longi
         index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), numVar]
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray,_min,_max) -> np.ndarray:
+def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray, threshold) -> np.ndarray:
+    minmaxTab = []
     for indexLevel in range(level):
+        minmaxTimes = []
         for indexTime in range(time):
                 if numVar ==2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
                 else :
+                    _min, _max = minmax(input[numVar, indexLevel, indexTime, :, :],threshold)
+                    minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
                     input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 255
                 index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
                 output[index_output] = input_data
-    return output
+        minmaxTab.append(minmaxTimes)
+    return output, minmaxTab
 
 def minmax(arr,threshold):
     sorted_flat = np.unique(np.sort(arr.flatten()))
@@ -96,16 +93,16 @@ def minmax(arr,threshold):
 
 
 
-def convert(input:list, output_filename:str, threshold, directory:str = "") -> str:
+def convert(input:list, output_filename:str, threshold, info, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
-    metadata = initMetadata(latitude, longitude)
+    metadata = initMetadata(latitude, longitude, info)
     output = np.zeros(( latitude * level, longitude * time, dim))
+    minmaxVars = []
     for numVar in range(len(input)) :
-        _min, _max = minmax(input[numVar],threshold)
-        output = fill_output(level, time, longitude, latitude, numVar, input, output,_min,_max)
-        metadata.add_text(f"min{numVar}", str(_min))
-        metadata.add_text(f"max{numVar}", str(_max))
+        output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold)
+        minmaxVars.append(minmaxTab)
+    metadata.add_text("minmax", str(json.dumps(minmaxVars)))
     filename = save(output, output_filename, directory, metadata, mode)
     print(f"\tsave : {filename}")
     return filename
