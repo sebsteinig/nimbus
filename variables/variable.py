@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import List,Union,Set,Callable,Tuple,Dict
+from typing import List,Union,Set,Callable,Tuple,Dict,Type
 import numpy as np
 from netCDF4 import Dataset,_netCDF4
 import os
 from cdo import Cdo
 import sys
+import variables.info as inf
 
 class IncorrectVariable(Exception):pass
  
@@ -20,70 +21,69 @@ def csv(v):
     return next(names) + "".join(f",{name}" for name in names)
 def flatten(l):
     return [item for sublist in l for item in sublist]
-@dataclass
-class Dimension:
-    name : str
-    stored_as : Union[Set[str],str]
-    def namespace(self) -> Set[str]:
-        match self.stored_as :
-            case name if type(self.stored_as) is str:
-                return {name}
-            case names if type(self.stored_as) is set:
-                return names
+
+def in_bounds(data, lb, ub):
+    return np.nanmin(data) >= lb and np.nanmax(data) <= ub
+
 @dataclass
 class Variable:
     name : str
-    dimensions : List[Dimension]
-    stored_as : Tuple[Union[Set[str],str]] = None
+    look_for : Tuple[Union[Set[str],str]] = None
     preprocess : Callable[[Dict,Union[str,List[str]]],Union[str,List[str]]] = lambda x,y:y
     process : Callable[[List[np.ndarray]],np.ndarray] = lambda x:x
-    #clean_with_average : bool = False
-    def namespace(self) -> Tuple[Set[str]]:
-        if self.stored_as is None : return set()
-        def convert(stored_as:Union[Set[str],str]) -> Set[str]:
-            match stored_as :
-                case name if type(stored_as) is str:
-                    return {name}
-                case names if type(stored_as) is set:
-                    return names
-        return tuple(convert(s) for s in self.stored_as)
-    
-    def get_depth(self):
-        for dim in self.dimensions:
-            if dim.name == "depth":
-                return dim
-        return None
-    def indexOf(self,name,variable):
-        def get(name):
-            for dim in self.dimensions:
-                if dim.name == name:
-                    return dim
-            return None
-        dim = get(name)
-        if dim is not None:
-            dim = set(variable.dimensions) & dim.namespace()
-            if len(dim) == 0 or dim is None:
-                raise Exception(f"No {name} found")
-            dim_name = list(dim)[0]
-            dim_index = variable.dimensions.index(list(dim)[0])
-            return dim_index,dim_name
-        return None,None
-    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension) -> np.ndarray:
+
+
+    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension,info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
         data = variable[:]
-        approved = [dim.namespace() for dim in self.dimensions]
+    
+        grid = info.get_grid(variable.dimensions)
+        vertical = info.get_vertical(variable.dimensions)
+        time = info.get_time(variable.dimensions)
         
-        depth_index,depth_name = self.indexOf("depth",variable)
-        time_index,time_name = self.indexOf("time",variable)
+        if grid is None:
+            raise Exception("Could not find latitude and longitude")
         
         variable_dimensions = list(variable.dimensions)
-        if time_index is not None and depth_name is not None and time_index < depth_index:
-            variable_dimensions[depth_index] = time_name
-            variable_dimensions[time_index] = depth_name
-            data = np.swapaxes(data,time_index,depth_index)
-        #print(data.shape)
-
+        lon_index = variable_dimensions.index(grid.axis[0].name)
+        lat_index = variable_dimensions.index(grid.axis[1].name)
+        time_index = variable_dimensions.index(time.name)
+        vertical_index = variable_dimensions.index(vertical.name)
+        
+        approved = [grid.axis[0].name,grid.axis[1].name]
+        if time is not None:
+            approved.append(time.name)
+        if vertical is not None:
+            approved.append(vertical.name)
+        
+        if time is not None and vertical is not None and time_index < vertical_index:
+            variable_dimensions[vertical_index] = time.name
+            variable_dimensions[time_index] = vertical.name
+            data = np.swapaxes(data,time_index,vertical_index)
+        
+        if grid is not None and lon_index < lat_index:
+            variable_dimensions[lon_index] = grid.axis[1].name
+            variable_dimensions[lat_index] = grid.axis[0].name
+            data = np.swapaxes(data,lon_index,lat_index)
+            lon_index,lat_index = lat_index,lon_index
+            
+        lat_data = dataset.variables[grid.axis[1].name][:]
+        lon_data = dataset.variables[grid.axis[0].name][:]
+        
+        if all(x<y for x, y in zip(lat_data, lat_data[1:])) :
+            data = np.flip(data,lat_index)
+        
+        if not in_bounds(lat_data,-90,90):
+            print(lat_data)
+            raise Exception("Latitude should be between -90 and 90")
+        
+        if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
+            data = np.flip(data,lon_index)
+        if not in_bounds(lon_data,-180,180):
+            raise Exception("Longitude should be between -180 and 180")
+        
+        
         removed = [(i,name) for i,name in enumerate(variable.dimensions) \
-            if not any(name in names for names in approved)]
+            if not name in approved]
         removed.sort(reverse=True)
         for axis,name in removed:
             if dimensions[name].size == 1 :
@@ -94,28 +94,36 @@ class Variable:
             threshold = int(np.log10(variable._FillValue))
             data[data>threshold] = np.nan
         return data
-
+      
     def __single_open(self,file:str) -> List[List[np.ndarray]]:
+        cdo = Cdo()
+        
+        info = inf.Info.parse(cdo.sinfo(input=file))
         
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             dimensions = dataset.dimensions
-            if self.stored_as is None:
+            if self.look_for is None:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                variable= self.__clean_dimensions(variable,dimensions)
+                variable= self.__clean_dimensions(variable,dimensions,info,dataset)
                 variables.append(variable)
             else :
-                for names in self.namespace():
-                    name = names & variable_names         
-                    if len(name) == 0:
-                        #raise IncorrectVariable(f"No variables match any of the specified names {names}")
-                        continue
-                    variable = dataset[list(name)[0]]
-                    variable = self.__clean_dimensions(variable,dimensions)
-                    variables.append(variable)            
+                for possible_name in self.look_for:
+                    match possible_name:
+                        case name if type(possible_name) is str:
+                            if not name in variable_names:
+                                raise IncorrectVariable(f"No variables match any of the specified names {names}")
+                            variable = dataset[name]
+                        case names if type(possible_name) is set:
+                            name = names & variable_names  
+                            if len(name) == 0:
+                                raise IncorrectVariable(f"No variables match any of the specified names {names}")
+                            variable = dataset[list(name)[0]]
+                    variable = self.__clean_dimensions(variable,dimensions,info,dataset)
+                    variables.append(variable)             
         return self.process(variables)
         
     def __multi_open(self,inputs:list) -> List[List[np.ndarray]]:
@@ -142,7 +150,7 @@ class Variable:
         return output_files
     
     def open(self,input:Union[str,List[str]],args:dict,save:Callable[[List[str]],None]) -> List[np.ndarray]:
-        selected_variable = csv(self.stored_as)
+        selected_variable = csv(self.look_for)
         
         if type(input) is str:
             input = [input]

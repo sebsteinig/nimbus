@@ -28,17 +28,24 @@ class Environment:
     tmp_dir:str
     out_dir:str
     exps:Dict[str,ExpId]
+    clean:bool=False
+
     @staticmethod
-    def clean(folder:str):
-        if os.path.exists(folder):
-            shutil.rmtree(folder)
-        os.mkdir(folder)
+    def rebuild_folders(list_folders, clean = True):
+        for folder in list_folders:
+            if clean:
+                if os.path.exists(folder):
+                    shutil.rmtree(folder)
+                os.mkdir(folder)
+            else :      #build
+                if not os.path.exists(folder):
+                    os.mkdir(folder)
+        
     @staticmethod
-    def init_filesystem():
+    def init_filesystem(clean):
         tmp_dir = "./tmp"
         output_dir ="./out"
-        Environment.clean(tmp_dir)
-        Environment.clean(output_dir)
+        Environment.rebuild_folders([tmp_dir, output_dir], clean)
         return Environment(tree=None,\
             exp_climate_dir=None,\
             exp_inidata_dir=None,\
@@ -46,7 +53,7 @@ class Environment:
             out_dir=output_dir,\
             exps=None)     
     @staticmethod
-    def init_environment(folder:str):
+    def init_environment(folder:str, clean:bool):
         tree = fileSelector.ModelTree()
         exp_climate_dir = {}
         exp_inidata_dir = {}
@@ -66,8 +73,7 @@ class Environment:
                     exps[exp_id.name] = exp_id
         tmp_dir = "./tmp"
         output_dir ="./out"
-        Environment.clean(tmp_dir)
-        Environment.clean(output_dir)
+        Environment.rebuild_folders([tmp_dir, output_dir], clean)
             
         return Environment(tree=tree,\
             exp_climate_dir=exp_climate_dir,\
@@ -107,19 +113,13 @@ class Environment:
         return os.path.join(self.tmp_subfolder(expId.name,"png"),file)
     def init(self,expId:ExpId):
         if expId is None:
-            Environment.clean(self.tmp_subfolder("files"))
-            Environment.clean(self.tmp_subfolder("files","png"))
-            Environment.clean(self.tmp_subfolder("files","netcdf"))
-            Environment.clean(self.out_subfolder("files"))
-            Environment.clean(self.out_subfolder("files","png"))
-            Environment.clean(self.out_subfolder("files","netcdf"))
+            Environment.rebuild_folders([self.tmp_subfolder("files"), self.tmp_subfolder("files","png"), self.tmp_subfolder("files","netcdf")])
+            folders = [self.out_subfolder("files"), self.out_subfolder("files","png"), self.out_subfolder("files","netcdf")]
+            Environment.rebuild_folders(folders, self.clean)
             return
-        Environment.clean(self.tmp_subfolder(expId.name))
-        Environment.clean(self.tmp_subfolder(expId.name,"png"))
-        Environment.clean(self.tmp_subfolder(expId.name,"netcdf"))
-        Environment.clean(self.out_subfolder(expId.name))
-        Environment.clean(self.out_subfolder(expId.name,"png"))
-        Environment.clean(self.out_subfolder(expId.name,"netcdf"))
+        Environment.rebuild_folders([self.tmp_subfolder(expId.name), self.tmp_subfolder(expId.name,"png"), self.tmp_subfolder(expId.name,"netcdf")])
+        foldersExpId = [self.out_subfolder(expId.name), self.out_subfolder(expId.name,"png"), self.out_subfolder(expId.name,"netcdf")]
+        Environment.rebuild_folders(foldersExpId, self.clean)
     @staticmethod
     def inidata_file(expId:ExpId,name:Tuple[str,str]):
         return f"{expId.name}.{name[0]}.{name[1]}.nc"
@@ -185,7 +185,7 @@ def save(expId:ExpId,env:Environment,files:List[str]):
         output_files.append(tmp)
     return output_files
 
-def convertExpId(env:Environment,expId:ExpId,request:Request):
+def convertExpId(env:Environment,expId:ExpId,request:Request, threshold):
     print(f"Converting {expId.name} ...")
     tree = env.tree.subtree(expIds=[expId],\
         realms=[request.realm],\
@@ -213,11 +213,12 @@ def convertExpId(env:Environment,expId:ExpId,request:Request):
     output_dir=env.path_out_png(expId,"")
     output_file=os.path.join(output_dir,f"{expId.name}.{request.variable.name}")
     for input in inputs:
-        pngConverter.convert(input,output_file)
+        pngConverter.convert(input,output_file, threshold)
     
-def convertFile(file:str,request:Request):
-    env = Environment.init_filesystem()
+def convertFile(file:str,request:Request, threshold, clean):
+    env = Environment.init_filesystem(clean)
     env.init(None)
+    env.clean = clean
     filename = os.path.splitext(os.path.basename(file))[0]
     print(f"Converting {filename} ...")
     
@@ -234,7 +235,7 @@ def convertFile(file:str,request:Request):
     output_dir=env.path_out_png(None,"")
     output_file=os.path.join(output_dir,f"{filename}")
     for input in inputs:
-        pngConverter.convert(input,output_file)
+        pngConverter.convert(input,output_file, threshold)
 def load_variables():
     with open("./variables.toml",mode="rb") as fp:
         config = tomli.load(fp)
@@ -266,13 +267,14 @@ def main(args):
     print("Starting conversion to png")
     variables = load_variables()
     variables = get_active_variables(args,variables)
-    
+    threshold = 0.9 if args.threshold is None else float(args.threshold)
+
     if args.file is not None:
         for variable in variables:
-            convertFile(args.file,variable)
+            convertFile(args.file,variable, threshold, bool(args.clean))
     else :
-        env = Environment.init_environment("./climatearchive_sample_data/data/")
-        
+        env = Environment.init_environment("./climatearchive_sample_data/data/",  bool(args.clean))
+        env.clean = bool(args.clean)
         if args.expIds is None:
             exps = list(env.exps.values())
         else :
@@ -288,7 +290,7 @@ def main(args):
             
         for expid in exps:
             for variable in variables:
-                convertExpId(env,expid,variable)
+                convertExpId(env,expid,variable, threshold)
     print("conversion to png finished ")
 
 if __name__ == "__main__" :
@@ -298,6 +300,7 @@ if __name__ == "__main__" :
     parser.add_argument('--all-variables',"-av", action = 'store_true', help = 'takes all variables')
     parser.add_argument('--file',"-f",dest = "file", help = 'convert the given file')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
+    parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold')
  
     args = parser.parse_args()
     if args.output_variables is None and not args.all_variables:

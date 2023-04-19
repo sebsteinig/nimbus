@@ -94,12 +94,13 @@ def minmax(arr,threshold):
     n = len(sorted_flat)
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
-def convert(input:list, output_filename:str, directory:str = "") -> str:
+
+
+def convert(input:list, output_filename:str, threshold, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
     metadata = initMetadata(latitude, longitude)
     output = np.zeros(( latitude * level, longitude * time, dim))
-    threshold = 0.90
     for numVar in range(len(input)) :
         _min, _max = minmax(input[numVar],threshold)
         output = fill_output(level, time, longitude, latitude, numVar, input, output,_min,_max)
