@@ -195,19 +195,7 @@ def test():
         "YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss",\
         "6750-06-01 00:00:00"]
     info = Info.parse(src)
-    dict = info.__dict__
-    grids, verticals = [], []
-    for g in dict["grids"]:
-        gridDict = g.__dict__
-        axis1 =gridDict["axis"][0].__dict__
-        axis2 = gridDict["axis"][1].__dict__
-        gridDict["axis"] = (axis1, axis2)
-        grids.append(gridDict)
-    for v in dict["verticals"]:
-        verticals.append(v.__dict__)    
-    dict["time"] = dict["time"].__dict__
-    dict["grids"] = grids
-    dict["verticals"] = verticals
+    print(info)
 
 
 if __name__ == "__main__":

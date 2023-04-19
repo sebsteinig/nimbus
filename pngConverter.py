@@ -12,14 +12,6 @@ def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 0
     return output.clip(0,254)
 
-def assert_input(data):
-    if all(x<y for x, y in zip(data, data[1:])):
-        data = np.flip(data,0)
-
-def assert_long_lat(data, limit):
-    if min(data) < (- limit) or max(data) > limit:
-        raise LongitudeLatitude(f"{min(data)} or {max(data)} exceeded the limit {limit}")
-
 def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
     out = clean(output)
     out = np.squeeze(out)
@@ -64,7 +56,7 @@ def eval_input(size:int) -> tuple[int, str]:
          
 def initMetadata(latitude, longitude, info):
     metadata = PngInfo()
-    metadata.add_text("info", str(json.dumps(info)))    
+    metadata.add_text("info", str(json.dumps(info.to_dict())))    
     return metadata
 
 def norm(input:np.ndarray,_min,_max):

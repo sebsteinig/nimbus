@@ -95,7 +95,7 @@ class Variable:
             data[data>threshold] = np.nan
         return data
       
-    def __single_open(self,file:str) -> List[List[np.ndarray]]:
+    def __single_open(self,file:str) -> Tuple[List[np.ndarray],inf.Info]:
         cdo = Cdo()
         
         info = inf.Info.parse(cdo.sinfo(input=file))
@@ -124,9 +124,9 @@ class Variable:
                             variable = dataset[list(name)[0]]
                     variable = self.__clean_dimensions(variable,dimensions,info,dataset)
                     variables.append(variable)             
-        return self.process(variables)
+        return self.process(variables),info
         
-    def __multi_open(self,inputs:list) -> List[List[np.ndarray]]:
+    def __multi_open(self,inputs:list) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
             match input:
@@ -149,7 +149,7 @@ class Variable:
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],args:dict,save:Callable[[List[str]],None]) -> List[np.ndarray]:
+    def open(self,input:Union[str,List[str]],args:dict,save:Callable[[List[str]],None]):
         selected_variable = csv(self.look_for)
         
         if type(input) is str:
