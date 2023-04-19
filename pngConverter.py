@@ -52,6 +52,12 @@ def eval_input(size:int) -> tuple[int, str]:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
+def initMetadata(latitude, longitude):
+    metadata = PngInfo()
+    metadata.add_text("latitude", str(latitude))
+    metadata.add_text("longitude", str(longitude))
+    return metadata
+
 def norm(input:np.ndarray):
     _min = input.min()
     _max = input.max()
@@ -76,10 +82,10 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
                 output[index_output] = input_data
     return output
 
-def convert(input:list, output_filename:str, directory:str = "/") -> str:
+def convert(input:list, output_filename:str, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
-    metadata = PngInfo()
+    metadata = initMetadata(latitude, longitude)
     output = np.zeros(( latitude * level, longitude * time, dim))
     for numVar in range(dim) :
         output = fill_output(level, time, longitude, latitude, numVar, input, output)
