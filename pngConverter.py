@@ -93,12 +93,11 @@ def minmax(arr,threshold):
 
 
 
-def convert(input:list, output_filename:str, directory:str = "") -> str:
+def convert(input:list, output_filename:str, threshold, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)
     metadata = initMetadata(latitude, longitude)
     output = np.zeros(( latitude * level, longitude * time, dim))
-    threshold = 0.90
     minmaxVars = []
     for numVar in range(len(input)) :
         output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold)
