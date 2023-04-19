@@ -22,6 +22,9 @@ def csv(v):
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
+def in_bounds(data, lb, ub):
+    return np.nanmin(data) >= lb and np.nanmax(data) <= ub
+
 @dataclass
 class Variable:
     name : str
@@ -30,7 +33,7 @@ class Variable:
     process : Callable[[List[np.ndarray]],np.ndarray] = lambda x:x
 
 
-    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension,info:inf.Info) -> np.ndarray:
+    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension,info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
         data = variable[:]
     
         grid = info.get_grid(variable.dimensions)
@@ -60,8 +63,24 @@ class Variable:
         if grid is not None and lon_index < lat_index:
             variable_dimensions[lon_index] = grid.axis[1].name
             variable_dimensions[lat_index] = grid.axis[0].name
-            data = np.swapaxes(data,time_index,vertical_index)
+            data = np.swapaxes(data,lon_index,lat_index)
+            lon_index,lat_index = lat_index,lon_index
             
+        lat_data = dataset.variables[grid.axis[1].name][:]
+        lon_data = dataset.variables[grid.axis[0].name][:]
+        
+        if all(x<y for x, y in zip(lat_data, lat_data[1:])) :
+            data = np.flip(data,lat_index)
+        
+        if not in_bounds(lat_data,-90,90):
+            print(lat_data)
+            raise Exception("Latitude should be between -90 and 90")
+        
+        if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
+            data = np.flip(data,lon_index)
+        if not in_bounds(lon_data,-180,180):
+            raise Exception("Longitude should be between -180 and 180")
+        
         
         removed = [(i,name) for i,name in enumerate(variable.dimensions) \
             if not name in approved]
@@ -75,7 +94,7 @@ class Variable:
             threshold = int(np.log10(variable._FillValue))
             data[data>threshold] = np.nan
         return data
-
+      
     def __single_open(self,file:str) -> List[List[np.ndarray]]:
         cdo = Cdo()
         
@@ -89,7 +108,7 @@ class Variable:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                variable= self.__clean_dimensions(variable,dimensions,info)
+                variable= self.__clean_dimensions(variable,dimensions,info,dataset)
                 variables.append(variable)
             else :
                 for possible_name in self.look_for:
@@ -103,7 +122,7 @@ class Variable:
                             if len(name) == 0:
                                 raise IncorrectVariable(f"No variables match any of the specified names {names}")
                             variable = dataset[list(name)[0]]
-                    variable = self.__clean_dimensions(variable,dimensions,info)
+                    variable = self.__clean_dimensions(variable,dimensions,info,dataset)
                     variables.append(variable)             
         return self.process(variables)
         
