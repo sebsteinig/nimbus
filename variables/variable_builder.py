@@ -50,66 +50,51 @@ def default(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
     return out
     
 def builder()->Dict[str,Variable]:
-    time = Dimension(name="time",stored_as="t")
-    latitude = Dimension(name="latitude",stored_as={"latitude","latitude_1"})
-    longitude = Dimension(name="longitude",stored_as={"longitude","longitude_1"})
-    depth =  Dimension(name="depth",stored_as={"level","depth","depth_1"})
     variables = {}
     
     variables["clt"] = Variable(name="clt",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("totCloud_mm_ua",)
+        look_for=("totCloud_mm_ua",)
     )
     variables["tas"] = Variable(name="tas",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("temp_mm_1_5m",)
+        look_for=("temp_mm_1_5m",)
     )
     variables["pr"] = Variable(name="pr",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("precip_mm_srf",)
+        look_for=("precip_mm_srf",)
     )
     variables["winds"] = Variable(name="winds",\
-        dimensions=[time,latitude,longitude],\
         preprocess=winds,\
-        stored_as=("u_mm_p",)
+        look_for=("u_mm_p",)
     )
     variables["snc"] = Variable(name="snc",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("snowCover_mm_srf",)
+        look_for=("snowCover_mm_srf",)
     )
     variables["liconc"] = Variable(name="liconc",\
-        dimensions=[time,latitude,longitude],\
         preprocess=liconc,\
-        stored_as=("fracPFTs_mm_srf",)
+        look_for=("fracPFTs_mm_srf",)
     )
     variables["pfts"] = Variable(name="pfts",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("fracPFTs_mm_srf",)
+        look_for=("fracPFTs_mm_srf",)
     )
     variables["tos"] = Variable(name="tos",\
-        dimensions=[time,latitude,longitude],\
         preprocess=tos_siconc,\
-        stored_as=("temp_mm_uo",)
+        look_for=("temp_mm_uo",)
     )
     variables["mlotst"] = Variable(name="mlotst",\
-        dimensions=[time,latitude,longitude],\
         preprocess=default,\
-        stored_as=("mixLyrDpth_mm_uo",)
+        look_for=("mixLyrDpth_mm_uo",)
     )
     variables["siconc"] = Variable(name="siconc",\
-        dimensions=[time,latitude,longitude],\
         preprocess=tos_siconc,\
-        stored_as=("iceconc_mm_uo",)
+        look_for=("iceconc_mm_uo",)
     )
     variables["oceanCurrents"] = Variable(name="oceanCurrents",\
-        dimensions=[depth,time,latitude,longitude],\
         preprocess=oceanCurrents,\
-        stored_as=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
+        look_for=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
     )
    
     return variables
