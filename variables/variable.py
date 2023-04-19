@@ -60,7 +60,9 @@ class Variable:
                 data = np.take(data,0,axis=axis)
             else :
                 raise Exception(f"Unexpected dimension {name} of size {dimensions[name].size} > 1")
-            
+        if variable._FillValue is not None:
+            threshold = int(np.log10(variable._FillValue))
+            data[data>threshold] = np.nan
         return data
 
     def __single_open(self,file:str) -> List[List[np.ndarray]]:
@@ -70,9 +72,9 @@ class Variable:
             dimensions = dataset.dimensions
             if self.stored_as is None:
                 if len(variable_names) != 1:
-                    raise IncorrectVariable("Too many variable : must only be one variable if no names are specified")
+                    raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                variable = self.__clean_dimensions(variable,dimensions)
+                variable= self.__clean_dimensions(variable,dimensions)
                 variables.append(variable)
             else :
                 for names in self.namespace():
