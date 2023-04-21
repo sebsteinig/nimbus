@@ -1,6 +1,5 @@
 from typing import Dict
 from variables.variable import *
-from internship_netcdf2png import Environment
 from cdo import Cdo
 
 def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
@@ -98,3 +97,8 @@ def builder()->Dict[str,Variable]:
     )
    
     return variables
+
+if __name__ == "__main__":
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)

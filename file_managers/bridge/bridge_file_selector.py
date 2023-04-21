@@ -1,50 +1,55 @@
-from os import walk
-import filenameParser
 from dataclasses import dataclass, field
 from typing import List
-from filenameParser import *
+import os.path as path
+from os import listdir
+if __name__ == "__main__":
+    import bridge_filename_parser as parser
+else :
+    import file_managers.bridge.bridge_filename_parser as parser
+    
 from typing import Type,Union,Callable,Any
+
 @dataclass
 class AvgPeriodLeaf:
-    node:AvgPeriod
-    modelname:ModelName
-    def select(self)->ModelName:
+    node:parser.AvgPeriod
+    bridge_name:parser.BridgeName
+    def select(self)->parser.BridgeName:
         #return self.filename
-        yield self.modelname
+        yield self.bridge_name
     def map(self,level:Type,function:Callable[[List],Any]):
         if level is AvgPeriodLeaf :
-            yield function([self.modelname])
+            yield function([self.bridge_name])
         else :
             return None 
 @dataclass
 class StatisticTree:
-    node:Statistic
+    node:parser.Statistic
     branches:List[AvgPeriodLeaf] = field(default_factory=list)
-    def push(self,filename:ModelName):
+    def push(self,filename:parser.BridgeName):
         branch = AvgPeriodLeaf(filename.avg_period,filename)
         self.branches.append(branch)
-    def subtree(self,avgperiods:List[AvgPeriod]=[]):
+    def subtree(self,avgperiods:List[parser.AvgPeriod]=[]):
         if avgperiods is None or len(avgperiods)==0: return self
         sub_branches = []
         for branch in self.branches:
             if branch.node in avgperiods:
                  sub_branches.append(branch)
         return StatisticTree(node=self.node,branches=sub_branches)
-    def select(self)->ModelName:
+    def select(self)->parser.BridgeName:
         #res = []
         for branch in self.branches:
             #res.extend(branch.select())
             yield from branch.select()
         #return res
-    def split_by(self,period:Union[Type[Annual],Type[Month],Type[Season]]):
+    def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         period_type = None
         match period:
-            case _ if period is Annual:
-                period_type = Annual
-            case _ if period is Month:
-                period_type = Month
-            case _ if period is Season:
-                period_type = Season
+            case _ if period is parser.Annual:
+                period_type = parser.Annual
+            case _ if period is parser.Month:
+                period_type = parser.Month
+            case _ if period is parser.Season:
+                period_type = parser.Season
         sub_1 = []
         sub_2 = []
         for branch in self.branches:
@@ -63,9 +68,9 @@ class StatisticTree:
                 yield from branch.map(level,function) 
 @dataclass
 class OutputStreamTree:
-    node:OutputStream
+    node:parser.OutputStream
     branches:List[StatisticTree] = field(default_factory=list)
-    def push(self,filename:ModelName):
+    def push(self,filename:parser.BridgeName):
         for branch in self.branches:
             if filename.statistic == branch.node:
                 branch.push(filename)
@@ -74,21 +79,21 @@ class OutputStreamTree:
         branch.push(filename)
         self.branches.append(branch)
     def subtree(self,\
-            statistics:List[Statistic]=[],\
-            avgperiods:List[AvgPeriod]=[]):
+            statistics:List[parser.Statistic]=[],\
+            avgperiods:List[parser.AvgPeriod]=[]):
         if statistics is None or len(statistics) == 0: return self
         sub_branches = []
         for branch in self.branches:
             if branch.node in statistics:
                  sub_branches.append(branch.subtree(avgperiods))
         return OutputStreamTree(node=self.node,branches=sub_branches)
-    def select(self)->ModelName:
+    def select(self)->parser.BridgeName:
         #res = []
         for branch in self.branches:
             #res.extend(branch.select())
             yield from branch.select()
         #return res
-    def split_by(self,period:Union[Type[Annual],Type[Month],Type[Season]]):
+    def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         sub_1 = []
         sub_2 = []
         for branch in self.branches:
@@ -107,9 +112,9 @@ class OutputStreamTree:
                 yield from branch.map(level,function)        
 @dataclass
 class RealmTree:
-    node:Realm
+    node:parser.Realm
     branches:List[OutputStreamTree] = field(default_factory=list)
-    def push(self,filename:ModelName):
+    def push(self,filename:parser.BridgeName):
         for branch in self.branches:
             if filename.output_stream == branch.node:
                 branch.push(filename)
@@ -118,22 +123,22 @@ class RealmTree:
         branch.push(filename)
         self.branches.append(branch)
     def subtree(self,\
-            oss:List[OutputStream]=[],\
-            statistics:List[Statistic]=[],\
-            avgperiods:List[AvgPeriod]=[]):
+            oss:List[parser.OutputStream]=[],\
+            statistics:List[parser.Statistic]=[],\
+            avgperiods:List[parser.AvgPeriod]=[]):
         if oss is None or len(oss) == 0: return self
         sub_branches = []
         for branch in self.branches:
             if branch.node in oss:
                  sub_branches.append(branch.subtree(statistics,avgperiods))
         return RealmTree(node=self.node,branches=sub_branches)
-    def select(self)->ModelName:
+    def select(self)->parser.BridgeName:
         #res = []
         for branch in self.branches:
             #res.extend(branch.select())
             yield from branch.select()
         #return res
-    def split_by(self,period:Union[Type[Annual],Type[Month],Type[Season]]):
+    def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         sub_1 = []
         sub_2 = []
         for branch in self.branches:
@@ -152,9 +157,9 @@ class RealmTree:
                 yield from branch.map(level,function)
 @dataclass
 class ExpTree:
-    node:ExpId
+    node:parser.ExpId
     branches:List[RealmTree] = field(default_factory=list)
-    def push(self,filename:ModelName):
+    def push(self,filename:parser.BridgeName):
         for branch in self.branches:
             if filename.realm == branch.node:
                 branch.push(filename)
@@ -163,23 +168,23 @@ class ExpTree:
         branch.push(filename)
         self.branches.append(branch)
     def subtree(self,\
-            realms:List[Realm]=[],\
-            oss:List[OutputStream]=[],\
-            statistics:List[Statistic]=[],\
-            avgperiods:List[AvgPeriod]=[]):
+            realms:List[parser.Realm]=[],\
+            oss:List[parser.OutputStream]=[],\
+            statistics:List[parser.Statistic]=[],\
+            avgperiods:List[parser.AvgPeriod]=[]):
         if realms is None or len(realms) == 0: return self
         sub_branches = []
         for branch in self.branches:
             if branch.node in realms:
                  sub_branches.append(branch.subtree(oss,statistics,avgperiods))
         return ExpTree(node=self.node,branches=sub_branches)
-    def select(self)->ModelName:
+    def select(self)->parser.BridgeName:
         #res = []
         for branch in self.branches:
             #res.extend(branch.select())
             yield from branch.select()
         #return res
-    def split_by(self,period:Union[Type[Annual],Type[Month],Type[Season]]):
+    def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         sub_1 = []
         sub_2 = []
         for branch in self.branches:
@@ -197,9 +202,9 @@ class ExpTree:
             for branch in self.branches:
                 yield from branch.map(level,function)
 @dataclass
-class ModelTree:
+class BridgeTree:
     branches:List[ExpTree] = field(default_factory=list)
-    def push(self,filename:ModelName):
+    def push(self,filename:parser.BridgeName):
         for branch in self.branches:
             if filename.expId == branch.node:
                 branch.push(filename)
@@ -208,46 +213,52 @@ class ModelTree:
         branch.push(filename)
         self.branches.append(branch)
     def subtree(self,\
-            expIds:List[ExpId]=[],\
-            realms:List[Realm]=[],\
-            oss:List[OutputStream]=[],\
-            statistics:List[Statistic]=[],\
-            avgperiods:List[AvgPeriod]=[]):
+            expIds:List[parser.ExpId]=[],\
+            realms:List[parser.Realm]=[],\
+            oss:List[parser.OutputStream]=[],\
+            statistics:List[parser.Statistic]=[],\
+            avgperiods:List[parser.AvgPeriod]=[]):
         if expIds is None or len(expIds) == 0: return self
         sub_branches = []
         for branch in self.branches:
             if branch.node in expIds:
                  sub_branches.append(branch.subtree(realms,oss,statistics,avgperiods))
-        return ModelTree(sub_branches)
+        return BridgeTree(sub_branches)
     def select(self):
         #res = []
         for branch in self.branches:
             #res.extend(branch.select())
             yield from branch.select()
         #return res
-    def split_by(self,period:Union[Type[Annual],Type[Month],Type[Season]]):
+    def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         sub_1 = []
         sub_2 = []
         for branch in self.branches:
             _1,_2 = branch.split_by(period)
             sub_1.append(_1)
             sub_2.append(_2)
-        return ModelTree(branches=sub_1),ModelTree(branches=sub_2)
+        return BridgeTree(branches=sub_1),BridgeTree(branches=sub_2)
     def sort(self):
         for branch in self.branches:
             branch.sort()
             
     def map(self,level:Type,function:Callable[[List],Any]):
-        if level is ModelTree :
+        if level is BridgeTree :
             yield function(self.branches)
         else :
             for branch in self.branches:
                 yield from branch.map(level,function)
-def load(folder:str):
-    for filename in next(walk(folder))[2]:
-        yield parse(filename)
+                
+def assert_nc_extension(file:str):
+    return path.basename(file).split(".")[-1] == "nc"
 
-def push(filename:ModelName,tree:ModelTree)->ModelTree:
+def load(folder:str):
+    for name in listdir(folder):
+        file = path.join(folder,name)
+        if path.isfile(file) and assert_nc_extension(file):
+            yield parser.parse(file)
+
+def push(filename:parser.BridgeName,tree:BridgeTree)->BridgeTree:
     tree.push(filename)
 
 
@@ -258,14 +269,14 @@ def testMap(hyper):
     return f
 
 def test():
-    tree = ModelTree()
+    tree = BridgeTree()
     for filename in load("./climatearchive_sample_data/data/texpa1/climate"):
         tree.push(filename)
-    print([f.filename for f in tree.subtree(expIds=[ExpId("texpa1")],\
-        realms=[Realm.Athmosphere],\
-        oss=[OutputStream("rd"),OutputStream("pt")],\
-        statistics=[Statistic.TimeMean],\
-        avgperiods=[AvgPeriod(Month.Jan)]).select()])
+    print([f.filepath for f in tree.subtree(expIds=[parser.ExpId("texpa1")],\
+        realms=[parser.Realm.Athmosphere],\
+        oss=[parser.OutputStream("rd"),parser.OutputStream("pt")],\
+        statistics=[parser.Statistic.TimeMean],\
+        avgperiods=[parser.AvgPeriod(parser.Month.Jan)]).select()])
     
     print([file for file in tree.map(StatisticTree,testMap("env"))])
 

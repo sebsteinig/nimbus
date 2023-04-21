@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from enum import Enum,auto
 from typing import Tuple,Union
 import re
+import os.path as path
 
 @dataclass(eq=True, frozen=True)
 class ExpId:
     name:str
 
-@dataclass
-class ParsingError:
-    error:str
+class ParsingError(Exception):pass
 
 class Realm(Enum):
     Athmosphere = 'a'
@@ -60,13 +59,13 @@ class AvgPeriod:
     mean:Union[Annual,Month,Season]
 
 @dataclass(eq=True, frozen=True)
-class ModelName:
+class BridgeName:
     expId:ExpId
     realm:Realm
     output_stream:OutputStream
     statistic:Statistic
     avg_period:AvgPeriod
-    filename:str
+    filepath:str
     
 def ruleExpID(filename:str,cursor:int):
     if match := re.match("^[a-zA-Z]{5}\d?",filename[cursor:]):
@@ -101,29 +100,30 @@ def eatdot(filename:str,cursor:int):
         return cursor +1
     return cursor
 
-def parse(filename:str):
+def parse(filepath:str):
+    filename = path.basename(filepath)
     cursor = 0
     if not (res := ruleExpID(filename,cursor)):
-        return ParsingError(f"invalid experience id for {filename}")
+        raise ParsingError(f"invalid experience id for {filename} in {filepath}")
     expId,cursor =res
     if not (res := ruleRealm(filename,cursor)):
-        return ParsingError(f"invalid realm for {filename}")
+        raise ParsingError(f"invalid realm for {filename} in {filepath}")
     realm,cursor =res
     cursor = eatdot(filename,cursor)
     if not (res := ruleOutputStream(filename,cursor)):
-        return ParsingError(f"invalid output stream for {filename}")
+        raise ParsingError(f"invalid output stream for {filename} in {filepath}")
     output_stream,cursor =res
     if not (res := ruleStatistic(filename,cursor)):
-        return ParsingError(f"invalid statistic for {filename}")
+        raise ParsingError(f"invalid statistic for {filename} in {filepath}")
     statistic,cursor =res
     if not (res := ruleAvgPeridod(filename,cursor)):
-        return ParsingError(f"invalid averaging period for {filename}")
+        raise ParsingError(f"invalid averaging period for {filename} in {filepath}")
     avg_period,cursor =res
-    return ModelName(expId=expId,realm=realm,\
+    return BridgeName(expId=expId,realm=realm,\
         output_stream=output_stream,\
         statistic=statistic,\
         avg_period=avg_period,\
-        filename=filename)
+        filepath=filepath)
     
 
 
