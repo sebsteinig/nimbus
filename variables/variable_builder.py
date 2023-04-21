@@ -2,8 +2,19 @@ from typing import Dict
 from variables.variable import *
 from cdo import Cdo
 
-def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
-    mask_file = extra["inidata"]("qrparm","omask")
+def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
+    mask_file = inidata["qrparm"]["omask"]
+    lsm_var_file = cdo.selvar("lsm", input = mask_file)
+
+    mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input}", options="-r -f nc")
+    
+    shifted = output.replace(".nc",".masked.shifted.out.nc")
+    #cdo.setmisstonn(input = output1, output = prefix + ".clim.nc", options='-r')
+    cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = shifted)
+    
+    return shifted
+def height(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
+    mask_file = inidata["qrparm"]["omask"]
     lsm_var_file = cdo.selvar("lsm", input = mask_file)
 
     mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input}", options="-r -f nc")
@@ -14,7 +25,7 @@ def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
     
     return shifted
 
-def oceanCurrents(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
+def oceanCurrents(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
     #TODO: check for missing token in the png converter
     #clean = cdo.setmisstoc(0, input = input_path, options = "-r")
 
@@ -30,19 +41,19 @@ def oceanCurrents(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict)
     #cdo.sellonlatbox('-180,180,90,-90',input = inputW, output = wfile)       
     return remapnn
 
-def winds(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
+def winds(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
     out = output.replace(".nc",".shifted.out.nc")
     cdo.sellonlatbox('-180,180,90,-90', input = input, output = out)
     return out
 
-def liconc(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
+def liconc(cdo:Cdo,selected_variable:str,input:str,output:str,file_manager):
     sellevel = cdo.sellevel(9, input = input)
     selvar = cdo.selvar(selected_variable, input=sellevel)
     out = output.replace(".nc",".out.nc")
     cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
     return out
 
-def default(cdo:Cdo,selected_variable:str,input:str,output:str,extra:dict):
+def default(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
     selvar = cdo.selvar(selected_variable, input=input)
     out = output.replace(".nc",".out.nc")
     cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
@@ -93,6 +104,10 @@ def builder()->Dict[str,Variable]:
     )
     variables["oceanCurrents"] = Variable(name="oceanCurrents",\
         preprocess=oceanCurrents,\
+        look_for=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
+    )    
+    variables["height"] = Variable(name="oceanCurrents",\
+        preprocess=height,\
         look_for=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
     )
    

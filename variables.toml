@@ -63,3 +63,8 @@ output_variable = "oceanCurrents"
 realm = "o"
 output_stream = "pg"
 named_input_variable = "ucurrTot_ym_dpth"
+
+[[variables]]
+output_variable = "height"
+inidata = ""
+named_input_variable = "ucurrTot_ym_dpth"

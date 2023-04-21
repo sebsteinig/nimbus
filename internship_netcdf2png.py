@@ -32,8 +32,8 @@ def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     return f
 
 
-def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save):
-    inputs = variable.open(input,output,save)
+def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,inidata=None):
+    inputs = variable.open(input,output,save,inidata)
     for input,info in inputs:
         png_converter.convert(input,output_file, threshold,info)
         
@@ -68,6 +68,7 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
                 input=input,\
                 output=output,\
                 output_file=output_file,\
+                inidata = fm.get_inidata(exp_id),\
                 save=save(input,fm))
 
 
@@ -77,12 +78,19 @@ def load_request():
     requests = {}
     clim_variables = vb.builder()
     for variable in config["variables"]:
-        requests[variable["output_variable"]] = \
-            {
-                "variable":clim_variables[variable["output_variable"]],\
-                "output_stream":variable["output_stream"],\
-                "realm":variable["realm"],\
-            }
+        if "inidata" in variable:
+            requests[variable["output_variable"]] = \
+                {
+                    "variable":clim_variables[variable["output_variable"]],\
+                    "inidata":variable["inidata"],\
+                }
+        else : 
+            requests[variable["output_variable"]] = \
+                {
+                    "variable":clim_variables[variable["output_variable"]],\
+                    "output_stream":variable["output_stream"],\
+                    "realm":variable["realm"],\
+                }
     return requests
 
 def get_active_requests(args,requests):

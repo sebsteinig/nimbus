@@ -93,7 +93,7 @@ class Variable:
                 raise Exception(f"Unexpected dimension {name} of size {dimensions[name].size} > 1")
         if variable._FillValue is not None:
             threshold = int(np.log10(variable._FillValue))
-            data[data>threshold] = np.nan
+            data[data>(10**threshold)] = np.nan
         return data
       
     def __single_open(self,file:str) -> Tuple[List[np.ndarray],inf.Info]:
@@ -138,27 +138,26 @@ class Variable:
         return variables
     
     @staticmethod
-    def exec_preprocessing(files:list,selected_variable:str,output_dir:str,preprocess:Callable,extra:dict):
+    def exec_preprocessing(files:list,selected_variable:str,output_dir:str,preprocess:Callable,inidata):
         cdo = Cdo()
         output_files = []
         for input in files :
-            #name = os.path.splitext(os.path.basename(input))[0]
             output = os.path.join(output_dir,os.path.basename(input))
-            preprocessed = preprocess(cdo,selected_variable,input,output,None)
+            preprocessed = preprocess(cdo,selected_variable,input,output,inidata)
             if type(preprocessed) is str:
                 preprocessed = [preprocessed]
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None]):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],inidata=None):
         selected_variable = csv(self.look_for)
         
         if type(input) is str:
             input = [input]
-        #output_dir = args["env"].path_tmp_netcdf(args["expId"],"")
+            
         output_dir = out_folder.tmp_nc()
         
-        preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,None)
+        preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,inidata)
         preprocessed_inputs = save(preprocessed_inputs)
         
         output = []
