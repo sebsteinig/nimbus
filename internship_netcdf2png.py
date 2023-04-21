@@ -12,6 +12,7 @@ import argparse
 from argparse import RawDescriptionHelpFormatter
 import variables.variable_builder as vb
 from variables.variable import Variable
+from logError import *
 
 
 @dataclass
@@ -263,6 +264,7 @@ def get_active_variables(args,variables):
             raise Exception(f"Wrong variable name : {output_variable}")
             
     return res
+
 def main(args):
     print("Starting conversion to png")
     variables = load_variables()
@@ -271,7 +273,10 @@ def main(args):
 
     if args.file is not None:
         for variable in variables:
-            convertFile(args.file,variable, threshold, bool(args.clean))
+            try:
+                convertFile(args.file,variable, threshold, bool(args.clean))
+            except Exception as err:
+                logErrorForVar(variable, err)
     else :
         env = Environment.init_environment("./climatearchive_sample_data/data/",  bool(args.clean))
         env.clean = bool(args.clean)
@@ -290,7 +295,10 @@ def main(args):
             
         for expid in exps:
             for variable in variables:
-                convertExpId(env,expid,variable, threshold)
+                try:
+                    convertExpId(env,expid,variable, threshold)
+                except Exception as err:
+                    logErrorForVarAndExpid(variable, expid, err)
     print("conversion to png finished ")
 
 if __name__ == "__main__" :
@@ -305,4 +313,7 @@ if __name__ == "__main__" :
     args = parser.parse_args()
     if args.output_variables is None and not args.all_variables:
         raise Exception(f"Missing arguments \n {parser.format_help()}")
-    main(args)
+    try:
+        main(args)
+    except Exception as err:
+        logErrorForAll(err)
