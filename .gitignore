@@ -1,5 +1,4 @@
-out/
-tmp/
+nc_to_png_outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

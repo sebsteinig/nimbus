@@ -6,6 +6,7 @@ import os
 from cdo import Cdo
 import sys
 import variables.info as inf
+from file_managers.output_folder import OutputFolder
 
 class IncorrectVariable(Exception):pass
  
@@ -143,20 +144,21 @@ class Variable:
         for input in files :
             #name = os.path.splitext(os.path.basename(input))[0]
             output = os.path.join(output_dir,os.path.basename(input))
-            preprocessed = preprocess(cdo,selected_variable,input,output,extra)
+            preprocessed = preprocess(cdo,selected_variable,input,output,None)
             if type(preprocessed) is str:
                 preprocessed = [preprocessed]
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],args:dict,save:Callable[[List[str]],None]):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None]):
         selected_variable = csv(self.look_for)
         
         if type(input) is str:
             input = [input]
-        output_dir = args["env"].path_tmp_netcdf(args["expId"],"")
+        #output_dir = args["env"].path_tmp_netcdf(args["expId"],"")
+        output_dir = out_folder.tmp_nc()
         
-        preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,args)
+        preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,None)
         preprocessed_inputs = save(preprocessed_inputs)
         
         output = []
