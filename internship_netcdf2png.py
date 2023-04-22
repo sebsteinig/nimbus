@@ -61,6 +61,8 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
     for request in requests:
         for input,output,exp_id in fm.iter(request):  
             suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[2:-1]))
+            if suffixe not in (".mm",".sm",".ym"):
+                suffixe = ""
             print(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
             output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
             convert_file(variable=request["variable"],\

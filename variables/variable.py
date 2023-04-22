@@ -116,12 +116,12 @@ class Variable:
                     match possible_name:
                         case name if type(possible_name) is str:
                             if not name in variable_names:
-                                raise IncorrectVariable(f"No variables match any of the specified names {names}")
+                                raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
                             variable = dataset[name]
                         case names if type(possible_name) is set:
                             name = names & variable_names  
                             if len(name) == 0:
-                                raise IncorrectVariable(f"No variables match any of the specified names {names}")
+                                raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                             variable = dataset[list(name)[0]]
                     variable = self.__clean_dimensions(variable,dimensions,info,dataset)
                     variables.append(variable)             

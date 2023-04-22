@@ -14,16 +14,20 @@ def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
     
     return shifted
 def height(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
-    mask_file = inidata["qrparm"]["omask"]
-    lsm_var_file = cdo.selvar("lsm", input = mask_file)
-
-    mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input}", options="-r -f nc")
     
-    shifted = output.replace(".nc",".masked.shifted.out.nc")
-    #cdo.setmisstonn(input = output1, output = prefix + ".clim.nc", options='-r')
-    cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = shifted)
+    selvar_orog = cdo.selvar("ht", input = inidata["qrparm"]["orog"])
     
-    return shifted
+    shifted_orog = cdo.sellonlatbox(-180,180,90,-90, input = selvar_orog)
+    
+    inputTmp = f"-invertlat -setmisstoc,0 -mulc,-1 -selvar,depthdepth {inidata['qrparm']['omask']}"
+    shifted_omask = cdo.sellonlatbox(-180,180,90,-90, input = inputTmp)
+    
+    tmp_name = output.split("/")[-1]
+    
+    output = output.replace(tmp_name,"/height.out.nc")
+    cdo.add(input=f"{shifted_orog} {shifted_omask}", output = output)
+    
+    return output
 
 def oceanCurrents(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):
     #TODO: check for missing token in the png converter
@@ -106,9 +110,9 @@ def builder()->Dict[str,Variable]:
         preprocess=oceanCurrents,\
         look_for=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
     )    
-    variables["height"] = Variable(name="oceanCurrents",\
+    variables["height"] = Variable(name="height",\
         preprocess=height,\
-        look_for=("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
+        look_for=("ht",)
     )
    
     return variables

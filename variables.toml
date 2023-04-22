@@ -66,5 +66,5 @@ named_input_variable = "ucurrTot_ym_dpth"
 
 [[variables]]
 output_variable = "height"
-inidata = ""
+inidata = "qrparm.orog"
 named_input_variable = "ucurrTot_ym_dpth"

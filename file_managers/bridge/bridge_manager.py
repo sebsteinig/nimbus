@@ -43,10 +43,15 @@ class BridgeManager:
     
     def iter(self,request):
         if "inidata" in request:
+            inidata_files = request["inidata"].strip().split(",")
             for exp_id in next(self.tree.map(selector.BridgeTree, lambda arr: (value.node for value in arr))):
-                print(exp_id)
-            
-            raise Exception()
+                for inidata_file in inidata_files:
+                    v1,v2 = tuple(inidata_file.split("."))
+                    if v1 in self.inidata[exp_id] and v2 in self.inidata[exp_id][v1][v2]:
+                        
+                        self.input[self.inidata[exp_id][v1][v2]] = exp_id
+                        yield self.inidata[exp_id][v1][v2],self.output[exp_id],exp_id
+            return
         
         tree = self.tree.subtree(expIds=self.selected_expid,\
             realms=[parser.Realm(request["realm"])],\
