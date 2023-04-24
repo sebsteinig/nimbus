@@ -13,8 +13,9 @@ import variables.variable_builder as vb
 from variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
+from utils.logger import *
 import file_managers.bridge.bridge_manager as bridge
-
+from utils.logger import Logger,_Logger
 
 def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     def f(files:List[str]):
@@ -32,38 +33,54 @@ def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     return f
 
 
-def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,inidata=None):
-    inputs = variable.open(input,output,save,inidata)
-    for input,info in inputs:
-        png_converter.convert(input,output_file, threshold,info)
-        
+def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
+    try:
+        inputs = variable.open(input,output,save,logger,inidata)
+        for input,info in inputs:
+            try :
+                png_converter.convert(input,output_file, threshold,info,logger)
+            except Exception as e:
+                trace = Logger.trace()
+                Logger.console().error(trace, "PNG CONVERTER")
+                logger.error(e.__repr__(), "PNG CONVERTER")
+    except Exception as e :
+        trace = Logger.trace()
+        Logger.console().error(trace, "OPEN VARIABLE")
+        logger.error(e.__repr__(), "OPEN VARIABLE")
+
+
 def user_convert(file:str, threshold:float, requests:List[dict], clean:bool):
     fm = default.FileManager.mount(file,"./")
     if clean :
         fm.clean()
     
     for input,output in fm.iter():
-        for request in requests:   
-            print(f"Converting {input} ...")
+        for request in requests:  
+            Logger.console().info(f"Converting {input} ...")
+            logger = Logger.file(fm,input)
+            logger.info(f"threshold : {threshold}")
             output_file = output.out_png_file(os.path.splitext(os.path.basename(input))[0])
             convert_file(variable=request["variable"],\
                 threshold=threshold,\
                 input=input,\
                 output=output,\
                 output_file=output_file,\
+                logger=logger,\
                 save=save(input,fm))
 
 def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float,clean:bool):
     fm = bridge.BridgeManager.mount(file,filter = filter)
     if clean :
         fm.clean()
-    
     for request in requests:
+        Logger.console().info(f"\n\trealm : {request['realm']},\n\toutputstream : {request['output_stream']},\n\tvariable : {request['variable'].name}", "REQUEST")
         for input,output,exp_id in fm.iter(request):  
+            logger = Logger.file(fm,input)
+            logger.info(f"threshold : {threshold}")
             suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-2:-1]))
             if suffixe not in (".mm",".sm",".ym"):
                 suffixe = ""
-            print(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
+            Logger.console().info(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
             output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
             convert_file(variable=request["variable"],\
                 threshold=threshold,\
@@ -71,6 +88,7 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
                 output=output,\
                 output_file=output_file,\
                 inidata = fm.get_inidata(exp_id),\
+                logger=logger,\
                 save=save(input,fm))
 
 
@@ -121,10 +139,17 @@ def get_active_requests(args,requests):
     return res
 
 def main(args):
-    print("Starting conversion to png")
+    Logger.blacklist()
+    Logger.debug(False)
+    Logger.filter("REQUESTS", "CDO INFO", "SHAPE","DIMENSION")
+    Logger.console().info("Starting conversion to png")
     requests = load_request()
     requests = get_active_requests(args,requests)
+
+    Logger.console().debug(requests, "REQUESTS")
+
     threshold = 0.95 if args.threshold is None else float(args.threshold)
+    Logger.console().info(f"threshold : {threshold}")
 
     if args.user is not None:
         user_convert(args.user, threshold, requests, bool(args.clean))
@@ -135,7 +160,7 @@ def main(args):
             filter = args.expIds.strip().split(",")
         bridge_convert(args.bridge,requests,filter, threshold, bool(args.clean))
         
-    print("conversion to png finished ")
+    Logger.console().info("conversion to png finished ")
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
@@ -151,4 +176,7 @@ if __name__ == "__main__" :
     args = parser.parse_args()
     if (args.bridge_variables is None and args.new_variables is None) and not args.all_brigde_variables :
         raise Exception(f"Missing arguments \n {parser.format_help()}")
-    main(args)
+    try:
+        main(args)
+    except Exception as err:
+        logErrorForAll(err)
