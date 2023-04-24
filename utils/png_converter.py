@@ -91,6 +91,8 @@ def minmax(arr,threshold):
     if np.isnan(sorted_flat[-1]) :
         sorted_flat = sorted_flat[:-1]
     n = len(sorted_flat)
+    if n<=1 :
+        return 0, 0
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
 
