@@ -9,7 +9,7 @@ class TooManyInputs(Exception):pass
 class LongitudeLatitude(Exception):pass
 
 def clean(output : np.ndarray) -> np.ndarray:
-    output[np.isnan(output)] = 0
+    output[np.isnan(output)] = 255
     return output.clip(0,254)
 
 def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
@@ -34,9 +34,7 @@ def eval_shape(input:list) -> tuple[bool, bool, dict]:
         case _ :
             if not(size == 2) :
                 raise TooManyVariables(f"{size} > 4 : there are too many variables")
-    #print(type(input))
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
-    #print(input_reshaped.shape)
     return input_reshaped, level, time, latitude, longitude
 
 def eval_input(size:int) -> tuple[int, str]:
@@ -60,6 +58,8 @@ def initMetadata(latitude, longitude, info):
     return metadata
 
 def norm(input:np.ndarray,_min,_max):
+    if _min == _max :
+        return input 
     return (input - _min)/(_max - _min)
 
 def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude):
@@ -80,7 +80,7 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
                 else :
                     _min, _max = minmax(input[numVar, indexLevel, indexTime, :, :],threshold)
                     minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
-                    input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 255
+                    input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 254
                 index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
                 output[index_output] = input_data
         minmaxTab.append(minmaxTimes)
@@ -88,6 +88,8 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
 
 def minmax(arr,threshold):
     sorted_flat = np.unique(np.sort(arr.flatten()))
+    if np.isnan(sorted_flat[-1]) :
+        sorted_flat = sorted_flat[:-1]
     n = len(sorted_flat)
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
