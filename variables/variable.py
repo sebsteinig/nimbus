@@ -26,31 +26,6 @@ def flatten(l):
 def in_bounds(data, lb, ub):
     return np.nanmin(data) >= lb and np.nanmax(data) <= ub
 
-def reshape(time, time_index, vertical, vertical_index, variable_dimensions, grid, data, lon_index, lat_index):
-    if time is not None and vertical is not None and time_index < vertical_index:
-        variable_dimensions[vertical_index] = time.name
-        variable_dimensions[time_index] = vertical.name
-        data = np.swapaxes(data,time_index,vertical_index)
-        
-    if grid is not None and lon_index < lat_index:
-        variable_dimensions[lon_index] = grid.axis[1].name
-        variable_dimensions[lat_index] = grid.axis[0].name
-        data = np.swapaxes(data,lon_index,lat_index)
-        lon_index,lat_index = lat_index,lon_index
-
-def assert_and_flip(lat_data, lat_index, lon_data, lon_index, data ):
-    if all(x<y for x, y in zip(lat_data, lat_data[1:])) :
-        data = np.flip(data,lat_index)
-    
-    if not in_bounds(lat_data,-90,90):
-        print(lat_data)
-        raise Exception("Latitude should be between -90 and 90")
-    
-    if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
-        data = np.flip(data,lon_index)
-    if not in_bounds(lon_data,-180,180):
-        raise Exception("Longitude should be between -180 and 180")
-    
 
 @dataclass
 class Variable:
@@ -66,7 +41,6 @@ class Variable:
         grid = info.get_grid(variable.dimensions)
         vertical = info.get_vertical(variable.dimensions)
         time = info.get_time(variable.dimensions)
-        
         if grid is None:
             raise Exception("Could not find latitude and longitude")
         
@@ -82,12 +56,32 @@ class Variable:
         if vertical is not None:
             approved.append(vertical.name)
         
-        reshape(time, time_index, vertical, vertical_index, variable_dimensions, grid, data, lon_index, lat_index)
-            
+        if time is not None and vertical is not None and time_index < vertical_index:
+            variable_dimensions[vertical_index] = time.name
+            variable_dimensions[time_index] = vertical.name
+            data = np.swapaxes(data,time_index,vertical_index)
+        
+        if grid is not None and lon_index < lat_index:
+            variable_dimensions[lon_index] = grid.axis[1].name
+            variable_dimensions[lat_index] = grid.axis[0].name
+            data = np.swapaxes(data,lon_index,lat_index)
+            lon_index,lat_index = lat_index,lon_index
+
         lat_data = dataset.variables[grid.axis[1].name][:]
         lon_data = dataset.variables[grid.axis[0].name][:]
         
-        assert_and_flip(lat_data, lat_index, lon_data, lon_index, data)
+        if all(x<y for x, y in zip(lat_data, lat_data[1:])) :
+            data = np.flip(data,lat_index)
+    
+        if not in_bounds(lat_data,-90,90):
+            print(lat_data)
+            raise Exception("Latitude should be between -90 and 90")
+        
+        if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
+            data = np.flip(data,lon_index)
+        if not in_bounds(lon_data,-180,180):
+            raise Exception("Longitude should be between -180 and 180")
+    
         
         
         removed = [(i,name) for i,name in enumerate(variable.dimensions) \

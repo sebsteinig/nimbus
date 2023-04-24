@@ -67,7 +67,7 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
     for request in requests:
         for input,output,exp_id in fm.iter(request):  
             logger = Logger.file(fm,input)
-            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[2:-1]))
+            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-2:-1]))
             if suffixe not in (".mm",".sm",".ym"):
                 suffixe = ""
             print(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
