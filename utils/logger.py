@@ -55,7 +55,7 @@ class _Logger:
         if self.std_output is None:
             print(msg)
         with open(self.std_output,"a") as file:
-            file.write(msg)
+            file.write(msg + "\n")
     
 class LoggerMode(Enum):
     BLACK_LIST = 1
@@ -109,7 +109,7 @@ class Logger:
     @staticmethod
     def file(file_manager: FileManager | BridgeManager,input) -> _Logger:
         out_folder = file_manager.get_output(input)
-        log_path = path.join(out_folder.out_dir,datetime.now().strftime("%d_%m_%Y_%H:%M:%S") + ".log")
+        log_path = path.join(out_folder.out(),datetime.now().strftime("%d_%m_%Y_%H:%M:%S") + ".log")
         return _Logger(log_path)
 
 
