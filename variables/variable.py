@@ -28,9 +28,9 @@ def in_bounds(data, lb, ub):
 
 def reshape(time, time_index, vertical, vertical_index, variable_dimensions, grid, data, lon_index, lat_index):
     if time is not None and vertical is not None and time_index < vertical_index:
-            variable_dimensions[vertical_index] = time.name
-            variable_dimensions[time_index] = vertical.name
-            data = np.swapaxes(data,time_index,vertical_index)
+        variable_dimensions[vertical_index] = time.name
+        variable_dimensions[time_index] = vertical.name
+        data = np.swapaxes(data,time_index,vertical_index)
         
     if grid is not None and lon_index < lat_index:
         variable_dimensions[lon_index] = grid.axis[1].name
@@ -104,7 +104,7 @@ class Variable:
             data[data>(10**threshold)] = np.nan
         return data
       
-    def __single_open(self,file:str) -> Tuple[List[np.ndarray],inf.Info]:
+    def __single_open(self,file:str,logger) -> Tuple[List[np.ndarray],inf.Info]:
         cdo = Cdo()
         
         info = inf.Info.parse(cdo.sinfo(input=file))
@@ -135,14 +135,14 @@ class Variable:
                     variables.append(variable)             
         return self.process(variables),info
         
-    def __multi_open(self,inputs:list) -> List[Tuple[List[np.ndarray],inf.Info]]:
+    def __multi_open(self,inputs:list,logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
             match input:
                 case file if type(input) is str:
-                    variables.extend(self.__single_open(file))
+                    variables.extend(self.__single_open(file,logger))
                 case files if type(input) is list:
-                    variables.extend(self.__multi_open(files))
+                    variables.extend(self.__multi_open(files,logger))
         return variables
     
     @staticmethod
@@ -157,7 +157,7 @@ class Variable:
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],inidata=None):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,inidata=None):
         selected_variable = csv(self.look_for)
         
         if type(input) is str:
@@ -172,9 +172,9 @@ class Variable:
         for preprocessed_input in preprocessed_inputs:
             match preprocessed_input:
                 case file if type(preprocessed_input) is str:
-                    output.append(self.__single_open(file))
+                    output.append(self.__single_open(file,logger))
                 case files if type(preprocessed_input) is list:
-                    output.append(self.__multi_open(files))
+                    output.append(self.__multi_open(files,logger))
         return output
                 
 

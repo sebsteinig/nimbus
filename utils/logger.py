@@ -1,35 +1,120 @@
 from dataclasses import dataclass
+from enum import Enum
+from io import TextIOWrapper
 import traceback
 from datetime import datetime
 import os
-
+from file_managers.default_manager import FileManager
+from file_managers.bridge.bridge_manager import BridgeManager
+import os.path as path
 @dataclass
 class _Logger:
     std_output: str | None
-    def debug(self):
-        pass
+    def debug(self,msg,tag=None):
+        if not Logger._debug:
+            return 
+        if tag is None :
+            self.print(f"DEBUG : {msg}")
+            return 
+        if Logger.is_granted(tag):
+            self.print(f"DEBUG : {tag} >> {msg}")
+            return
     
-    def warning(self):
-        pass
+    def warning(self,msg,tag=None):
+        if not Logger._warning:
+            return 
+        if tag is None :
+            self.print(f"WARNING : {msg}")
+            return 
+        if Logger.is_granted(tag):
+            self.print(f"WARNING : {tag} >> {msg}")
+            return
     
-    def info(self):
-        pass
+    def info(self,msg,tag=None):
+        if not Logger._info:
+            return 
+        if tag is None :
+            self.print(f"INFO : {msg}")
+            return 
+        if Logger.is_granted(tag):
+            self.print(f"INFO : {tag} >> {msg}")
+            return
     
-    def error(self):
-        pass
+    def error(self,msg,tag=None):
+        if not Logger._error:
+            return 
+        if tag is None :
+            self.print(f"ERROR : {msg}")
+            return 
+        if Logger.is_granted(tag):
+            self.print(f"ERROR : {tag} >> {msg}")
+            return
     
-class Logger:
+    
+    def print(self,msg):
+        if self.std_output is None:
+            print(msg)
+        with open(self.std_output,"a") as file:
+            file.write(msg)
+    
+class LoggerMode(Enum):
+    BLACK_LIST = 1
+    WHITE_LIST = 2
+
+class Logger:    
+    mode = LoggerMode.BLACK_LIST
+    filters = []
+    _debug = True
+    _warning = True
+    _info = True
+    _error = True
+    
+    @staticmethod   
+    def filter(*arg):
+        Logger.filters.extend(arg)
+    
+    @staticmethod
+    def blacklist():
+        Logger.mode = LoggerMode.BLACK_LIST
+    
+    @staticmethod
+    def whitelist():
+        Logger.mode = LoggerMode.WHITE_LIST
+       
+    @staticmethod
+    def debug(to:bool):
+        Logger._debug = to    
+             
+    @staticmethod
+    def warning(to:bool):
+        Logger._warning = to    
+              
+    @staticmethod
+    def info(to:bool):
+        Logger._info = to    
+                  
+    @staticmethod
+    def error(to:bool):
+        Logger._error = to    
+         
+    @staticmethod
+    def is_granted(tag) -> bool:
+        return (Logger.mode is LoggerMode.BLACK_LIST and not tag in Logger.filters) or (Logger.mode is LoggerMode.WHITE_LIST and  tag in Logger.filters)
+    
+    
     @staticmethod
     def console() -> _Logger:
-        pass
+        return _Logger(None)
     
     @staticmethod
-    def file() -> _Logger:
-        pass
+    def file(file_manager: FileManager | BridgeManager,input) -> _Logger:
+        out_folder = file_manager.get_output(input)
+        log_path = path.join(out_folder.out_dir,datetime.now().strftime("%d_%m_%Y_%H:%M:%S") + ".log")
+        return _Logger(log_path)
 
 
 def logErrorForAll(err):
-    logFile = open(datetime.now().strftime("%d%m%Y_%H:%M:%S") + ".log", "a")
+    logFile = open(datetime.now().strftime("%d/%m/%Y_%H:%M:%S") + ".log", "a")
     traceback.print_tb(err.__traceback__, file=logFile)
     logFile.write(f"\n\n\n\n{err.args[0]}")
     logFile.close()
@@ -50,7 +135,9 @@ def logErrorForVar(outputFolder, variable, err):
 
     
 def test():
-    Logger.console().debug()
+    a = 1
+    Logger.console().debug("test input string")
+    Logger.console().debug(a)
 
 if __name__ == "__main__":
     #print("Cannot execute in main")

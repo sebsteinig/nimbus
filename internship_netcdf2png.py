@@ -13,9 +13,9 @@ import variables.variable_builder as vb
 from variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
-from logger import *
+from utils.logger import *
 import file_managers.bridge.bridge_manager as bridge
-
+from utils.logger import Logger,_Logger
 
 def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     def f(files:List[str]):
@@ -33,10 +33,11 @@ def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     return f
 
 
-def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,inidata=None):
-    inputs = variable.open(input,output,save,inidata)
+def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
+    
+    inputs = variable.open(input,output,save,inidata,logger)
     for input,info in inputs:
-        png_converter.convert(input,output_file, threshold,info)
+        png_converter.convert(input,output_file, threshold,info,logger)
         
 def user_convert(file:str, threshold:float, requests:List[dict], clean:bool):
     fm = default.FileManager.mount(file,"./")
@@ -47,12 +48,14 @@ def user_convert(file:str, threshold:float, requests:List[dict], clean:bool):
         for request in requests:  
             try: 
                 print(f"Converting {input} ...")
+                logger = Logger.file(fm,input)
                 output_file = output.out_png_file(os.path.splitext(os.path.basename(input))[0])
                 convert_file(variable=request["variable"],\
                     threshold=threshold,\
                     input=input,\
                     output=output,\
                     output_file=output_file,\
+                    logger=logger,\
                     save=save(input,fm))
             except Exception as err:
                 logErrorForVar(output.out(), request['variable'].name, err)
@@ -63,6 +66,7 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
         fm.clean()
     for request in requests:
         for input,output,exp_id in fm.iter(request):  
+            logger = Logger.file(fm,input)
             suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[2:-1]))
             if suffixe not in (".mm",".sm",".ym"):
                 suffixe = ""
@@ -74,6 +78,7 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
                 output=output,\
                 output_file=output_file,\
                 inidata = fm.get_inidata(exp_id),\
+                logger=logger,\
                 save=save(input,fm))
 
 
@@ -117,6 +122,8 @@ def main(args):
     requests = load_request()
     requests = get_active_requests(args,requests)
     threshold = 0.95 if args.threshold is None else float(args.threshold)
+
+    #Logger.filter("")
 
     if args.user is not None:
         user_convert(args.user, threshold, requests, bool(args.clean))
