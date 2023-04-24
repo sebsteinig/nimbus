@@ -114,11 +114,22 @@ def load_request():
     return requests
 
 def get_active_requests(args,requests):
-    if args.all_variables:
+    if args.new_variables is not None:
+        input_variables = args.new_variables.strip().split(",")
+        res = []
+        for input in input_variables:
+            variable = Variable(name=input,\
+                preprocess=vb.default,\
+                look_for=(input,)
+            )
+            res.append({"variable":variable})
+        return res
+    
+    if args.all_bridge_variables:
         raise Exception("NOT IMPLEMENTED : cannot use all variable yet")
         return list(requests.values())
     res = []
-    input_variables = args.output_variables.strip().split(",")
+    input_variables = args.bridge_variables.strip().split(",")
     for output_variable in input_variables:
         if output_variable in requests:
             res.append(requests[output_variable])
@@ -142,7 +153,7 @@ def main(args):
 
     if args.user is not None:
         user_convert(args.user, threshold, requests, bool(args.clean))
-    elif args.bridge is not None :
+    elif args.bridge is not None and args.new_variables is None:
         if args.expIds is None:
             filter = None
         else :
@@ -153,16 +164,17 @@ def main(args):
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
-    parser.add_argument('--output_variables',"-ov", dest = 'output_variables', help = 'select variables')
+    parser.add_argument('--bridge_variables',"-bv", dest = 'bridge_variables', help = 'select brigde variables')
+    parser.add_argument('--new_variables',"-nv", dest = 'new_variables', help = 'create new variables with default preprocessing and processing')
     parser.add_argument('--experiences',"-e", dest = 'expIds', help = 'select experince')
-    parser.add_argument('--all-variables',"-av", action = 'store_true', help = 'takes all variables')
+    parser.add_argument('--all-bridge-variables',"-av", action = 'store_true', help = 'select all brigde variables')
     parser.add_argument('--user',"-u",dest = "user", help = 'convert the given file or folder')
     parser.add_argument('--bridge',"-b",dest = "bridge", help = 'convert the given file or folder from bridge')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
     parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold')
  
     args = parser.parse_args()
-    if args.output_variables is None and not args.all_variables:
+    if (args.bridge_variables is None and args.new_variables is None) and not args.all_brigde_variables :
         raise Exception(f"Missing arguments \n {parser.format_help()}")
     try:
         main(args)

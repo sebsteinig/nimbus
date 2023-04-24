@@ -29,12 +29,15 @@ class FileManager:
     
     def clean(self):
         for key,value in self.output.items() :
-            FileManager.__clean(value.out_dir)
+            FileManager.__clean(value.out_nc())
+            FileManager.__clean(value.out_png())
+            
         
     @staticmethod
     def __clean(folder:str):
         if path.exists(folder):
             shutil.rmtree(folder)
+        mkdir(folder)
     
     @staticmethod
     def __mount_output(output:str):
