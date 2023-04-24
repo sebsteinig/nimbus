@@ -70,7 +70,7 @@ def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longi
         index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), numVar]
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray, threshold) -> np.ndarray:
+def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray, threshold, logger) -> np.ndarray:
     minmaxTab = []
     for indexLevel in range(level):
         minmaxTimes = []
@@ -78,7 +78,7 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
                 if numVar ==2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
                 else :
-                    _min, _max = minmax(input[numVar, indexLevel, indexTime, :, :],threshold)
+                    _min, _max = minmax(input[numVar, indexLevel, indexTime, :, :],threshold, logger)
                     minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
                     input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 254
                 index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
@@ -86,12 +86,13 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, in
         minmaxTab.append(minmaxTimes)
     return output, minmaxTab
 
-def minmax(arr,threshold):
+def minmax(arr,threshold, logger):
     sorted_flat = np.unique(np.sort(arr.flatten()))
     if np.isnan(sorted_flat[-1]) :
         sorted_flat = sorted_flat[:-1]
     n = len(sorted_flat)
     if n<=1 :
+        logger.warning("min and max are equals to 0")
         return 0, 0
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
@@ -104,9 +105,11 @@ def convert(input:list, output_filename:str, threshold, info,logger, directory:s
     output = np.zeros(( latitude * level, longitude * time, dim))
     minmaxVars = []
     for numVar in range(len(input)) :
-        output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold)
+        output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold, logger)
         minmaxVars.append(minmaxTab)
     metadata.add_text("minmax", str(json.dumps(minmaxVars)))
+    logger.debug(json.dumps(minmaxVars, indent = 2), "MINMAX")
+    logger.info(mode, "MODE")
     filename = save(output, output_filename, directory, metadata, mode)
     print(f"\tsave : {filename}")
     return filename

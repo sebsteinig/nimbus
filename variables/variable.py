@@ -7,6 +7,8 @@ from cdo import Cdo
 import sys
 import variables.info as inf
 from file_managers.output_folder import OutputFolder
+from utils.logger import Logger,_Logger
+import json
 
 class IncorrectVariable(Exception):pass
  
@@ -35,7 +37,7 @@ class Variable:
     process : Callable[[List[np.ndarray]],np.ndarray] = lambda x:x
 
 
-    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension,info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
+    def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, logger, info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
         data = variable[:]
     
         grid = info.get_grid(variable.dimensions)
@@ -45,6 +47,8 @@ class Variable:
             raise Exception("Could not find latitude and longitude")
         
         variable_dimensions = list(variable.dimensions)
+        Logger.console().debug(f"variable_dimensions in clean dimension :\n{variable_dimensions}", "DIMENSION")
+        Logger.console().debug(f"input in clean dimension :\n{data.shape}", "SHAPE")
         lon_index = variable_dimensions.index(grid.axis[0].name)
         lat_index = variable_dimensions.index(grid.axis[1].name)
         time_index = variable_dimensions.index(time.name)
@@ -71,6 +75,7 @@ class Variable:
         lon_data = dataset.variables[grid.axis[0].name][:]
         
         if all(x<y for x, y in zip(lat_data, lat_data[1:])) :
+            logger.warning("flip latitude of data", "FLIP")
             data = np.flip(data,lat_index)
     
         if not in_bounds(lat_data,-90,90):
@@ -78,6 +83,7 @@ class Variable:
             raise Exception("Latitude should be between -90 and 90")
         
         if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
+            logger.warning("flip longitude of data", "FLIP")
             data = np.flip(data,lon_index)
         if not in_bounds(lon_data,-180,180):
             raise Exception("Longitude should be between -180 and 180")
@@ -96,13 +102,17 @@ class Variable:
         if variable._FillValue is not None:
             threshold = int(np.log10(variable._FillValue))
             data[data>(10**threshold)] = np.nan
+        Logger.console().debug(f"output in clean dimension :\n{data.shape}", "SHAPE")
         return data
       
     def __single_open(self,file:str,logger) -> Tuple[List[np.ndarray],inf.Info]:
         cdo = Cdo()
-        
-        info = inf.Info.parse(cdo.sinfo(input=file))
-        
+        sinfo = cdo.sinfo(input=file)
+        Logger.console().debug(f"pre parsing :\n{sinfo}", "CDO INFO")
+        info = inf.Info.parse(sinfo)
+        logger.info(json.dumps(info.to_dict(),  indent = 2), "INFO")
+        Logger.console().debug(f"post parsing:\n {info}", "CDO INFO")
+
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
@@ -111,7 +121,7 @@ class Variable:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                variable= self.__clean_dimensions(variable,dimensions,info,dataset)
+                variable= self.__clean_dimensions(variable,dimensions,logger, info,dataset)
                 variables.append(variable)
             else :
                 for possible_name in self.look_for:
@@ -125,7 +135,7 @@ class Variable:
                             if len(name) == 0:
                                 raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                             variable = dataset[list(name)[0]]
-                    variable = self.__clean_dimensions(variable,dimensions,info,dataset)
+                    variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
                     variables.append(variable)             
         return self.process(variables),info
         
@@ -153,7 +163,6 @@ class Variable:
     
     def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,inidata=None):
         selected_variable = csv(self.look_for)
-        
         if type(input) is str:
             input = [input]
             

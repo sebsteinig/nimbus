@@ -40,6 +40,13 @@ class Axis:
         direction = tmp[5]
         return Axis(bounds=bounds, direction=direction, name=name, step=step)
         
+    def to_dict(self):
+        return {
+            'name' : self.name,
+            'bounds': list(self.bounds),
+            'step' : self.step,
+            'direction':self.direction
+        }
 @dataclass(eq=True, frozen=True)
 class Grid:
     category : str
@@ -60,6 +67,12 @@ class Grid:
                 return Grid(category=category,axis=axis,points=points)
         return None
             
+    def to_dict(self):
+        return {
+            'category' : self.category,
+            'points': [self.points[0],[int(self.points[1][0]),int(self.points[1][0])]],
+            'axis' : [self.axis[0].to_dict(), self.axis[1].to_dict()]
+        }
 
 @dataclass(eq=True, frozen=True)
 class Vertical:
@@ -84,6 +97,15 @@ class Vertical:
                     bounds = (None,None)
                 return Vertical(category=category,name=name,levels=levels,bounds=bounds)
         return None
+    
+    def to_dict(self):
+        return {
+            'category' : self.category,
+            'name': self.name,
+            'levels':self.levels,
+            'bounds': list(self.bounds)
+        }
+    
 @dataclass(eq=True, frozen=True)
 class Time:
     name : str
@@ -92,11 +114,24 @@ class Time:
     def parse(src : str):
         tmp = src.strip().split(" ")
         return Time(name=tmp[0],step=int(tmp[-2]))
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'step':self.step
+        }
+    
 @dataclass
 class Info:
     grids : List[Grid]
     verticals : List[Vertical]
     time : Time
+    
+    def to_dict(self):
+        return {
+            'grids': [grid.to_dict() for grid in self.grids],
+            'verticals':[vertical.to_dict() for vertical in self.verticals],
+            'time' : self.time.to_dict()
+        }
     
     def get_grid(self,dimensions)->Grid:
         for grid in self.grids:
@@ -158,21 +193,7 @@ class Info:
         time = Info.parseTime(src)
         return Info(grids=grids,verticals=verticals,time=time)
 
-    def to_dict(self):
-        dict = self.__dict__
-        grids, verticals = [], []
-        for g in dict["grids"]:
-            gridDict = g.__dict__
-            axis1 =gridDict["axis"][0].__dict__
-            axis2 = gridDict["axis"][1].__dict__
-            gridDict["axis"] = (axis1, axis2)
-            grids.append(gridDict)
-        for v in dict["verticals"]:
-            verticals.append(v.__dict__)    
-        dict["time"] = dict["time"].__dict__
-        dict["grids"] = grids
-        dict["verticals"] = verticals
-        return dict
+    
 
 def test():
     src = ["Grid coordinates :",\

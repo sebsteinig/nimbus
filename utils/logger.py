@@ -54,6 +54,7 @@ class _Logger:
     def print(self,msg):
         if self.std_output is None:
             print(msg)
+            return
         with open(self.std_output,"a") as file:
             file.write(msg + "\n")
     
@@ -100,7 +101,10 @@ class Logger:
     @staticmethod
     def is_granted(tag) -> bool:
         return (Logger.mode is LoggerMode.BLACK_LIST and not tag in Logger.filters) or (Logger.mode is LoggerMode.WHITE_LIST and  tag in Logger.filters)
-    
+                      
+    @staticmethod
+    def trace() -> str:
+        return traceback.format_exc()
     
     @staticmethod
     def console() -> _Logger:
@@ -109,23 +113,16 @@ class Logger:
     @staticmethod
     def file(file_manager: FileManager | BridgeManager,input) -> _Logger:
         out_folder = file_manager.get_output(input)
-        log_path = path.join(out_folder.out(),datetime.now().strftime("%d_%m_%Y_%H:%M:%S") + ".log")
+        log_path = path.join(out_folder.out(),datetime.now().strftime("%d_%m_%Y") + ".log")
         return _Logger(log_path)
 
 
 def logErrorForAll(err):
-    logFile = open(datetime.now().strftime("%d/%m/%Y_%H:%M:%S") + ".log", "a")
+    logFile = open(datetime.now().strftime("%d/%m/%Y") + ".log", "a")
     traceback.print_tb(err.__traceback__, file=logFile)
     logFile.write(f"\n\n\n\n{err.args[0]}")
     logFile.close()
-
-def logErrorForVarAndExpid(outputFolder, variable, expid, err):
-    logFile = open(os.path.join(outputFolder,f"{expid}{variable}{datetime.now().strftime('%d%m%Y_%H:%M:%S')}.log"), "a")
-    logFile.write(f"-------------error when converting experience : {expid} with variable : {variable}---------------\n")
-    traceback.print_tb(err.__traceback__, file=logFile)
-    logFile.write(f"\n : {err.args[0]}")
-    logFile.close()
-
+    
 def logErrorForVar(outputFolder, variable, err):
     logFile = open(os.path.join(outputFolder, f"{variable}{datetime.now().strftime('%d%m%Y_%H:%M:%S')}.log"), "a")
     logFile.write(f"-------------error when converting with variable : {variable}---------------\n")
@@ -133,7 +130,6 @@ def logErrorForVar(outputFolder, variable, err):
     logFile.write(f"\n : {err.args[0]}")
     logFile.close()
 
-    
 def test():
     a = 1
     Logger.console().debug("test input string")
