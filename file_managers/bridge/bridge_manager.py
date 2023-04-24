@@ -19,15 +19,18 @@ else :
 from cdo import Cdo
 
 class BridgeManager:
-    def __init__(self,output:Dict[parser.ExpId,OutputFolder],tree:selector.BridgeTree,selected_expid:List[parser.ExpId]):
+    def __init__(self,output:Dict[parser.ExpId,OutputFolder],tree:selector.BridgeTree,selected_expid:List[parser.ExpId],inidata:Dict[str,Dict[str,str]]=None):
         self.input = {}
         self.output = output
         self.tree = tree
         self.selected_expid = selected_expid
+        self.inidata = inidata
     
     def get_output(self,input) -> OutputFolder:
         return self.output[self.input[input]]
     
+    def get_inidata(self,expid) -> OutputFolder:
+        return self.inidata[expid]
     
     def clean(self):
         for folder in self.output.values():
@@ -39,6 +42,17 @@ class BridgeManager:
             mkdir(folder.out_png())
     
     def iter(self,request):
+        if "inidata" in request:
+            inidata_files = request["inidata"].strip().split(",")
+            for exp_id in next(self.tree.map(selector.BridgeTree, lambda arr: (value.node for value in arr))):
+                for inidata_file in inidata_files:
+                    v1,v2 = tuple(inidata_file.split("."))
+                    if v1 in self.inidata[exp_id] and v2 in self.inidata[exp_id][v1][v2]:
+                        
+                        self.input[self.inidata[exp_id][v1][v2]] = exp_id
+                        yield self.inidata[exp_id][v1][v2],self.output[exp_id],exp_id
+            return
+        
         tree = self.tree.subtree(expIds=self.selected_expid,\
             realms=[parser.Realm(request["realm"])],\
             oss=[parser.OutputStream(request["output_stream"])],\
@@ -151,6 +165,8 @@ class BridgeManager:
         tree = selector.BridgeTree()
         output:dict = {}
         
+        inidata = {}
+        
         selected_expid = []
         
         for file in listdir(input):
@@ -163,12 +179,23 @@ class BridgeManager:
                 if path.isdir(climate_folder) and path.isdir(inidata_folder):
                     folder:OutputFolder =  BridgeManager.__mount_expid(expid=exp_id,folder= out_folder)
                     output[exp_id] = folder
+                    inidata[exp_id] = {}
                     for filename in selector.load(climate_folder):
                         tree.push(filename)
+                    for name in listdir(inidata_folder):
+                        file_inidata = path.join(inidata_folder,name)
+                        if path.isfile(file_inidata) and assert_nc_extension(file_inidata):
+                            v1,v2 = tuple(name.split(".")[-3:-1])
+                            if v1 in inidata[exp_id]:
+                                inidata[exp_id][v1][v2] = file_inidata
+                            else :
+                                inidata[exp_id][v1] = {v2:file_inidata}
+                        
         return  BridgeManager(\
             output = output,\
             tree = tree,\
-            selected_expid = selected_expid)
+            selected_expid = selected_expid,\
+            inidata = inidata)
     
     @staticmethod
     def mount(input:str,filter:list=None,output:str="./"):

@@ -13,7 +13,7 @@ import variables.variable_builder as vb
 from variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
-from logError import *
+from logger import *
 import file_managers.bridge.bridge_manager as bridge
 
 
@@ -33,8 +33,8 @@ def save(input:str,fm:default.FileManager|bridge.BridgeManager):
     return f
 
 
-def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save):
-    inputs = variable.open(input,output,save)
+def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,inidata=None):
+    inputs = variable.open(input,output,save,inidata)
     for input,info in inputs:
         png_converter.convert(input,output_file, threshold,info)
         
@@ -63,18 +63,18 @@ def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float
         fm.clean()
     for request in requests:
         for input,output,exp_id in fm.iter(request):  
-            try:
-                suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[2:-1]))
-                print(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
-                output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
-                convert_file(variable=request["variable"],\
-                    threshold=threshold,\
-                    input=input,\
-                    output=output,\
-                    output_file=output_file,\
-                    save=save(input,fm))
-            except Exception as err:
-                logErrorForVarAndExpid(output.out(), request['variable'].name, exp_id.name, err)
+            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[2:-1]))
+            if suffixe not in (".mm",".sm",".ym"):
+                suffixe = ""
+            print(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
+            output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
+            convert_file(variable=request["variable"],\
+                threshold=threshold,\
+                input=input,\
+                output=output,\
+                output_file=output_file,\
+                inidata = fm.get_inidata(exp_id),\
+                save=save(input,fm))
 
 
 def load_request():
@@ -83,12 +83,19 @@ def load_request():
     requests = {}
     clim_variables = vb.builder()
     for variable in config["variables"]:
-        requests[variable["output_variable"]] = \
-            {
-                "variable":clim_variables[variable["output_variable"]],\
-                "output_stream":variable["output_stream"],\
-                "realm":variable["realm"],\
-            }
+        if "inidata" in variable:
+            requests[variable["output_variable"]] = \
+                {
+                    "variable":clim_variables[variable["output_variable"]],\
+                    "inidata":variable["inidata"],\
+                }
+        else : 
+            requests[variable["output_variable"]] = \
+                {
+                    "variable":clim_variables[variable["output_variable"]],\
+                    "output_stream":variable["output_stream"],\
+                    "realm":variable["realm"],\
+                }
     return requests
 
 def get_active_requests(args,requests):
