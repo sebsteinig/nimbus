@@ -3,6 +3,7 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import os
 import json
+from datetime import datetime
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -12,12 +13,12 @@ def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 255
     return output.clip(0,254)
 
-def save(output : np.ndarray, output_file : str, directory :str, metadata : list, mode = 'L'):
+def save(output : np.ndarray, output_file : str, directory :str, metadataPng, mode = 'L'):
     out = clean(output)
     out = np.squeeze(out)
     img_ym = Image.fromarray(np.uint8(out), mode)
     path = os.path.join(directory, output_file + ".png")
-    img_ym.save(path, pnginfo = metadata)
+    img_ym.save(path, pnginfo = metadataPng)
     return path
 
 def eval_shape(input:list) -> tuple[bool, bool, dict]:
@@ -51,11 +52,6 @@ def eval_input(size:int) -> tuple[int, str]:
         case _:
             raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
-         
-def initMetadata(latitude, longitude, info):
-    metadata = PngInfo()
-    metadata.add_text("info", str(json.dumps(info.to_dict())))    
-    return metadata
 
 def norm(input:np.ndarray,_min,_max):
     if _min == _max :
@@ -98,19 +94,18 @@ def minmax(arr,threshold, logger):
 
 
 
-def convert(input:list, output_filename:str, threshold, info,logger, directory:str = "") -> str:
+def convert(input:list, output_filename:str, threshold, metadata, logger, directory:str = "") -> str:
     dim, mode = eval_input(len(input))
-    input, level, time, latitude, longitude = eval_shape(input)
-    metadata = initMetadata(latitude, longitude, info)
+    input, level, time, latitude, longitude = eval_shape(input)    
     output = np.zeros(( latitude * level, longitude * time, dim))
     minmaxVars = []
     for numVar in range(len(input)) :
         output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold, logger)
         minmaxVars.append(minmaxTab)
-    metadata.add_text("minmax", str(json.dumps(minmaxVars)))
     logger.debug(json.dumps(minmaxVars, indent = 2), "MINMAX")
     logger.info(mode, "MODE")
-    filename = save(output, output_filename, directory, metadata, mode)
+    metadataPng = metadata.getMetadata(datetime.now().strftime("%d/%m/%Y_%H:%M:%S"), str(json.dumps(minmaxVars)))
+    filename = save(output, output_filename, directory, metadataPng, mode)
     print(f"\tsave : {filename}")
     return filename
     

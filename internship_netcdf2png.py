@@ -36,9 +36,9 @@ def save(input:str,fm:default.FileManager|bridge.BridgeManager):
 def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
     try:
         inputs = variable.open(input,output,save,logger,inidata)
-        for input,info in inputs:
+        for input, metadata in inputs:
             try :
-                png_converter.convert(input,output_file, threshold,info,logger)
+                png_converter.convert(input,output_file, threshold,metadata[0],logger)
             except Exception as e:
                 trace = Logger.trace()
                 Logger.console().error(trace, "PNG CONVERTER")
