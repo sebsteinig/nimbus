@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import List,Union,Set,Callable,Tuple,Dict,Type
 import numpy as np
 from netCDF4 import Dataset,_netCDF4
-import os
+import os.path as path
+from os import remove
 from cdo import Cdo
 import sys
 import variables.info as inf
@@ -15,11 +16,10 @@ class IncorrectVariable(Exception):pass
  
 def iter(values:Tuple[Union[str,Set[str]]]):
     for value in values :
-        match value :
-            case value if type(value) is str:
-                yield value
-            case value if type(value) is set:
-                yield from value
+        if type(value) is str:
+            yield value
+        elif type(value) is set:
+            yield from value
 def csv(v):
     names = iter(v)
     return next(names) + "".join(f",{name}" for name in names)
@@ -29,6 +29,7 @@ def flatten(l):
 def in_bounds(data, lb, ub):
     return np.nanmin(data) >= lb and np.nanmax(data) <= ub
 
+cdo = Cdo()
 
 @dataclass
 class Variable:
@@ -109,15 +110,81 @@ class Variable:
             data[data>(10**threshold)] = np.nan
         Logger.console().debug(f"output in clean dimension :\n{data.shape}", "SHAPE")
         return data, metadata
-      
-    def __single_open(self,file:str,logger) -> Tuple[List[np.ndarray],inf.Info]:
-        cdo = Cdo()
+    
+    def select_grid(self,file:str,info:inf.Info):
+        with Dataset(file,"r",format="NETCDF4") as dataset:
+            variables = []
+            variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
+            if self.look_for is None:
+                if len(variable_names) != 1:
+                    raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
+                variable = dataset[list(variable_names)[0]]
+                grid = info.get_grid(variable.dimensions)
+            else :
+                grids = []
+                for possible_name in self.look_for:
+                    if type(possible_name) is str:
+                        if not possible_name in variable_names:
+                            raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
+                        variable = dataset[name]
+                    elif type(possible_name) is set:
+                        name = possible_name & variable_names  
+                        if len(name) == 0:
+                            raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
+                        variable = dataset[list(name)[0]]
+                    grids.append(info.get_grid(variable.dimensions))
+                if len(set(grids)) != 1:
+                    raise IncorrectVariable(f"All variable must in the same grid for the conversion")
+                grid = grids[0]
+        return grid
+    
+    
+    def resize(self,resolution,file,grid,cdo):
+        folder = path.dirname(file)
+        resize_file_txt_name = path.basename(file).replace(".nc",".resize.txt")
+        resize_file_txt_path = path.join(folder,resize_file_txt_name)
+        #resize_file_nc_name = path.basename(file).replace(".nc",".resize.nc")
+        #resize_file_nc_path = path.join(folder,resize_file_nc_name)
+        Logger.console().debug(f"resize file : {resize_file_txt_path} , exist : {path.isfile(resize_file_txt_path)}", "RESOLUTION")
+        
+        griddes = {
+            'gridtype'  : grid.category,
+            'xsize'     : grid.points[1][0],
+            'ysize'     : grid.points[1][1],
+            'xfirst'    : grid.axis[0].bounds[0],
+            'xinc'      : grid.axis[0].step,
+            'yfirst'    : grid.axis[1].bounds[0],
+            'yinc'      : grid.axis[1].step,
+        }
+        griddes['xsize'] = int(griddes['xsize']*resolution)
+        griddes['ysize'] = int(griddes['ysize']*resolution)
+        griddes['xinc'] = int(griddes['xinc']/resolution)
+        griddes['yinc'] = int(griddes['yinc']/resolution)
+        
+        griddes_str = "".join(f"{key} = {value}\n" for key,value in griddes.items())
+        
+        with open(resize_file_txt_path,'w') as f:
+            f.write(griddes_str)
+        
+        file = cdo.remapnn(resize_file_txt_path,input=file)
+        remove(resize_file_txt_path)
+        sinfo = cdo.sinfo(input=file)
+        info = inf.Info.parse(sinfo)
+        return file,info
+    
+    def __single_open(self,file:str,resolution:float,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
         sinfo = cdo.sinfo(input=file)
         Logger.console().debug(f"pre parsing :\n{sinfo}", "CDO INFO")
         info = inf.Info.parse(sinfo)
         logger.info(json.dumps(info.to_dict(),  indent = 2), "INFO")
-        Logger.console().debug(f"post parsing:\n {info}", "CDO INFO")
-        
+
+        if resolution < 1  and resolution > 0:
+            Logger.console().debug(f"Start resolution modification", "RESOLUTION")
+            grid = self.select_grid(file, info)
+            if grid.category != 'lonlat' :
+                Logger.console().warning("can't change grid resolution, only lonlat grid are supported", "RESOLUTION")
+            else :
+                file,info = self.resize(resolution,file,grid,cdo)
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             metadatas = []
@@ -132,44 +199,41 @@ class Variable:
                 metadatas.append(metadata)  
             else :
                 for possible_name in self.look_for:
-                    match possible_name:
-                        case name if type(possible_name) is str:
-                            if not name in variable_names:
-                                raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                            variable = dataset[name]
-                        case names if type(possible_name) is set:
-                            name = names & variable_names  
-                            if len(name) == 0:
-                                raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
-                            variable = dataset[list(name)[0]]
-                    variable, metadata = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
-                    variables.append(variable)    
-                    metadatas.append(metadata)         
+                    if type(possible_name) is str:
+                        if not possible_name in variable_names:
+                            raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
+                        variable = dataset[possible_name]
+                    elif type(possible_name) is set:
+                        name = possible_name & variable_names  
+                        if len(name) == 0:
+                            raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
+                        variable = dataset[list(name)[0]]
+                    variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
+                    variables.append(variable)  
+                    metadatas.append(metadata)                
         return self.process(variables), metadatas
         
-    def __multi_open(self,inputs:list,logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
+    def __multi_open(self,inputs:list,resolution:float,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
-            match input:
-                case file if type(input) is str:
-                    variables.extend(self.__single_open(file,logger))
-                case files if type(input) is list:
-                    variables.extend(self.__multi_open(files,logger))
+            if type(input) is str:
+                variables.extend(self.__single_open(input,resolution,logger))
+            elif type(input) is list:
+                variables.extend(self.__multi_open(input,resolution,logger))
         return variables
     
     @staticmethod
     def exec_preprocessing(files:list,selected_variable:str,output_dir:str,preprocess:Callable,inidata):
-        cdo = Cdo()
         output_files = []
         for input in files :
-            output = os.path.join(output_dir,os.path.basename(input))
+            output = path.join(output_dir,path.basename(input))
             preprocessed = preprocess(cdo,selected_variable,input,output,inidata)
             if type(preprocessed) is str:
                 preprocessed = [preprocessed]
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,inidata=None):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,inidata=None):
         selected_variable = csv(self.look_for)
         if type(input) is str:
             input = [input]
@@ -177,15 +241,14 @@ class Variable:
         output_dir = out_folder.tmp_nc()
         
         preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,inidata)
-        preprocessed_inputs = save(preprocessed_inputs)
+        preprocessed_inputs = save(preprocessed_inputs,resolution)
         
         output = []
         for preprocessed_input in preprocessed_inputs:
-            match preprocessed_input:
-                case file if type(preprocessed_input) is str:
-                    output.append(self.__single_open(file,logger))
-                case files if type(preprocessed_input) is list:
-                    output.append(self.__multi_open(files,logger))
+            if type(preprocessed_input) is str:
+                output.append(self.__single_open(preprocessed_input,resolution,logger))
+            elif type(preprocessed_input) is list:
+                output.append(self.__multi_open(preprocessed_input,resolution,logger))
         return output
                 
 

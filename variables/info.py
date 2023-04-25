@@ -62,7 +62,7 @@ class Grid:
                 tmp = sections[-1].split("=")[-1].split(" ")
                 size = int(tmp[0])
                 shape = tuple(tmp[-1][1:-1].split("x"))
-                points = (size,shape)
+                points = (size,(int(shape[0]),int(shape[1])))
                 axis = (Axis.parse(src[cursor+1]),Axis.parse(src[cursor+2]))
                 return Grid(category=category,axis=axis,points=points)
         return None
@@ -70,7 +70,7 @@ class Grid:
     def to_dict(self):
         return {
             'category' : self.category,
-            'points': [self.points[0],[int(self.points[1][0]),int(self.points[1][0])]],
+            'points': [self.points[0],[self.points[1][0],self.points[1][1]]],
             'axis' : [self.axis[0].to_dict(), self.axis[1].to_dict()]
         }
 
@@ -157,9 +157,11 @@ class Info:
             return []
         cursor += 1
         grids = []
-        while grid := Grid.parse(src,cursor):
+        grid = Grid.parse(src,cursor)
+        while grid is not None:
             grids.append(grid)
             cursor += 3
+            grid = Grid.parse(src,cursor)
         return grids
     @staticmethod
     def parseVerticals(src : List[str]) -> List[Grid]:
@@ -171,9 +173,11 @@ class Info:
             return []
         cursor += 1
         verticals = []
-        while vertical := Vertical.parse(src,cursor):
+        vertical = Vertical.parse(src,cursor)
+        while vertical is not None:
             verticals.append(vertical)
             cursor += 2
+            vertical = Vertical.parse(src,cursor)
         return verticals
     
     @staticmethod       
