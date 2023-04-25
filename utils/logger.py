@@ -4,12 +4,13 @@ from io import TextIOWrapper
 import traceback
 from datetime import datetime
 import os
+from typing import Union
 from file_managers.default_manager import FileManager
 from file_managers.bridge.bridge_manager import BridgeManager
 import os.path as path
 @dataclass
 class _Logger:
-    std_output: str | None
+    std_output: Union[str , None]
     def debug(self,msg,tag=None):
         if not Logger._debug:
             return 
@@ -111,7 +112,7 @@ class Logger:
         return _Logger(None)
     
     @staticmethod
-    def file(file_manager: FileManager | BridgeManager,input) -> _Logger:
+    def file(file_manager: Union[FileManager , BridgeManager],input) -> _Logger:
         out_folder = file_manager.get_output(input)
         log_path = path.join(out_folder.out(),datetime.now().strftime("%d_%m_%Y") + ".log")
         return _Logger(log_path)

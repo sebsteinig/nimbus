@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import os.path as path
 from os import mkdir
+from typing import Union
 
 
 @dataclass
@@ -18,52 +19,52 @@ class OutputFolder:
             path.join(self.tmp_dir,self.name),\
             name)
     
-    def out(self) -> str|None:
+    def out(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out_dir,self.name)
     
-    def tmp(self) -> str|None:
+    def tmp(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp_dir,self.name)
     
-    def out_png(self)  -> str|None:
+    def out_png(self)  -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out(),"png")
     
-    def out_nc(self) -> str|None:
+    def out_nc(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out(),"netcdf")
     
-    def tmp_png(self) -> str|None:
+    def tmp_png(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp(),"png")
     
-    def tmp_nc(self) -> str|None:
+    def tmp_nc(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp(),"netcdf")
     
-    def out_png_file(self,file_name:str) -> str|None:
+    def out_png_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out_png(),file_name)
     
-    def out_nc_file(self,file_name:str) -> str|None:
+    def out_nc_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out_nc(),file_name)
     
-    def tmp_png_file(self,file_name:str) -> str|None:
+    def tmp_png_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp_png(),file_name)
     
-    def tmp_nc_file(self,file_name:str) -> str|None:
+    def tmp_nc_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp_nc(),file_name)

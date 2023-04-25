@@ -43,13 +43,12 @@ class StatisticTree:
         #return res
     def split_by(self,period:Union[Type[parser.Annual],Type[parser.Month],Type[parser.Season]]):
         period_type = None
-        match period:
-            case _ if period is parser.Annual:
-                period_type = parser.Annual
-            case _ if period is parser.Month:
-                period_type = parser.Month
-            case _ if period is parser.Season:
-                period_type = parser.Season
+        if period is parser.Annual:
+            period_type = parser.Annual
+        elif period is parser.Month:
+            period_type = parser.Month
+        elif period is parser.Season:
+            period_type = parser.Season
         sub_1 = []
         sub_2 = []
         for branch in self.branches:

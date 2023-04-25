@@ -4,7 +4,7 @@ from PIL.PngImagePlugin import PngInfo
 import os
 import json
 from utils.logger import Logger,_Logger
-
+from typing import Tuple
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -22,36 +22,34 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata : list
     img_ym.save(path, pnginfo = metadata)
     return path
 
-def eval_shape(input:list) -> tuple[bool, bool, dict]:
+def eval_shape(input:list) -> Tuple[bool, bool, dict]:
     level, time = 1, 1
     latitude = input[0].shape[-2]
     longitude = input[0].shape[-1]  
     size = len (np.shape(input[0]))    
-    match size:
-        case 4:
-            level = input[0].shape[0]
-            time = input[0].shape[1]
-        case 3 :
-            time = input[0].shape[0]
-        case _ :
-            if not(size == 2) :
-                raise TooManyVariables(f"{size} > 4 : there are too many variables")
+    if size == 4:
+        level = input[0].shape[0]
+        time = input[0].shape[1]
+    elif size == 3 :
+        time = input[0].shape[0]
+    else:
+        if not(size == 2) :
+            raise TooManyVariables(f"{size} > 4 : there are too many variables")
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
     return input_reshaped, level, time, latitude, longitude
 
-def eval_input(size:int) -> tuple[int, str]:
-    match size:
-        case 1 :
-            dim = 1
-            mode = 'L'
-        case 2|3:
-            dim = 3
-            mode = 'RGB'
-        case 4 :
-            dim = 4
-            mode = "RGBA"
-        case _:
-            raise TooManyInputs(f"{size} > 4 : there are too many inputs")
+def eval_input(size:int) -> Tuple[int, str]:
+    if size==1 :
+        dim = 1
+        mode = 'L'
+    elif size == 2 or size == 3:
+        dim = 3
+        mode = 'RGB'
+    elif size == 4 :
+        dim = 4
+        mode = "RGBA"
+    else:
+        raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
          
 def initMetadata(latitude, longitude, info):
