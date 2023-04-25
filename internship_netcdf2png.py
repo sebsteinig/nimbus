@@ -13,7 +13,6 @@ import variables.variable_builder as vb
 from variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
-from utils.logger import *
 import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
 
@@ -176,7 +175,5 @@ if __name__ == "__main__" :
     args = parser.parse_args()
     if (args.bridge_variables is None and args.new_variables is None) and not args.all_brigde_variables :
         raise Exception(f"Missing arguments \n {parser.format_help()}")
-    try:
-        main(args)
-    except Exception as err:
-        logErrorForAll(err)
+
+    main(args)
