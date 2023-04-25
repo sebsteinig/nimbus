@@ -4,7 +4,7 @@ from PIL.PngImagePlugin import PngInfo
 import os
 import json
 from utils.logger import Logger,_Logger
-
+from typing import Tuple
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -22,7 +22,7 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata : list
     img_ym.save(path, pnginfo = metadata)
     return path
 
-def eval_shape(input:list) -> tuple[bool, bool, dict]:
+def eval_shape(input:list) -> Tuple[bool, bool, dict]:
     level, time = 1, 1
     latitude = input[0].shape[-2]
     longitude = input[0].shape[-1]  
@@ -38,7 +38,7 @@ def eval_shape(input:list) -> tuple[bool, bool, dict]:
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
     return input_reshaped, level, time, latitude, longitude
 
-def eval_input(size:int) -> tuple[int, str]:
+def eval_input(size:int) -> Tuple[int, str]:
     if size==1 :
         dim = 1
         mode = 'L'

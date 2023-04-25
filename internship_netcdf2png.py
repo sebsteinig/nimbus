@@ -1,7 +1,7 @@
 import utils.png_converter as png_converter
 
 from dataclasses import dataclass
-from typing import List,Dict
+from typing import List,Dict, Union
 import os
 import shutil
 from typing import Tuple
@@ -16,7 +16,7 @@ from file_managers.output_folder import OutputFolder
 import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
 
-def save(input:str,fm:default.FileManager|bridge.BridgeManager):
+def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
     def f(files:List[str],resolution):
         output_files = []
         res_suffixe = ".r100"
@@ -200,8 +200,10 @@ if __name__ == "__main__" :
     parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
     parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100% resolutions of netcdf grid input, default is 1')
     
+    
     args = parser.parse_args()
-    if (args.bridge_variables is None and args.new_variables is None) and not args.all_brigde_variables :
+    
+    if (args.bridge_variables is None and args.new_variables is None) and not args.all_bridge_variables :
         raise Exception(f"Missing arguments \n {parser.format_help()}")
 
     main(args)

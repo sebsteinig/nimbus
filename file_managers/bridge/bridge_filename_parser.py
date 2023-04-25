@@ -68,7 +68,8 @@ class BridgeName:
     filepath:str
     
 def ruleExpID(filename:str,cursor:int):
-    if match := re.match("^[a-zA-Z]{5}\d?",filename[cursor:]):
+    match = re.match("^[a-zA-Z]{5}\d?",filename[cursor:])
+    if match is not None:
         return ExpId(match.group(0)),cursor+match.span()[1]
     return None
         
@@ -76,18 +77,21 @@ def ruleExpID(filename:str,cursor:int):
 def ruleRealm(filename:str,cursor:int):
     if filename[cursor] in Realm._value2member_map_:
         return Realm._value2member_map_[filename[cursor]],cursor+1
-
+    return None
 def ruleOutputStream(filename:str,cursor:int):
-    if match := re.match("^[a-zA-Z]{2}",filename[cursor:]):
+    match = re.match("^[a-zA-Z]{2}",filename[cursor:])
+    if match is not None:
         return OutputStream(match.group(0)),cursor+match.span()[1]
     return None
 
 def ruleStatistic(filename:str,cursor:int):
     if filename[cursor:cursor+2] in Statistic._value2member_map_:
         return Statistic._value2member_map_[filename[cursor:cursor+2]],cursor+2
+    return None
 
 def ruleAvgPeridod(filename:str,cursor:int):
-    if match := re.match("^ann",filename[cursor:]):
+    match = re.match("^ann",filename[cursor:])
+    if match is not None:
         return AvgPeriod(Annual()),cursor+match.span()[1]
     if filename[cursor:cursor+3] in Month._value2member_map_:
         return AvgPeriod(Month._value2member_map_[filename[cursor:cursor+3]]),cursor+3
@@ -103,20 +107,25 @@ def eatdot(filename:str,cursor:int):
 def parse(filepath:str):
     filename = path.basename(filepath)
     cursor = 0
-    if not (res := ruleExpID(filename,cursor)):
+    res = ruleExpID(filename,cursor)
+    if res is None:
         raise ParsingError(f"invalid experience id for {filename} in {filepath}")
     expId,cursor =res
-    if not (res := ruleRealm(filename,cursor)):
+    res = ruleRealm(filename,cursor)
+    if res is None:
         raise ParsingError(f"invalid realm for {filename} in {filepath}")
     realm,cursor =res
     cursor = eatdot(filename,cursor)
-    if not (res := ruleOutputStream(filename,cursor)):
+    res = ruleOutputStream(filename,cursor)
+    if res is None:
         raise ParsingError(f"invalid output stream for {filename} in {filepath}")
     output_stream,cursor =res
-    if not (res := ruleStatistic(filename,cursor)):
+    res = ruleStatistic(filename,cursor)
+    if res is None:
         raise ParsingError(f"invalid statistic for {filename} in {filepath}")
     statistic,cursor =res
-    if not (res := ruleAvgPeridod(filename,cursor)):
+    res = ruleAvgPeridod(filename,cursor)
+    if res is None:
         raise ParsingError(f"invalid averaging period for {filename} in {filepath}")
     avg_period,cursor =res
     return BridgeName(expId=expId,realm=realm,\

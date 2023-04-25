@@ -17,7 +17,7 @@ else :
     import file_managers.bridge.bridge_file_selector as selector
     
 from cdo import Cdo
-
+cdo = Cdo()
 class BridgeManager:
     def __init__(self,output:Dict[parser.ExpId,OutputFolder],tree:selector.BridgeTree,selected_expid:List[parser.ExpId],inidata:Dict[str,Dict[str,str]]=None):
         self.input = {}
@@ -66,8 +66,7 @@ class BridgeManager:
                 
     def concatenate(self):
         def map(leafs:List[selector.AvgPeriodLeaf]):
-            cdo = Cdo()
-            
+
             monthly_leaf = [leaf for leaf in leafs if type(leaf.bridge_name.avg_period.mean) is parser.Month]
             annual_leaf = [leaf for leaf in leafs if type(leaf.bridge_name.avg_period.mean) is parser.Annual]
             seasonal_leaf = [leaf for leaf in leafs if type(leaf.bridge_name.avg_period.mean) is parser.Season]

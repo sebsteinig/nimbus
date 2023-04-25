@@ -157,9 +157,11 @@ class Info:
             return []
         cursor += 1
         grids = []
-        while grid := Grid.parse(src,cursor):
+        grid = Grid.parse(src,cursor)
+        while grid is not None:
             grids.append(grid)
             cursor += 3
+            grid = Grid.parse(src,cursor)
         return grids
     @staticmethod
     def parseVerticals(src : List[str]) -> List[Grid]:
@@ -171,9 +173,11 @@ class Info:
             return []
         cursor += 1
         verticals = []
-        while vertical := Vertical.parse(src,cursor):
+        vertical = Vertical.parse(src,cursor)
+        while vertical is not None:
             verticals.append(vertical)
             cursor += 2
+            vertical = Vertical.parse(src,cursor)
         return verticals
     
     @staticmethod       

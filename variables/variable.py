@@ -28,6 +28,7 @@ def flatten(l):
 def in_bounds(data, lb, ub):
     return np.nanmin(data) >= lb and np.nanmax(data) <= ub
 
+cdo = Cdo()
 
 @dataclass
 class Variable:
@@ -167,7 +168,6 @@ class Variable:
         return file,info
     
     def __single_open(self,file:str,resolution:float,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
-        cdo = Cdo()
         sinfo = cdo.sinfo(input=file)
         Logger.console().debug(f"pre parsing :\n{sinfo}", "CDO INFO")
         info = inf.Info.parse(sinfo)
@@ -195,7 +195,7 @@ class Variable:
                     if type(possible_name) is str:
                         if not possible_name in variable_names:
                             raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                        variable = dataset[name]
+                        variable = dataset[possible_name]
                     elif type(possible_name) is set:
                         name = possible_name & variable_names  
                         if len(name) == 0:
@@ -216,7 +216,6 @@ class Variable:
     
     @staticmethod
     def exec_preprocessing(files:list,selected_variable:str,output_dir:str,preprocess:Callable,inidata):
-        cdo = Cdo()
         output_files = []
         for input in files :
             output = path.join(output_dir,path.basename(input))
