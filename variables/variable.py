@@ -30,6 +30,11 @@ def in_bounds(data, lb, ub):
 
 cdo = Cdo()
 
+def convert_unit(levels,from_unit,to_unit):
+    if from_unit == to_unit:
+        return levels
+    raise Exception(f"UNIMPLMENTED : can't convert from {from_unit} to {to_unit}")
+
 @dataclass
 class Variable:
     name : str
@@ -106,7 +111,7 @@ class Variable:
         Logger.console().debug(f"output in clean dimension :\n{data.shape}", "SHAPE")
         return data
     
-    def select_grid(self,file:str,info:inf.Info):
+    def select_grid_and_vertical(self,file:str,info:inf.Info):
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
@@ -115,23 +120,29 @@ class Variable:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
                 grid = info.get_grid(variable.dimensions)
+                vertical = info.get_vertical(variable.dimensions)
             else :
                 grids = []
+                verticals = []
                 for possible_name in self.look_for:
                     if type(possible_name) is str:
                         if not possible_name in variable_names:
                             raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                        variable = dataset[name]
+                        variable = dataset[possible_name]
                     elif type(possible_name) is set:
                         name = possible_name & variable_names  
                         if len(name) == 0:
                             raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                         variable = dataset[list(name)[0]]
                     grids.append(info.get_grid(variable.dimensions))
+                    verticals.append(info.get_vertical(variable.dimensions))
                 if len(set(grids)) != 1:
-                    raise IncorrectVariable(f"All variable must in the same grid for the conversion")
+                    raise IncorrectVariable(f"All variable must be in the same grid for the conversion")
+                if len(set(verticals)) != 1:
+                    raise IncorrectVariable(f"All variable must have the same vertical axis for the conversion")
                 grid = grids[0]
-        return grid
+                vertical = verticals[0]
+        return grid,vertical
     
     
     def resize(self,resolution,file,grid,cdo):
@@ -167,23 +178,55 @@ class Variable:
         info = inf.Info.parse(sinfo)
         return file,info
     
-    def __single_open(self,file:str,resolution:float,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
+    def select_levels(self,vertical_levels,file,vertical,cdo):
+        if 'state' not in vertical_levels:
+            return file
+        category = vertical_levels['Atmosphere'] if vertical_levels['state'] == 'a' else vertical_levels['Ocean']
+        levels,unit = category['levels'],category['unit']
+        levels = convert_unit(levels,unit,vertical.unit)
+        Logger.console().debug(f"unit v : {vertical.unit}")
+        
+        with Dataset(file,"r",format="NETCDF4") as dataset:
+            levels_index = [ float(f) for f in (dataset[vertical.name][:])]
+        
+        distance = { level:int(np.argmin([abs(level-l) for l in levels_index]))   for level in levels}
+        
+        Logger.console().debug(f"levels index  : {levels_index}")
+        Logger.console().debug(f"distance index  : {distance}")
+        
+        index = list(distance.values())
+        index_str ="".join(f",{i+1}" for i in index)
+        print(index_str)
+        file = cdo.sellevidx(index_str,input=file)
+        
+        return file
+    
+    def __single_open(self,file:str,resolution:float,vertical_levels,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
         sinfo = cdo.sinfo(input=file)
         Logger.console().debug(f"pre parsing :\n{sinfo}", "CDO INFO")
         info = inf.Info.parse(sinfo)
         logger.info(json.dumps(info.to_dict(),  indent = 2), "INFO")
 
+        grid,vertical = self.select_grid_and_vertical(file, info)
+        
         if resolution < 1  and resolution > 0:
             Logger.console().debug(f"Start resolution modification", "RESOLUTION")
-            grid = self.select_grid(file, info)
             if grid.category != 'lonlat' :
                 Logger.console().warning("can't change grid resolution, only lonlat grid are supported", "RESOLUTION")
             else :
                 file,info = self.resize(resolution,file,grid,cdo)
+        
+        if vertical.levels > 1:
+            Logger.console().debug(f"Start levels selection", "LEVEL")
+            Logger.console().debug(vertical)
+            file = self.select_levels(vertical_levels,file,vertical,cdo)
+            
+            
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             dimensions = dataset.dimensions
+            print([ float(f) for f in (dataset[vertical.name][:])])
             if self.look_for is None:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
@@ -205,13 +248,13 @@ class Variable:
                     variables.append(variable)             
         return self.process(variables),info
         
-    def __multi_open(self,inputs:list,resolution:float,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
+    def __multi_open(self,inputs:list,resolution:float,vertical_levels,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
             if type(input) is str:
-                variables.extend(self.__single_open(input,resolution,logger))
+                variables.extend(self.__single_open(input,resolution,vertical_levels,logger))
             elif type(input) is list:
-                variables.extend(self.__multi_open(input,resolution,logger))
+                variables.extend(self.__multi_open(input,resolution,vertical_levels,logger))
         return variables
     
     @staticmethod
@@ -225,7 +268,7 @@ class Variable:
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,inidata=None):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,vertical_levels,inidata=None):
         selected_variable = csv(self.look_for)
         if type(input) is str:
             input = [input]
@@ -238,9 +281,9 @@ class Variable:
         output = []
         for preprocessed_input in preprocessed_inputs:
             if type(preprocessed_input) is str:
-                output.append(self.__single_open(preprocessed_input,resolution,logger))
+                output.append(self.__single_open(preprocessed_input,resolution,vertical_levels,logger))
             elif type(preprocessed_input) is list:
-                output.append(self.__multi_open(preprocessed_input,resolution,logger))
+                output.append(self.__multi_open(preprocessed_input,resolution,vertical_levels,logger))
         return output
                 
 
