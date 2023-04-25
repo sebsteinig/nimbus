@@ -17,72 +17,80 @@ import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
 
 def save(input:str,fm:default.FileManager|bridge.BridgeManager):
-    def f(files:List[str]):
+    def f(files:List[str],resolution):
         output_files = []
+        res_suffixe = ".r100"
+        if resolution < 1:
+            res_suffixe = f".r{int(resolution*100)}"
         for inputs in files:
             tmp = []
             for path in inputs:
                 name = os.path.basename(path)
-                output = fm.get_output(input).out_nc_file(name)
+                output = fm.get_output(input).out_nc_file(name) 
+                output = output.replace(".nc",f"{res_suffixe}.nc")
                 shutil.copyfile(path, output)
-                print(f"\tsave : {output}")
+                Logger.console().debug(f"\tsave : {output}","SAVE")
                 tmp.append(output)
             output_files.append(tmp)
         return output_files
     return f
 
 
-def convert_file(variable:Variable,threshold:float,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
+def convert_file(variable:Variable, hyper_parameters:dict,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
     try:
-        inputs = variable.open(input,output,save,logger,inidata)
-        for input,info in inputs:
-            try :
-                png_converter.convert(input,output_file, threshold,info,logger)
-            except Exception as e:
-                trace = Logger.trace()
-                Logger.console().error(trace, "PNG CONVERTER")
-                logger.error(e.__repr__(), "PNG CONVERTER")
+        for resolution in hyper_parameters['resolutions']:
+            inputs = variable.open(input,output,save,logger,resolution,inidata)
+            res_suffixe = ""
+            if resolution < 1:
+                res_suffixe = f".r{int(resolution*100)}"
+            _output_file = output_file + res_suffixe
+            for data,info in inputs:
+                try :
+                    png_converter.convert(data,_output_file, hyper_parameters['threshold'],info,logger)
+                except Exception as e:
+                    trace = Logger.trace()
+                    Logger.console().error(trace, "PNG CONVERTER")
+                    logger.error(e.__repr__(), "PNG CONVERTER")
     except Exception as e :
         trace = Logger.trace()
         Logger.console().error(trace, "OPEN VARIABLE")
         logger.error(e.__repr__(), "OPEN VARIABLE")
 
 
-def user_convert(file:str, threshold:float, requests:List[dict], clean:bool):
+def user_convert(file:str, requests:List[dict], hyper_parameters):
     fm = default.FileManager.mount(file,"./")
-    if clean :
+    if 'clean' in hyper_parameters and hyper_parameters['clean'] :
         fm.clean()
     
     for input,output in fm.iter():
         for request in requests:  
             Logger.console().info(f"Converting {input} ...")
             logger = Logger.file(fm,input)
-            logger.info(f"threshold : {threshold}")
             output_file = output.out_png_file(os.path.splitext(os.path.basename(input))[0])
             convert_file(variable=request["variable"],\
-                threshold=threshold,\
+                hyper_parameters=hyper_parameters,\
                 input=input,\
                 output=output,\
                 output_file=output_file,\
                 logger=logger,\
                 save=save(input,fm))
 
-def bridge_convert(file:str,requests:List[dict],filter:List[str],threshold:float,clean:bool):
-    fm = bridge.BridgeManager.mount(file,filter = filter)
-    if clean :
+def bridge_convert(file:str,requests:List[dict],hyper_parameters:dict):
+    fm = bridge.BridgeManager.mount(file,filter = hyper_parameters['filter'])
+    if 'clean' in hyper_parameters and hyper_parameters['clean'] :
         fm.clean()
     for request in requests:
         Logger.console().info(f"\n\trealm : {request['realm']},\n\toutputstream : {request['output_stream']},\n\tvariable : {request['variable'].name}", "REQUEST")
         for input,output,exp_id in fm.iter(request):  
             logger = Logger.file(fm,input)
-            logger.info(f"threshold : {threshold}")
-            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-2:-1]))
+            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-3:-2]))
             if suffixe not in (".mm",".sm",".ym"):
                 suffixe = ""
+
             Logger.console().info(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
             output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
             convert_file(variable=request["variable"],\
-                threshold=threshold,\
+                hyper_parameters=hyper_parameters,\
                 input=input,\
                 output=output,\
                 output_file=output_file,\
@@ -139,25 +147,44 @@ def get_active_requests(args,requests):
 
 def main(args):
     Logger.blacklist()
-    Logger.debug(False)
-    Logger.filter("REQUESTS", "CDO INFO", "SHAPE","DIMENSION")
+    #Logger.debug(False)
+    Logger.filter("REQUESTS", "CDO INFO", "SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     requests = load_request()
     requests = get_active_requests(args,requests)
 
     Logger.console().debug(requests, "REQUESTS")
-
-    threshold = 0.95 if args.threshold is None else float(args.threshold)
+    if args.threshold is None:
+        threshold = 0.95 
+    else :
+        try:
+            threshold = float(args.threshold)
+        except :
+            threshold = 0.95 
+            Logger.console().warning(f"can't convert threshold {args.threshold} to a float, set to default 0.95 instead")
+    if args.resolutions is None:
+        resolutions = [1] 
+    else :
+        try:
+            resolutions = [float(r) for r in args.resolutions.split(",")]
+        except :
+            resolutions = [1] 
+            Logger.console().warning(f"can't convert resolutions {args.resolutions} to a float, set to default 1 instead")
+                
     Logger.console().info(f"threshold : {threshold}")
-
+    Logger.console().info(f"resolutions : {resolutions}")
+    
+    hyper_parameters = {'resolutions':resolutions,'threshold':threshold,'clean':bool(args.clean)}
+    
     if args.user is not None:
-        user_convert(args.user, threshold, requests, bool(args.clean))
+        user_convert(args.user, requests, hyper_parameters)
     elif args.bridge is not None and args.new_variables is None:
         if args.expIds is None:
             filter = None
         else :
             filter = args.expIds.strip().split(",")
-        bridge_convert(args.bridge,requests,filter, threshold, bool(args.clean))
+        hyper_parameters['filter'] = filter
+        bridge_convert(args.bridge,requests, hyper_parameters)
         
     Logger.console().info("conversion to png finished ")
 
@@ -170,8 +197,9 @@ if __name__ == "__main__" :
     parser.add_argument('--user',"-u",dest = "user", help = 'convert the given file or folder')
     parser.add_argument('--bridge',"-b",dest = "bridge", help = 'convert the given file or folder from bridge')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
-    parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold')
- 
+    parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
+    parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100% resolutions of netcdf grid input, default is 1')
+    
     args = parser.parse_args()
     if (args.bridge_variables is None and args.new_variables is None) and not args.all_brigde_variables :
         raise Exception(f"Missing arguments \n {parser.format_help()}")

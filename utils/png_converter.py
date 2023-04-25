@@ -3,6 +3,8 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import os
 import json
+from utils.logger import Logger,_Logger
+
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -111,7 +113,7 @@ def convert(input:list, output_filename:str, threshold, info,logger, directory:s
     logger.debug(json.dumps(minmaxVars, indent = 2), "MINMAX")
     logger.info(mode, "MODE")
     filename = save(output, output_filename, directory, metadata, mode)
-    print(f"\tsave : {filename}")
+    Logger.console().debug(f"\tsave : {filename}","SAVE")
     return filename
     
 if __name__ == "__main__":
