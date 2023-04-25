@@ -100,11 +100,10 @@ class FileManager:
         if not path.exists(input):
             raise Exception(f"{input} does not exist")
         
-        match input:
-            case file if path.isfile(input):
-                return FileManager.__mount_file(input,output)
-            case folder if path.isdir(input):
-                return FileManager.__mount_folder(input,output)    
+        if path.isfile(input):
+            return FileManager.__mount_file(input,output)
+        elif path.isdir(input):
+            return FileManager.__mount_folder(input,output)    
             
             
             

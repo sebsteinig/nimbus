@@ -15,11 +15,10 @@ class IncorrectVariable(Exception):pass
  
 def iter(values:Tuple[Union[str,Set[str]]]):
     for value in values :
-        match value :
-            case value if type(value) is str:
-                yield value
-            case value if type(value) is set:
-                yield from value
+        if type(value) is str:
+            yield value
+        elif type(value) is set:
+            yield from value
 def csv(v):
     names = iter(v)
     return next(names) + "".join(f",{name}" for name in names)
@@ -118,16 +117,15 @@ class Variable:
             else :
                 grids = []
                 for possible_name in self.look_for:
-                    match possible_name:
-                        case name if type(possible_name) is str:
-                            if not name in variable_names:
-                                raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                            variable = dataset[name]
-                        case names if type(possible_name) is set:
-                            name = names & variable_names  
-                            if len(name) == 0:
-                                raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
-                            variable = dataset[list(name)[0]]
+                    if type(possible_name) is str:
+                        if not possible_name in variable_names:
+                            raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
+                        variable = dataset[name]
+                    elif type(possible_name) is set:
+                        name = possible_name & variable_names  
+                        if len(name) == 0:
+                            raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
+                        variable = dataset[list(name)[0]]
                     grids.append(info.get_grid(variable.dimensions))
                 if len(set(grids)) != 1:
                     raise IncorrectVariable(f"All variable must in the same grid for the conversion")
@@ -194,16 +192,15 @@ class Variable:
                 variables.append(variable)
             else :
                 for possible_name in self.look_for:
-                    match possible_name:
-                        case name if type(possible_name) is str:
-                            if not name in variable_names:
-                                raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                            variable = dataset[name]
-                        case names if type(possible_name) is set:
-                            name = names & variable_names  
-                            if len(name) == 0:
-                                raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
-                            variable = dataset[list(name)[0]]
+                    if type(possible_name) is str:
+                        if not possible_name in variable_names:
+                            raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
+                        variable = dataset[name]
+                    elif type(possible_name) is set:
+                        name = possible_name & variable_names  
+                        if len(name) == 0:
+                            raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
+                        variable = dataset[list(name)[0]]
                     variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
                     variables.append(variable)             
         return self.process(variables),info
@@ -211,11 +208,10 @@ class Variable:
     def __multi_open(self,inputs:list,resolution:float,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
-            match input:
-                case file if type(input) is str:
-                    variables.extend(self.__single_open(file,resolution,logger))
-                case files if type(input) is list:
-                    variables.extend(self.__multi_open(files,resolution,logger))
+            if type(input) is str:
+                variables.extend(self.__single_open(input,resolution,logger))
+            elif type(input) is list:
+                variables.extend(self.__multi_open(input,resolution,logger))
         return variables
     
     @staticmethod
@@ -242,11 +238,10 @@ class Variable:
         
         output = []
         for preprocessed_input in preprocessed_inputs:
-            match preprocessed_input:
-                case file if type(preprocessed_input) is str:
-                    output.append(self.__single_open(file,resolution,logger))
-                case files if type(preprocessed_input) is list:
-                    output.append(self.__multi_open(files,resolution,logger))
+            if type(preprocessed_input) is str:
+                output.append(self.__single_open(preprocessed_input,resolution,logger))
+            elif type(preprocessed_input) is list:
+                output.append(self.__multi_open(preprocessed_input,resolution,logger))
         return output
                 
 

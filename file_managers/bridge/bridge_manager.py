@@ -204,8 +204,7 @@ class BridgeManager:
         if not path.exists(input):
             raise Exception(f"{input} does not exist")
         
-        match input:
-            case file if path.isfile(input):
-                return BridgeManager.__mount_file(input,output,filter)
-            case folder if path.isdir(input):
-                return BridgeManager.__mount_folder(input,output,filter)    
+        if path.isfile(input):
+            return BridgeManager.__mount_file(input,output,filter)
+        elif path.isdir(input):
+            return BridgeManager.__mount_folder(input,output,filter)    
