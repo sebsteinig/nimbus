@@ -62,7 +62,7 @@ class Grid:
                 tmp = sections[-1].split("=")[-1].split(" ")
                 size = int(tmp[0])
                 shape = tuple(tmp[-1][1:-1].split("x"))
-                points = (size,shape)
+                points = (size,(int(shape[0]),int(shape[1])))
                 axis = (Axis.parse(src[cursor+1]),Axis.parse(src[cursor+2]))
                 return Grid(category=category,axis=axis,points=points)
         return None
@@ -70,7 +70,7 @@ class Grid:
     def to_dict(self):
         return {
             'category' : self.category,
-            'points': [self.points[0],[int(self.points[1][0]),int(self.points[1][0])]],
+            'points': [self.points[0],[self.points[1][0],self.points[1][1]]],
             'axis' : [self.axis[0].to_dict(), self.axis[1].to_dict()]
         }
 
