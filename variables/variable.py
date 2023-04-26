@@ -172,11 +172,15 @@ class Variable:
         with open(resize_file_txt_path,'w') as f:
             f.write(griddes_str)
         
-        file = cdo.remapnn(resize_file_txt_path,input=file)
+        res_suffixe = ".r100"
+        if resolution < 1:
+            res_suffixe = f".r{int(resolution*100)}"
+        output_file = file.replace(".nc",f"{res_suffixe}.nc")
+        file = cdo.remapnn(resize_file_txt_path,input=file,output=output_file)
         remove(resize_file_txt_path)
-        sinfo = cdo.sinfo(input=file)
+        sinfo = cdo.sinfo(input=output_file)
         info = inf.Info.parse(sinfo)
-        return file,info
+        return output_file,info
     
     def select_levels(self,vertical_levels,file,vertical,cdo):
         if 'state' not in vertical_levels:
@@ -184,22 +188,39 @@ class Variable:
         category = vertical_levels['Atmosphere'] if vertical_levels['state'] == 'a' else vertical_levels['Ocean']
         levels,unit = category['levels'],category['unit']
         levels = convert_unit(levels,unit,vertical.unit)
-        Logger.console().debug(f"unit v : {vertical.unit}")
+        
+        epsilons = {}
+        for i,l in enumerate(levels):
+            if i == 0:
+                e1 = (abs(levels[i+1]-l)*0.25)
+                e2 = e1
+            elif i == len(levels) - 1:
+                e1 = (abs(levels[i-1]-l)*0.25)
+                e2 = e1
+            else :
+                e2 = (abs(levels[i+1]-l)*0.25)
+                e1 = (abs(levels[i-1]-l)*0.25)
+            epsilons[l] = (e1,e2)
+            
         
         with Dataset(file,"r",format="NETCDF4") as dataset:
-            levels_index = [ float(f) for f in (dataset[vertical.name][:])]
+            file_levels = [ float(f) for f in (dataset[vertical.name][:])]
         
-        distance = { level:int(np.argmin([abs(level-l) for l in levels_index]))   for level in levels}
+        distance = { level:[(i,abs(level-l)) for i,l in enumerate(file_levels) if (l >= level - epsilons[level][0]) and (l <= level + epsilons[level][1])]   for level in levels}
+        distance_index = {}
+        for level,d in distance.items():
+            if len(d) > 0:
+                unzipped = list(zip(*d))
+                unzipped_d,unzipped_i = unzipped[1], unzipped[0]
+                distance_index[level] = unzipped_i[np.argmin(unzipped_d)]
+                
         
-        Logger.console().debug(f"levels index  : {levels_index}")
-        Logger.console().debug(f"distance index  : {distance}")
+        index = list(distance_index.values())
+        index_str ="".join(f",{i+1}" for i in index )
         
-        index = list(distance.values())
-        index_str ="".join(f",{i+1}" for i in index)
-        print(index_str)
-        file = cdo.sellevidx(index_str,input=file)
-        
-        return file
+        output_file = file.replace(".nc",".zr.nc")
+        cdo.sellevidx(index_str,input=file, output=output_file)
+        return output_file
     
     def __single_open(self,file:str,resolution:float,vertical_levels,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
         sinfo = cdo.sinfo(input=file)
@@ -218,7 +239,6 @@ class Variable:
         
         if vertical.levels > 1:
             Logger.console().debug(f"Start levels selection", "LEVEL")
-            Logger.console().debug(vertical)
             file = self.select_levels(vertical_levels,file,vertical,cdo)
             
             
@@ -226,7 +246,6 @@ class Variable:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             dimensions = dataset.dimensions
-            print([ float(f) for f in (dataset[vertical.name][:])])
             if self.look_for is None:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
@@ -276,7 +295,7 @@ class Variable:
         output_dir = out_folder.tmp_nc()
         
         preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,inidata)
-        preprocessed_inputs = save(preprocessed_inputs,resolution)
+        preprocessed_inputs = save(preprocessed_inputs)
         
         output = []
         for preprocessed_input in preprocessed_inputs:
