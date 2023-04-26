@@ -15,6 +15,7 @@ import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
 import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
+import bridge_variables.utils.utils as bvu
 
 def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
     def f(files:List[str]):
@@ -110,7 +111,7 @@ def get_active_requests(args,requests):
         res = []
         for input in input_variables:
             variable = Variable(name=input,\
-                preprocess=vb.default,\
+                preprocess=bvu.default_preprocessing,\
                 look_for=(input,)
             )
             res.append({"variable":variable})
