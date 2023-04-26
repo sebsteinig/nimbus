@@ -201,12 +201,12 @@ if __name__ == "__main__" :
     parser.add_argument('--bridge',"-b",dest = "bridge", help = 'convert the given file or folder from bridge')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
     parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
-    parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100% resolutions of netcdf grid input, default is 1')
+    parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100%% resolutions of netcdf grid input, default is 1')
     
     
     args = parser.parse_args()
     
     if (args.bridge_variables is None and args.new_variables is None) and not args.all_bridge_variables :
-        raise Exception(f"Missing arguments \n {parser.format_help()}")
-
-    main(args)
+        Logger.console().warning(f"Missing arguments \n {parser.format_help()}")
+    else :
+        main(args)
