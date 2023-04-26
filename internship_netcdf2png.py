@@ -47,6 +47,7 @@ def convert_file(variable:Variable, hyper_parameters:dict,input:str,output:Outpu
             for data, metadata in inputs:
                 try :
                     metadata.set_resolution(resolution)
+                    metadata.set_threshold(hyper_parameters['threshold'])
                     png_converter.convert(data,_output_file, hyper_parameters['threshold'],metadata,logger)
                 except Exception as e:
                     trace = Logger.trace()

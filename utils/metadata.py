@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from PIL.PngImagePlugin import PngInfo
-from typing import Union, List
+from typing import Union, List, Any, Callable
 import json
 
 @dataclass
@@ -32,7 +32,8 @@ class GeneralMetadata:
     min_max : Union[str  , None] = None             #min and max values for each variable and dimension
     resolution : Union[str , None] = None           #image resolution
     netcdf2png_version : Union[str, None] = None    #version of netcdf2image converter used
-
+    nan_value_encoding : Union[ int, None] = None   #value in image that replace nan values (0 or 255)
+    threshold : Union[ int, None] = None            #threshold used to normalize input
 
 class Metadata:
     dataVariables : List[VariableSpecificMetadata] = []
@@ -46,9 +47,7 @@ class Metadata:
 
     def get_metadata_png(self):
         metadataPng = PngInfo()
-        variableList = [self.add_for_class_attributes(VariableSpecificMetadata,\
-            data, {}, self.method_for_dict) for data in self.dataVariables]
-        metadataPng.add_text("variables", str(json.dumps(variableList)))
+        metadataPng.add_text("variables", str(json.dumps(self.get_list_variables())))
         metadataPng = self.add_for_class_attributes(GeneralMetadata, self.dataGeneral, metadataPng, self.method_for_png)
         return metadataPng
 
@@ -56,7 +55,7 @@ class Metadata:
         pass
 
     @staticmethod
-    def add_for_class_attributes(objClass, obj, result, function):
+    def add_for_class_attributes(objClass, obj, result, function:Callable[[Any, str, Any], None]):
         for attr in objClass.__dataclass_fields__.keys():
             if getattr(obj,attr) is not None:
                 function(result, attr, getattr(obj,attr))
@@ -101,7 +100,22 @@ class Metadata:
 
     def set_resolution(self, resolution):
         self.dataGeneral.resolution = str(resolution)
+    
+    def set_threshold(self, threshold):
+        self.dataGeneral.threshold = str(threshold)
+    
+    def set_nan_value_encoding(self, value):
+        self.dataGeneral.nan_value_encoding = str(value)
 
+    def get_list_variables(self):
+        return [self.add_for_class_attributes(VariableSpecificMetadata,\
+            data, {}, self.method_for_dict) for data in self.dataVariables]
+    
+    def log_for_debug(self):
+        dict = {}
+        dict["variables"] = self.get_list_variables()
+        dict = self.add_for_class_attributes(GeneralMetadata, self.dataGeneral, dict, self.method_for_dict)        
+        return json.dumps((dict), indent=2)
 
 if __name__ == "__main__":
     print("Cannot execute in main")

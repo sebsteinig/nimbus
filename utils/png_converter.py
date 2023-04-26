@@ -102,8 +102,9 @@ def convert(input:list, output_filename:str, threshold, metadata, logger, direct
     for numVar in range(len(input)) :
         output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold, logger)
         minmaxVars.append(minmaxTab)
-    logger.debug(json.dumps(minmaxVars, indent = 2), "MINMAX")
     logger.info(mode, "MODE")
+    metadata.set_nan_value_encoding(255)
+    logger.debug(metadata.log_for_debug(), "METADATA")
     metadataPng = metadata.get_metadata(datetime.now().strftime("%d/%m/%Y_%H:%M:%S"), str(json.dumps(minmaxVars)))
     filename = save(output, output_filename, directory, metadataPng, mode)
     print(f"\tsave : {filename}")
