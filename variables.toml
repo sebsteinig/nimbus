@@ -1,70 +1,58 @@
-[[variables]]
-output_variable = "clt"
+[clt]
 realm = "a"
 output_stream = "pd"
 named_input_variable = "totCloud_mm_ua"
 
-[[variables]]
-output_variable = "tas"
+[tas]
 realm = "a"
 output_stream = "pd"
 named_input_variable = "temp_mm_1_5m"
 
-[[variables]]
-output_variable = "pr"
+[pr]
 realm = "a"
 output_stream = "pd"
 named_input_variable = "precip_mm_srf"
 
-[[variables]]
-output_variable = "winds"
+[winds]
 realm = "a"
 output_stream = "pc"
 named_input_variable = "u_mm_p"
 
-[[variables]]
-output_variable = "snc"
+[snc]
 realm = "a"
 output_stream = "pt"
 named_input_variable = "snowCover_mm_srf"
 
-[[variables]]
-output_variable = "liconc"
+[liconc]
 realm = "a"
 output_stream = "pt"
 named_input_variable = "fracPFTs_mm_srf"
 
-[[variables]]
-output_variable = "pfts"
+[pfts]
 realm = "a"
 output_stream = "pt"
 named_input_variable = "fracPFTs_mm_srf"
 
-[[variables]]
-output_variable = "tos"
+[tos]
 realm = "o"
 output_stream = "pf"
 named_input_variable = "temp_mm_uo"
 
-[[variables]]
-output_variable = "mlotst"
+[mlotst]
 realm = "o"
 output_stream = "pf"
 named_input_variable = "mixLyrDpth_mm_uo"
 
-[[variables]]
-output_variable = "siconc"
+[siconc]
 realm = "o"
 output_stream = "pf"
 named_input_variable = "iceconc_mm_uo"
 
-[[variables]]
-output_variable = "oceanCurrents"
+[oceanCurrents]
 realm = "o"
 output_stream = "pg"
 named_input_variable = "ucurrTot_ym_dpth"
 
-[[variables]]
-output_variable = "height"
+[height]
 inidata = "qrparm.orog"
 named_input_variable = "ucurrTot_ym_dpth"

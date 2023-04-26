@@ -31,6 +31,11 @@ def in_bounds(data, lb, ub):
 
 cdo = Cdo()
 
+def convert_unit(levels,from_unit,to_unit):
+    if from_unit == to_unit:
+        return levels
+    raise Exception(f"UNIMPLMENTED : can't convert from {from_unit} to {to_unit}")
+
 @dataclass
 class Variable:
     name : str
@@ -106,7 +111,7 @@ class Variable:
         Logger.console().debug(f"output in clean dimension :\n{data.shape}", "SHAPE")
         return data
     
-    def select_grid(self,file:str,info:inf.Info):
+    def select_grid_and_vertical(self,file:str,info:inf.Info):
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
@@ -115,23 +120,29 @@ class Variable:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
                 grid = info.get_grid(variable.dimensions)
+                vertical = info.get_vertical(variable.dimensions)
             else :
                 grids = []
+                verticals = []
                 for possible_name in self.look_for:
                     if type(possible_name) is str:
                         if not possible_name in variable_names:
                             raise IncorrectVariable(f"No variables in {variable_names} match any of the specified name {name}")
-                        variable = dataset[name]
+                        variable = dataset[possible_name]
                     elif type(possible_name) is set:
                         name = possible_name & variable_names  
                         if len(name) == 0:
                             raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                         variable = dataset[list(name)[0]]
                     grids.append(info.get_grid(variable.dimensions))
+                    verticals.append(info.get_vertical(variable.dimensions))
                 if len(set(grids)) != 1:
-                    raise IncorrectVariable(f"All variable must in the same grid for the conversion")
+                    raise IncorrectVariable(f"All variable must be in the same grid for the conversion")
+                if len(set(verticals)) != 1:
+                    raise IncorrectVariable(f"All variable must have the same vertical axis for the conversion")
                 grid = grids[0]
-        return grid
+                vertical = verticals[0]
+        return grid,vertical
     
     
     def resize(self,resolution,file,grid,cdo):
@@ -161,25 +172,76 @@ class Variable:
         with open(resize_file_txt_path,'w') as f:
             f.write(griddes_str)
         
-        file = cdo.remapnn(resize_file_txt_path,input=file)
+        res_suffixe = ".r100"
+        if resolution < 1:
+            res_suffixe = f".r{int(resolution*100)}"
+        output_file = file.replace(".nc",f"{res_suffixe}.nc")
+        file = cdo.remapnn(resize_file_txt_path,input=file,output=output_file)
         remove(resize_file_txt_path)
-        sinfo = cdo.sinfo(input=file)
+        sinfo = cdo.sinfo(input=output_file)
         info = inf.Info.parse(sinfo)
-        return file,info
+        return output_file,info
     
-    def __single_open(self,file:str,resolution:float,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
+    def select_levels(self,vertical_levels,file,vertical,cdo):
+        if 'state' not in vertical_levels:
+            return file
+        category = vertical_levels['Atmosphere'] if vertical_levels['state'] == 'a' else vertical_levels['Ocean']
+        levels,unit = category['levels'],category['unit']
+        levels = convert_unit(levels,unit,vertical.unit)
+        
+        epsilons = {}
+        for i,l in enumerate(levels):
+            if i == 0:
+                e1 = (abs(levels[i+1]-l)*0.25)
+                e2 = e1
+            elif i == len(levels) - 1:
+                e1 = (abs(levels[i-1]-l)*0.25)
+                e2 = e1
+            else :
+                e2 = (abs(levels[i+1]-l)*0.25)
+                e1 = (abs(levels[i-1]-l)*0.25)
+            epsilons[l] = (e1,e2)
+            
+        
+        with Dataset(file,"r",format="NETCDF4") as dataset:
+            file_levels = [ float(f) for f in (dataset[vertical.name][:])]
+        
+        distance = { level:[(i,abs(level-l)) for i,l in enumerate(file_levels) if (l >= level - epsilons[level][0]) and (l <= level + epsilons[level][1])]   for level in levels}
+        distance_index = {}
+        for level,d in distance.items():
+            if len(d) > 0:
+                unzipped = list(zip(*d))
+                unzipped_d,unzipped_i = unzipped[1], unzipped[0]
+                distance_index[level] = unzipped_i[np.argmin(unzipped_d)]
+                
+        
+        index = list(distance_index.values())
+        index_str ="".join(f",{i+1}" for i in index )
+        
+        output_file = file.replace(".nc",".zr.nc")
+        cdo.sellevidx(index_str,input=file, output=output_file)
+        return output_file
+    
+    def __single_open(self,file:str,resolution:float,vertical_levels,logger:_Logger) -> Tuple[List[np.ndarray],inf.Info]:
         sinfo = cdo.sinfo(input=file)
         Logger.console().debug(f"pre parsing :\n{sinfo}", "CDO INFO")
         info = inf.Info.parse(sinfo)
         logger.info(json.dumps(info.to_dict(),  indent = 2), "INFO")
 
+        grid,vertical = self.select_grid_and_vertical(file, info)
+        
         if resolution < 1  and resolution > 0:
             Logger.console().debug(f"Start resolution modification", "RESOLUTION")
-            grid = self.select_grid(file, info)
             if grid.category != 'lonlat' :
                 Logger.console().warning("can't change grid resolution, only lonlat grid are supported", "RESOLUTION")
             else :
                 file,info = self.resize(resolution,file,grid,cdo)
+        
+        if vertical.levels > 1:
+            Logger.console().debug(f"Start levels selection", "LEVEL")
+            file = self.select_levels(vertical_levels,file,vertical,cdo)
+            
+            
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
             metadata = Metadata()
@@ -208,13 +270,13 @@ class Variable:
                     variables.append(variable)
         return self.process(variables), metadata
         
-    def __multi_open(self,inputs:list,resolution:float,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
+    def __multi_open(self,inputs:list,resolution:float,vertical_levels,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []
         for input in inputs :
             if type(input) is str:
-                variables.extend(self.__single_open(input,resolution,logger))
+                variables.extend(self.__single_open(input,resolution,vertical_levels,logger))
             elif type(input) is list:
-                variables.extend(self.__multi_open(input,resolution,logger))
+                variables.extend(self.__multi_open(input,resolution,vertical_levels,logger))
         return variables
     
     @staticmethod
@@ -228,7 +290,7 @@ class Variable:
             output_files.append(preprocessed)
         return output_files
     
-    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,inidata=None):
+    def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,vertical_levels,inidata=None):
         selected_variable = csv(self.look_for)
         if type(input) is str:
             input = [input]
@@ -236,14 +298,14 @@ class Variable:
         output_dir = out_folder.tmp_nc()
         
         preprocessed_inputs = Variable.exec_preprocessing(input,selected_variable,output_dir,self.preprocess,inidata)
-        preprocessed_inputs = save(preprocessed_inputs,resolution)
+        preprocessed_inputs = save(preprocessed_inputs)
         
         output = []
         for preprocessed_input in preprocessed_inputs:
             if type(preprocessed_input) is str:
-                output.append(self.__single_open(preprocessed_input,resolution,logger))
+                output.append(self.__single_open(preprocessed_input,resolution,vertical_levels,logger))
             elif type(preprocessed_input) is list:
-                output.append(self.__multi_open(preprocessed_input,resolution,logger))
+                output.append(self.__multi_open(preprocessed_input,resolution,vertical_levels,logger))
         return output
                 
 
