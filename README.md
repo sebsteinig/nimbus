@@ -83,7 +83,7 @@ Usage Examples:
 9. mlotst :\
     named "mixLyrDpth_mm_uo" in bridge netcdf files
 
-10. siconc :\ 
+10. siconc :\
     named "iceconc_mm_uo" in bridge netcdf files
 
 11. oceanCurrents :\
