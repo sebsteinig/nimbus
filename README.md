@@ -8,15 +8,15 @@ Usage:
 python nc_to_img.py [OPTIONS]
 
 Options:
---bridge_variables, -bv: Select bridge variables for conversion. [See more](#bridge-variable)
---new_variables, -nv: Create new variables with default preprocessing and processing.
---experiences, -e: Select experience id for conversion .
---all-bridge-variables, -av: Select all bridge variables for conversion.
---files, -f: Convert the given file or folder.
---bridge, -b: Convert the given file or folder from bridge.
---clean, -c: Clean the output directory.
---threshold, -t: Specify the threshold of maximum and minimum values (must be between 0 and 1, default is 0.95).
---resolutions, -r: Specify resolutions for image processing (must be between 0 and 1, where 1 means 100% resolutions of netcdf grid input, default is 1).
+* --bridge_variables, -bv: Select bridge variables for conversion. [See more](#bridge-variable)
+* --new_variables, -nv: Create new variables with default preprocessing and processing.
+* --experiences, -e: Select experience id for conversion .
+* --all-bridge-variables, -av: Select all bridge variables for conversion.
+* --files, -f: Convert the given file or folder.
+* --bridge, -b: Convert the given file or folder from bridge.
+* --clean, -c: Clean the output directory.
+* --threshold, -t: Specify the threshold of maximum and minimum values (must be between 0 and 1, default is 0.95).
+* --resolutions, -r: Specify resolutions for image processing (must be between 0 and 1, where 1 means 100% resolutions of netcdf grid input, default is 1).
 
 Usage Examples:
 1. To select bridge variables for conversion:
