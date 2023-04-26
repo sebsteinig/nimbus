@@ -70,7 +70,7 @@ class Logger:
     _warning = True
     _info = True
     _error = True
-    
+    _console : _Logger = _Logger(None)
     @staticmethod   
     def filter(*arg):
         Logger.filters.extend(arg)
@@ -109,36 +109,17 @@ class Logger:
     
     @staticmethod
     def console() -> _Logger:
-        return _Logger(None)
+        return Logger._console
     
     @staticmethod
-    def file(file_manager: Union[FileManager , BridgeManager],input) -> _Logger:
+    def file(file_manager: Union[FileManager , BridgeManager],input,variable_name) -> _Logger:
         out_folder = file_manager.get_output(input)
-        log_path = path.join(out_folder.out(),datetime.now().strftime("%d_%m_%Y") + ".log")
+        log_path = path.join(out_folder.out(),str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
+        
         return _Logger(log_path)
 
 
-def logErrorForAll(err):
-    logFile = open(datetime.now().strftime("%d/%m/%Y") + ".log", "a")
-    traceback.print_tb(err.__traceback__, file=logFile)
-    logFile.write(f"\n\n\n\n{err.args[0]}")
-    logFile.close()
-    
-def logErrorForVar(outputFolder, variable, err):
-    logFile = open(os.path.join(outputFolder, f"{variable}{datetime.now().strftime('%d%m%Y_%H:%M:%S')}.log"), "a")
-    logFile.write(f"-------------error when converting with variable : {variable}---------------\n")
-    traceback.print_tb(err.__traceback__, file=logFile)
-    logFile.write(f"\n : {err.args[0]}")
-    logFile.close()
-
-def test():
-    a = 1
-    Logger.console().debug("test input string")
-    Logger.console().debug(a)
-
 if __name__ == "__main__":
-    #print("Cannot execute in main")
-    #import sys
-    #sys.exit(1)
-    
-    test()
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)

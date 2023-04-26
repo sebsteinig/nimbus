@@ -80,6 +80,7 @@ class Vertical:
     name     : str
     levels   : int
     bounds   : Tuple[float,float]
+    unit : str
 
     @staticmethod
     def parse(src : List[str],cursor:int):
@@ -93,9 +94,11 @@ class Vertical:
                 tmp = tmp[1].strip().split(" ")
                 if len(tmp) > 2:
                     bounds = (tmp[0],tmp[2])
+                    unit = tmp[3].strip()
                 else :
                     bounds = (None,None)
-                return Vertical(category=category,name=name,levels=levels,bounds=bounds)
+                    unit = None
+                return Vertical(category=category,name=name,levels=levels,bounds=bounds,unit=unit)
         return None
     
     def to_dict(self):
@@ -103,7 +106,8 @@ class Vertical:
             'category' : self.category,
             'name': self.name,
             'levels':self.levels,
-            'bounds': list(self.bounds)
+            'bounds': list(self.bounds),
+            'unit':self.unit
         }
     
 @dataclass(eq=True, frozen=True)

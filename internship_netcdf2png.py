@@ -17,17 +17,13 @@ import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
 
 def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
-    def f(files:List[str],resolution):
+    def f(files:List[str]):
         output_files = []
-        res_suffixe = ".r100"
-        if resolution < 1:
-            res_suffixe = f".r{int(resolution*100)}"
         for inputs in files:
             tmp = []
             for path in inputs:
                 name = os.path.basename(path)
                 output = fm.get_output(input).out_nc_file(name) 
-                output = output.replace(".nc",f"{res_suffixe}.nc")
                 shutil.copyfile(path, output)
                 Logger.console().debug(f"\tsave : {output}","SAVE")
                 tmp.append(output)
@@ -39,7 +35,7 @@ def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
 def convert_file(variable:Variable, hyper_parameters:dict,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
     try:
         for resolution in hyper_parameters['resolutions']:
-            inputs = variable.open(input,output,save,logger,resolution,inidata)
+            inputs = variable.open(input,output,save,logger,resolution,hyper_parameters['vertical_levels'],inidata)
             res_suffixe = ""
             if resolution < 1:
                 res_suffixe = f".r{int(resolution*100)}"
@@ -65,8 +61,9 @@ def user_convert(file:str, requests:List[dict], hyper_parameters):
     for input,output in fm.iter():
         for request in requests:  
             Logger.console().info(f"Converting {input} ...")
-            logger = Logger.file(fm,input)
+            logger = Logger.file(fm,input,request["variable"].name)
             output_file = output.out_png_file(os.path.splitext(os.path.basename(input))[0])
+            output_file += f".{request['variable'].name}"
             convert_file(variable=request["variable"],\
                 hyper_parameters=hyper_parameters,\
                 input=input,\
@@ -82,13 +79,14 @@ def bridge_convert(file:str,requests:List[dict],hyper_parameters:dict):
     for request in requests:
         Logger.console().info(f"\n\trealm : {request['realm']},\n\toutputstream : {request['output_stream']},\n\tvariable : {request['variable'].name}", "REQUEST")
         for input,output,exp_id in fm.iter(request):  
-            logger = Logger.file(fm,input)
+            logger = Logger.file(fm,input,request["variable"].name)
             suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-3:-2]))
             if suffixe not in (".mm",".sm",".ym"):
                 suffixe = ""
 
             Logger.console().info(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
             output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
+            hyper_parameters['vertical_levels']['state'] = request['realm']
             convert_file(variable=request["variable"],\
                 hyper_parameters=hyper_parameters,\
                 input=input,\
@@ -97,7 +95,10 @@ def bridge_convert(file:str,requests:List[dict],hyper_parameters:dict):
                 inidata = fm.get_inidata(exp_id),\
                 logger=logger,\
                 save=save(input,fm))
-
+def load_verticals():
+    with open("./vertical-levels.toml",mode="rb") as fp:
+        config = tomli.load(fp)
+    return config
 
 def load_request():
     with open("./variables.toml",mode="rb") as fp:
@@ -147,11 +148,13 @@ def get_active_requests(args,requests):
 
 def main(args):
     Logger.blacklist()
-    #Logger.debug(False)
-    Logger.filter("REQUESTS", "CDO INFO", "SHAPE","DIMENSION","RESOLUTION")
+    Logger.debug(False)
+    Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     requests = load_request()
     requests = get_active_requests(args,requests)
+
+    vertical_levels = load_verticals()
 
     Logger.console().debug(requests, "REQUESTS")
     if args.threshold is None:
@@ -174,7 +177,7 @@ def main(args):
     Logger.console().info(f"threshold : {threshold}")
     Logger.console().info(f"resolutions : {resolutions}")
     
-    hyper_parameters = {'resolutions':resolutions,'threshold':threshold,'clean':bool(args.clean)}
+    hyper_parameters = {'resolutions':resolutions,'threshold':threshold,'clean':bool(args.clean),'vertical_levels':vertical_levels}
     
     if args.user is not None:
         user_convert(args.user, requests, hyper_parameters)
