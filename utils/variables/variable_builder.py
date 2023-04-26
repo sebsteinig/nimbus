@@ -1,5 +1,5 @@
 from typing import Dict
-from variables.variable import *
+from utils.variables.variable import *
 from cdo import Cdo
 
 def tos_siconc(cdo:Cdo,selected_variable:str,input:str,output:str,inidata):

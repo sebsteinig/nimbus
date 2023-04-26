@@ -6,7 +6,7 @@ import os.path as path
 from os import remove
 from cdo import Cdo
 import sys
-import variables.info as inf
+import utils.variables.info as inf
 from file_managers.output_folder import OutputFolder
 from utils.logger import Logger,_Logger
 import json

@@ -9,8 +9,8 @@ from cdo import Cdo
 import tomli
 import argparse
 from argparse import RawDescriptionHelpFormatter
-import variables.variable_builder as vb
-from variables.variable import Variable
+import utils.variables.variable_builder as vb
+from utils.variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
 import file_managers.bridge.bridge_manager as bridge
