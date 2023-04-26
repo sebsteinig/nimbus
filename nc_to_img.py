@@ -150,7 +150,7 @@ def get_active_requests(args,requests):
 
 def main(args):
     Logger.blacklist()
-    Logger.debug(False)
+    Logger.debug(True)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     requests = load_request()

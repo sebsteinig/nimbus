@@ -109,14 +109,30 @@ class Metadata:
 
     def get_list_variables(self):
         return [self.add_for_class_attributes(VariableSpecificMetadata,\
-            data, {}, self.method_for_dict) for data in self.dataVariables]
+            data, {}, self.method_for_dict) for data in self.clean_variables()]
     
     def log_for_debug(self):
         dict = {}
         dict["variables"] = self.get_list_variables()
         dict = self.add_for_class_attributes(GeneralMetadata, self.dataGeneral, dict, self.method_for_dict)        
         return json.dumps((dict), indent=2)
-
+    
+    def clean_variables(self):
+        if len(self.dataVariables)<1:
+            return self.dataVariables
+        else:
+            def are_equals(vari, var0):
+                for attr in VariableSpecificMetadata.__dataclass_fields__.keys():
+                    if getattr(vari, attr) != getattr(var0, attr):
+                        return False
+                return True
+            res = [self.dataVariables[0]]
+            for i in range(1, len(self.dataVariables)):
+                if not are_equals(self.dataVariables[i], self.dataVariables[0]):
+                    res.append(self.dataVariables[i])
+            self.dataVariables = res
+            return res
+    
 if __name__ == "__main__":
     print("Cannot execute in main")
     import sys
