@@ -105,17 +105,17 @@ def load_request():
         config = tomli.load(fp)
     requests = {}
     clim_variables = vb.builder()
-    for variable in config["variables"]:
+    for name,variable in config.items():
         if "inidata" in variable:
-            requests[variable["output_variable"]] = \
+            requests[name] = \
                 {
-                    "variable":clim_variables[variable["output_variable"]],\
+                    "variable":clim_variables[name],\
                     "inidata":variable["inidata"],\
                 }
         else : 
-            requests[variable["output_variable"]] = \
+            requests[name] = \
                 {
-                    "variable":clim_variables[variable["output_variable"]],\
+                    "variable":clim_variables[name],\
                     "output_stream":variable["output_stream"],\
                     "realm":variable["realm"],\
                 }
@@ -197,7 +197,7 @@ if __name__ == "__main__" :
     parser.add_argument('--new_variables',"-nv", dest = 'new_variables', help = 'create new variables with default preprocessing and processing')
     parser.add_argument('--experiences',"-e", dest = 'expIds', help = 'select experince')
     parser.add_argument('--all-bridge-variables',"-av", action = 'store_true', help = 'select all brigde variables')
-    parser.add_argument('--user',"-u",dest = "user", help = 'convert the given file or folder')
+    parser.add_argument('--files',"-f",dest = "user", help = 'convert the given file or folder')
     parser.add_argument('--bridge',"-b",dest = "bridge", help = 'convert the given file or folder from bridge')
     parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
     parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
