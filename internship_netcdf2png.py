@@ -44,9 +44,10 @@ def convert_file(variable:Variable, hyper_parameters:dict,input:str,output:Outpu
             if resolution < 1:
                 res_suffixe = f".r{int(resolution*100)}"
             _output_file = output_file + res_suffixe
-            for data,info in inputs:
+            for data, metadata in inputs:
                 try :
-                    png_converter.convert(data,_output_file, hyper_parameters['threshold'],info,logger)
+                    metadata.set_resolution(resolution)
+                    png_converter.convert(data,_output_file, hyper_parameters['threshold'],metadata,logger)
                 except Exception as e:
                     trace = Logger.trace()
                     Logger.console().error(trace, "PNG CONVERTER")

@@ -41,14 +41,11 @@ class Variable:
 
     def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, logger, info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
         data = variable[:]
-        metadata = Metadata(variableName=self.name, variable=variable)
         grid = info.get_grid(variable.dimensions)
         vertical = info.get_vertical(variable.dimensions)
         time = info.get_time(variable.dimensions)
         if grid is None:
-            raise Exception("Could not find latitude and longitude")
-        
-        metadata.set_grid(grid)
+            raise Exception("Could not find latitude and longitude")        
         
         variable_dimensions = list(variable.dimensions)
         Logger.console().debug(f"variable_dimensions in clean dimension :\n{variable_dimensions}", "DIMENSION")
@@ -61,10 +58,8 @@ class Variable:
         approved = [grid.axis[0].name,grid.axis[1].name]
         if time is not None:
             approved.append(time.name)
-            metadata.set_time(time)
         if vertical is not None:
             approved.append(vertical.name)
-            metadata.set_vertical(vertical)
         
         if time is not None and vertical is not None and time_index < vertical_index:
             variable_dimensions[vertical_index] = time.name
@@ -109,7 +104,7 @@ class Variable:
             threshold = int(np.log10(variable._FillValue))
             data[data>(10**threshold)] = np.nan
         Logger.console().debug(f"output in clean dimension :\n{data.shape}", "SHAPE")
-        return data, metadata
+        return data
     
     def select_grid(self,file:str,info:inf.Info):
         with Dataset(file,"r",format="NETCDF4") as dataset:
@@ -187,16 +182,16 @@ class Variable:
                 file,info = self.resize(resolution,file,grid,cdo)
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variables = []
-            metadatas = []
+            metadata = Metadata()
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             dimensions = dataset.dimensions
             if self.look_for is None:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                variable, metadata = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
-                variables.append(variable)  
-                metadatas.append(metadata)  
+                metadata.set_info(info=info , variable = variable, variableName=self.name)
+                variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
+                variables.append(variable) 
             else :
                 for possible_name in self.look_for:
                     if type(possible_name) is str:
@@ -208,10 +203,10 @@ class Variable:
                         if len(name) == 0:
                             raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                         variable = dataset[list(name)[0]]
+                    metadata.set_info(info=info , variable = variable, variableName=self.name)
                     variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
-                    variables.append(variable)  
-                    metadatas.append(metadata)                
-        return self.process(variables), metadatas
+                    variables.append(variable)
+        return self.process(variables), metadata
         
     def __multi_open(self,inputs:list,resolution:float,logger:_Logger) -> List[Tuple[List[np.ndarray],inf.Info]]:
         variables = []

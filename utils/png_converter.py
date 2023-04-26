@@ -104,7 +104,7 @@ def convert(input:list, output_filename:str, threshold, metadata, logger, direct
         minmaxVars.append(minmaxTab)
     logger.debug(json.dumps(minmaxVars, indent = 2), "MINMAX")
     logger.info(mode, "MODE")
-    metadataPng = metadata.getMetadata(datetime.now().strftime("%d/%m/%Y_%H:%M:%S"), str(json.dumps(minmaxVars)))
+    metadataPng = metadata.get_metadata(datetime.now().strftime("%d/%m/%Y_%H:%M:%S"), str(json.dumps(minmaxVars)))
     filename = save(output, output_filename, directory, metadataPng, mode)
     print(f"\tsave : {filename}")
     return filename
