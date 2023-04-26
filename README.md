@@ -56,38 +56,38 @@ Usage Examples:
     python nc_to_img.py -bv variable1 -b folder -r 0.5,0.9
 ```
 # bridge-variable
-1. clt : 
+1. clt :\
     named "totCloud_mm_ua" in bridge netcdf files
 
-2. tas : 
+2. tas :\
     named "temp_mm_1_5m" in bridge netcdf files
 
-3. pr : 
+3. pr :\
     named "precip_mm_srf" in bridge netcdf files
 
-4. winds : 
+4. winds :\
     named "u_mm_p" in bridge netcdf files
 
-5. snc : 
+5. snc :\
     named "snowCover_mm_srf" in bridge netcdf files
 
-6. liconc : 
+6. liconc :\
     named "fracPFTs_mm_srf" in bridge netcdf files
 
-7. pfts : 
+7. pfts :\
     named "fracPFTs_mm_srf" in bridge netcdf files
 
-8. tos : 
+8. tos :\
     named "temp_mm_uo" in bridge netcdf files
 
-9. mlotst : 
+9. mlotst :\
     named "mixLyrDpth_mm_uo" in bridge netcdf files
 
-10. siconc : 
+10. siconc :\ 
     named "iceconc_mm_uo" in bridge netcdf files
 
-11. oceanCurrents : 
+11. oceanCurrents :\
     named "ucurrTot_ym_dpth" in bridge netcdf files
 
-12. height : 
+12. height :\
     converted with inidata files --> qrparm.orog
