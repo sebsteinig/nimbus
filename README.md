@@ -1,5 +1,4 @@
 ### internship-climate-archive
-Program Name: Data Converter
 
 Description:
 This program is a data converter that allows you to preprocess data from netCDF4 files and convert them into images for 3D visualization on https://climatearchive.org. It offers a wide range of options and features to customize the data conversion process to the user's needs. The program supports conversion of files or folders provided by the user or conversion of bridge data based on their experience id.
