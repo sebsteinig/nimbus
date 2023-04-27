@@ -9,13 +9,13 @@ class VariableSpecificMetadata:
     original_variable_name : Union[str  , None]= None       #original variable name in original netCDF
     original_variable_long_name : Union[str, None]=None     #original variable long name in original netCDF
     std_name: Union[str, None]=None                         #standard variable name
-    model_name : Union[str,None] = None
+    model_name : Union[str,None] = None                     #TODO
     variable_unit : Union[str, None]=None                   #either the same as in the input data or e.g. changed from C to K
-    original_variable_unit : Union[str, None]=None          #original variable units in original netCDF
-    history : Union[str, None]= None                        #list of all commands/pre-processing done to get from original input netcdf to input used for image converter
-    original_grid_type: Union[str, None]=None               #gridtype in original netCDF
-    original_xsize : Union[str, None]=None                  #original number of longitudes for each level/timestep in original netCDF
-    original_ysize : Union[str, None]=None
+    original_variable_unit : Union[str, None]=None          #TODO original variable units in original netCDF
+    history : Union[str, None]= None                        #TODO list of all commands/pre-processing done to get from original input netcdf to input used for image converter
+    original_grid_type: Union[str, None]=None               #TODO gridtype in original netCDF
+    original_xsize : Union[str, None]=None                  #TODO original number of longitudes for each level/timestep in original netCDF
+    original_ysize : Union[str, None]=None                  #TODO
     
 #the data in this class are the same when there are multiple variables
 @dataclass
@@ -31,7 +31,7 @@ class GeneralMetadata:
     created_at : Union[str  , None] = None          #timestamp when image was created
     min_max : Union[str  , None] = None             #min and max values for each variable and dimension
     resolution : Union[str , None] = None           #image resolution
-    netcdf2png_version : Union[str, None] = None    #version of netcdf2image converter used
+    netcdf2png_version : Union[str, None] = None    #TODO version of netcdf2image converter used
     nan_value_encoding : Union[ int, None] = None   #value in image that replace nan values (0 or 255)
     threshold : Union[ int, None] = None            #threshold used to normalize input
 
