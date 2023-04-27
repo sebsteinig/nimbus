@@ -81,9 +81,7 @@ def bridge_convert(file:str,requests:List[dict],hyper_parameters:dict):
         Logger.console().info(f"\n\trealm : {request['realm']},\n\toutputstream : {request['output_stream']},\n\tvariable : {request['variable'].name}", "REQUEST")
         for input,output,exp_id in fm.iter(request):  
             logger = Logger.file(fm,input,request["variable"].name)
-            suffixe = "".join((f".{name}" for name in os.path.basename(input).split(".")[-3:-2]))
-            if suffixe not in (".mm",".sm",".ym"):
-                suffixe = ""
+            suffixe = ".mm" if ".mm" in os.path.basename(input) else ".sm" if ".sm" in os.path.basename(input) else  ".ym" if ".ym" in os.path.basename(input) else ""
 
             Logger.console().info(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
             output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
