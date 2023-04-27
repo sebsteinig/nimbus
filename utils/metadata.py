@@ -12,7 +12,6 @@ class VariableSpecificMetadata:
     model_name : Union[str,None] = None                     #TODO
     variable_unit : Union[str, None]=None                   #either the same as in the input data or e.g. changed from C to K
     original_variable_unit : Union[str, None]=None          #TODO original variable units in original netCDF
-    history : Union[str, None]= None                        #TODO list of all commands/pre-processing done to get from original input netcdf to input used for image converter
     original_grid_type: Union[str, None]=None               #TODO gridtype in original netCDF
     original_xsize : Union[str, None]=None                  #TODO original number of longitudes for each level/timestep in original netCDF
     original_ysize : Union[str, None]=None                  #TODO
@@ -20,6 +19,7 @@ class VariableSpecificMetadata:
 #the data in this class are the same when there are multiple variables
 @dataclass
 class GeneralMetadata:
+    history : Union[str, None]= None                #TODO list of all commands/pre-processing done to get from original input netcdf to input used for image converter
     xsize : Union[int, None]=None                   #number of longitudes for each level/timestep in image
     ysize : Union[int, None]=None                   #number of latitudes for each level/timestep in image
     levels : Union[int, None]=None                  #number of vertical levels in image
@@ -70,14 +70,15 @@ class Metadata:
         dict[key] = value
 
     @staticmethod
-    def method_fo_WebP(metadata, key, value):
+    def method_for_WebP(metadata, key, value):
         pass
 
-    def set_info(self, info, variable, variableName):
+    def set_info(self, info, variable, variableName, history):
         grid = info.get_grid(variable.dimensions)
         data = VariableSpecificMetadata()     
         if self.dataGeneral == None:
             self.dataGeneral = GeneralMetadata()
+            self.dataGeneral.history = str(history)
             if info.get_time(variable.dimensions) is not None :
                 self.dataGeneral.timesteps = info.get_time(variable.dimensions).step
             if info.get_vertical(variable.dimensions) is not None :

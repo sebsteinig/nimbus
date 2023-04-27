@@ -251,7 +251,7 @@ class Variable:
                 if len(variable_names) != 1:
                     raise IncorrectVariable("Too many variables : must only be one variable if no names are specified")
                 variable = dataset[list(variable_names)[0]]
-                metadata.set_info(info=info , variable = variable, variableName=self.name)
+                metadata.set_info(info=info , variable = variable, variableName=self.name, history = dataset.history)
                 variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
                 variables.append(variable) 
             else :
@@ -265,7 +265,7 @@ class Variable:
                         if len(name) == 0:
                             raise IncorrectVariable(f"No variables match any of the specified names {variable_names}")
                         variable = dataset[list(name)[0]]
-                    metadata.set_info(info=info , variable = variable, variableName=self.name)
+                    metadata.set_info(info=info , variable = variable, variableName=self.name, history = dataset.history)
                     variable = self.__clean_dimensions(variable,dimensions,logger, info,dataset)
                     variables.append(variable)
         return self.process(variables), metadata
