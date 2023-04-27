@@ -9,12 +9,13 @@ from cdo import Cdo
 import tomli
 import argparse
 from argparse import RawDescriptionHelpFormatter
-import variables.variable_builder as vb
-from variables.variable import Variable
+import utils.variables.variable_builder as vb
+from utils.variables.variable import Variable
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
 import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
+import bridge_variables.utils.utils as bvu
 
 def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
     def f(files:List[str]):
@@ -103,25 +104,8 @@ def load_verticals():
     return config
 
 def load_request():
-    with open("./variables.toml",mode="rb") as fp:
-        config = tomli.load(fp)
-    requests = {}
-    clim_variables = vb.builder()
-    for name,variable in config.items():
-        if "inidata" in variable:
-            requests[name] = \
-                {
-                    "variable":clim_variables[name],\
-                    "inidata":variable["inidata"],\
-                }
-        else : 
-            requests[name] = \
-                {
-                    "variable":clim_variables[name],\
-                    "output_stream":variable["output_stream"],\
-                    "realm":variable["realm"],\
-                }
-    return requests
+    return vb.build()
+    
 
 def get_active_requests(args,requests):
     if args.new_variables is not None:
@@ -129,7 +113,7 @@ def get_active_requests(args,requests):
         res = []
         for input in input_variables:
             variable = Variable(name=input,\
-                preprocess=vb.default,\
+                preprocess=bvu.default_preprocessing,\
                 look_for=(input,)
             )
             res.append({"variable":variable})

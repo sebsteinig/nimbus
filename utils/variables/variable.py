@@ -6,7 +6,7 @@ import os.path as path
 from os import remove
 from cdo import Cdo
 import sys
-import variables.info as inf
+import utils.variables.info as inf
 from file_managers.output_folder import OutputFolder
 from utils.logger import Logger,_Logger
 from utils.metadata import Metadata
@@ -41,7 +41,7 @@ class Variable:
     name : str
     look_for : Tuple[Union[Set[str],str]] = None
     preprocess : Callable[[Dict,Union[str,List[str]]],Union[str,List[str]]] = lambda x,y:y
-    process : Callable[[List[np.ndarray]],np.ndarray] = lambda x:x
+    process : Callable[[List[np.ndarray]],List[np.ndarray]] = lambda x:x
 
 
     def __clean_dimensions(self,variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, logger, info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
@@ -291,7 +291,7 @@ class Variable:
         return output_files
     
     def open(self,input:Union[str,List[str]],out_folder:OutputFolder,save:Callable[[List[str]],None],logger,resolution,vertical_levels,inidata=None):
-        selected_variable = csv(self.look_for)
+        selected_variable = csv(self.look_for) if self.look_for is not None else ""
         if type(input) is str:
             input = [input]
             
