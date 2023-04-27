@@ -42,7 +42,7 @@ class BridgeManager:
             mkdir(folder.out_png())
     
     def iter(self,request):
-        if "inidata" in request:
+        if "inidata" in request and request["inidata"] is not None:
             inidata_files = request["inidata"].strip().split(",")
             for exp_id in next(self.tree.map(selector.BridgeTree, lambda arr: (value.node for value in arr))):
                 for inidata_file in inidata_files:
