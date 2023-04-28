@@ -1,18 +1,19 @@
 if __name__ == "__main__":
-    from bridge_variables.utils.bridge_variable import bridge_variable,bridge_preprocessing,bridge_processing
+    from supported_variables.utils.supported_variable import supported_variable,preprocessing,processing
     import utils.utils as utils
 else :
-    from bridge_variables.utils.bridge_variable import bridge_variable,bridge_preprocessing,bridge_processing
-    import bridge_variables.utils.utils as utils
+    from supported_variables.utils.supported_variable import supported_variable,preprocessing,processing
+    import supported_variables.utils.utils as utils
 from cdo import Cdo
 import numpy as np
 from typing import List,Union
 
-@bridge_variable
-class Height:
-    inidata = "qrparm.orog"
 
-@bridge_preprocessing(Height)
+@supported_variable
+class Height:
+    pass
+
+@preprocessing(Height,'BRIGDE')
 def preprocessing(cdo:Cdo,\
     selected_variable:str,\
     input:str,\
@@ -32,7 +33,3 @@ def preprocessing(cdo:Cdo,\
     
     return output
     
-@bridge_processing(Height)
-def processing(inputs:List[np.ndarray]) -> List[np.ndarray]:
-    return utils.default_processing(inputs=inputs)
-        

@@ -1,20 +1,17 @@
 if __name__ == "__main__":
-    from bridge_variables.utils.bridge_variable import bridge_variable,bridge_preprocessing,bridge_processing
+    from supported_variables.utils.supported_variable import supported_variable,preprocessing
     import utils.utils as utils
 else :
-    from bridge_variables.utils.bridge_variable import bridge_variable,bridge_preprocessing,bridge_processing
-    import bridge_variables.utils.utils as utils
+    from supported_variables.utils.supported_variable import supported_variable,preprocessing
+    import supported_variables.utils.utils as utils
 from cdo import Cdo
-import numpy as np
 from typing import List,Union
 
-@bridge_variable
+@supported_variable
 class OceanCurrents:
     realm = 'o'
-    output_stream = "pg"
-    look_for = ("ucurrTot_ym_dpth","vcurrTot_ym_dpth")
 
-@bridge_preprocessing(OceanCurrents)
+@preprocessing(OceanCurrents,'BRIGDE')
 def preprocessing(cdo:Cdo,\
     selected_variable:str,\
     input:str,\
@@ -35,8 +32,5 @@ def preprocessing(cdo:Cdo,\
     cdo.sellonlatbox('-180,180,90,-90',input = inputRemapnn, output = remapnn)
     #cdo.sellonlatbox('-180,180,90,-90',input = inputW, output = wfile)       
     return remapnn
-    
-@bridge_processing(OceanCurrents)
-def processing(inputs:List[np.ndarray]) -> List[np.ndarray]:
-    return utils.default_processing(inputs=inputs)
+
         

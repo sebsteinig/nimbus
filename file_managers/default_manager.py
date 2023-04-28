@@ -1,12 +1,16 @@
 import os.path as path
 from os import mkdir,listdir
 import shutil
-from typing import List,Dict
-
+from typing import Any, Generator, List,Dict, Union, Tuple
+from utils.config import Config
+from os import mkdir,listdir,system,remove
+from cdo import Cdo
 if __name__ == "__main__" :
     from output_folder import OutputFolder
 else :
     from file_managers.output_folder import OutputFolder
+    
+cdo = Cdo()
 
 def file_name(filepath:str)->str:
     return path.basename(filepath)
@@ -15,24 +19,49 @@ def assert_nc_extension(file:str):
     return path.basename(file).split(".")[-1] == "nc"
 
 class FileManager:
-    def __init__(self,input,output:Dict[str,OutputFolder]):
-        self.input = input
-        self.output = output
+    def __init__(self,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]]):
+        self.io_bind = io_bind
     
-    def get_output(self,input) -> OutputFolder:
-        return self.output[input]
+    
+    def iter(self) -> Generator[Tuple[List[Tuple[str,str]],OutputFolder,Any],None,None]:
+        for variable,value in self.io_bind.items():
+            for id,value_2 in value.items():
+                input_files = []
+                for nc_var_name,value_3 in value_2.items():
+                    output_folder,files = value_3
+                    
+                    if type(files) is str:
+                        input_file = files
+                    else :
+                        output_file_name = f"{id}.{variable.name}.nc"
+                        input_file = FileManager.__concatenate(files,output_file_name,output_folder)
+                    input_files.append((input_file,nc_var_name))
+                
+                yield input_files,output_folder,variable,id
         
     
-    def iter(self):
-        for key,value in self.output.items() :
-            yield key,value
-    
     def clean(self):
-        for key,value in self.output.items() :
+        for key,value in self.io_bind.items() :
             FileManager.__clean(value.out_nc())
             FileManager.__clean(value.out_png())
             
         
+        
+    @staticmethod
+    def __concatenate(files:List[str],output_file_name,output_folder):
+        tmp_files = []
+        for file in files:
+            tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
+            system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
+            tmp_files.append(tmp_path)
+            
+        output_path = output_folder.tmp_nc_file(output_file_name)
+        cdo.cat(input = tmp_files, output = output_path)
+        for tmp_path in tmp_files:
+            remove(tmp_path)
+        return output_path
+    
+    
     @staticmethod
     def __clean(folder:str):
         if path.exists(folder):
@@ -53,7 +82,8 @@ class FileManager:
         return OutputFolder(main_dir=main,out_dir=out,tmp_dir=tmp)
 
     @staticmethod
-    def __mount_file(input:str,output:str):
+    def __mount_file(input:str,output:str,config:Config,variables,ids):
+        raise Exception("UNIMPLEMENTED : can't mount single file yet")
         if not assert_nc_extension(input):
             raise Exception(f"{input} is not a netCDF file")
         
@@ -64,46 +94,34 @@ class FileManager:
         
         shutil.copyfile(input, out_folder.tmp_nc_file(file_name(input)))
         
-        return FileManager(input,{input:out_folder})
+        return FileManager(io_bind={variable:{input:out_folder} for variable in variables},variables=variables)
     
     @staticmethod
-    def __mount_folder(input:str,output:str):
+    def __mount_folder(input_folder:str,output:str,config:Config,variables,ids):
         out_folder = FileManager.__mount_output(output)
-        user = out_folder.append("user")
-        user.mount_folder()
-        user = user.append(path.basename(path.normpath(input)))
-        user.mount()
-        out_folder_dict = {}
         
-        def mount(folder:str,out_folder):
-            for file in listdir(folder):
-                file_path = path.join(folder, file)
-                if path.isdir(file_path):
-                    sub = out_folder.append(file)
-                    mount(file_path,sub)
-                elif path.isfile(file_path) and assert_nc_extension(file_path):
-                    out_folder_dict[file_path] = out_folder
-                    
-        
-        mount(input,user)
-        
-        for key,value in out_folder_dict.items():
-            value.mount()
-            
-        return FileManager(input,out_folder_dict)
-    
+        io_bind = {variable:{id:{} for id in ids} for variable in variables} 
+        print(ids)
+        for id in ids:
+            out_folder_id = out_folder.append(id)
+            out_folder_id.mount()
+            for input_file,nc_var_name,variable in config.look_up(input_folder=input_folder,id=id,variables=variables):
+                print(variable.name)
+                io_bind[variable][id][nc_var_name] = (out_folder_id,input_file)
+                
+        return FileManager(io_bind=io_bind)
     
     @staticmethod
-    def mount(input:str,output:str="../"):
+    def mount(input:str,config,variables,ids,output:str="./"):
         if not path.isdir(output):
             raise Exception(f"{output} is not a folder")
         if not path.exists(input):
             raise Exception(f"{input} does not exist")
         
         if path.isfile(input):
-            return FileManager.__mount_file(input,output)
+            return FileManager.__mount_file(input,output,config,variables,ids)
         elif path.isdir(input):
-            return FileManager.__mount_folder(input,output)    
+            return FileManager.__mount_folder(input,output,config,variables,ids)    
             
             
             

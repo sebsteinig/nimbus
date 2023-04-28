@@ -1,5 +1,5 @@
+from utils.config import Config
 import utils.png_converter as png_converter
-
 from dataclasses import dataclass
 from typing import List,Dict, Union
 import os
@@ -10,135 +10,88 @@ import tomli
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import Variable
+from utils.variables.variable import Variable,retrieve_data
 import file_managers.default_manager as default
 from file_managers.output_folder import OutputFolder
-import file_managers.bridge.bridge_manager as bridge
 from utils.logger import Logger,_Logger
-import bridge_variables.utils.utils as bvu
+import supported_variables.utils.utils as bvu
 
-def save(input:str,fm:Union[default.FileManager,bridge.BridgeManager]):
-    def f(files:List[str]):
-        output_files = []
-        for inputs in files:
-            tmp = []
-            for path in inputs:
-                name = os.path.basename(path)
-                output = fm.get_output(input).out_nc_file(name) 
-                shutil.copyfile(path, output)
-                Logger.console().debug(f"\tsave : {output}","SAVE")
-                tmp.append(output)
-            output_files.append(tmp)
-        return output_files
-    return f
-
-
-def convert_file(variable:Variable, hyper_parameters:dict,input:str,output:OutputFolder,output_file:str,save,logger:_Logger,inidata=None):
-    try:
-        for resolution in hyper_parameters['resolutions']:
-            inputs = variable.open(input,output,save,logger,resolution,hyper_parameters['vertical_levels'],inidata)
-            res_suffixe = ""
-            if resolution < 1:
-                res_suffixe = f".r{int(resolution*100)}"
-            _output_file = output_file + res_suffixe
-            for data,info in inputs:
-                try :
-                    png_converter.convert(data,_output_file, hyper_parameters['threshold'],info,logger)
-                except Exception as e:
-                    trace = Logger.trace()
-                    Logger.console().error(trace, "PNG CONVERTER")
-                    logger.error(e.__repr__(), "PNG CONVERTER")
-    except Exception as e :
-        trace = Logger.trace()
-        Logger.console().error(trace, "OPEN VARIABLE")
-        logger.error(e.__repr__(), "OPEN VARIABLE")
-
-
-def user_convert(file:str, requests:List[dict], hyper_parameters):
-    fm = default.FileManager.mount(file,"./")
-    if 'clean' in hyper_parameters and hyper_parameters['clean'] :
-        fm.clean()
-    
-    for input,output in fm.iter():
-        for request in requests:  
-            Logger.console().info(f"Converting {input} ...")
-            logger = Logger.file(fm,input,request["variable"].name)
-            output_file = output.out_png_file(os.path.splitext(os.path.basename(input))[0])
-            output_file += f".{request['variable'].name}"
-            convert_file(variable=request["variable"],\
-                hyper_parameters=hyper_parameters,\
-                input=input,\
-                output=output,\
-                output_file=output_file,\
-                logger=logger,\
-                save=save(input,fm))
-
-def bridge_convert(file:str,requests:List[dict],hyper_parameters:dict):
-    fm = bridge.BridgeManager.mount(file,filter = hyper_parameters['filter'])
-    if 'clean' in hyper_parameters and hyper_parameters['clean'] :
-        fm.clean()
-    for request in requests:
-        Logger.console().info(f"\n\trealm : {request['realm']},\n\toutputstream : {request['output_stream']},\n\tvariable : {request['variable'].name}", "REQUEST")
-        for input,output,exp_id in fm.iter(request):  
-            logger = Logger.file(fm,input,request["variable"].name)
-            suffixe = ".mm" if ".mm" in os.path.basename(input) else ".sm" if ".sm" in os.path.basename(input) else  ".ym" if ".ym" in os.path.basename(input) else ""
-
-            Logger.console().info(f"Converting {exp_id.name} {suffixe.split('.')[-1]} ...")
-            output_file = output.out_png_file(f"{exp_id.name}.{request['variable'].name}{suffixe}")
-            hyper_parameters['vertical_levels']['state'] = request['realm']
-            convert_file(variable=request["variable"],\
-                hyper_parameters=hyper_parameters,\
-                input=input,\
-                output=output,\
-                output_file=output_file,\
-                inidata = fm.get_inidata(exp_id),\
-                logger=logger,\
-                save=save(input,fm))
 def load_verticals():
     with open("./vertical-levels.toml",mode="rb") as fp:
         config = tomli.load(fp)
     return config
 
-def load_request():
-    return vb.build()
-    
+def load_config(arg_config) -> Config:
+    return Config.build(arg_config)
 
-def get_active_requests(args,requests):
-    if args.new_variables is not None:
-        input_variables = args.new_variables.strip().split(",")
-        res = []
-        for input in input_variables:
-            variable = Variable(name=input,\
-                preprocess=bvu.default_preprocessing,\
-                look_for=(input,)
-            )
-            res.append({"variable":variable})
-        return res
+def load_variables(arg_variables,config:Config):
+    variables = vb.build(config)
+    if arg_variables == "all":
+        return variables
+    return [variable for variable in variables if variable.name in arg_variables.split(',')]
+
+def save(directory:str):
+    def f(inputs:List[Tuple[str,str]]):
+        outputs = []
+        for input_file,var_name in inputs:
+            name = os.path.basename(input_file)
+            output = os.path.join(directory,name)
+            shutil.copyfile(input_file, output)
+            Logger.console().debug(f"\tsave : {output}","SAVE")
+            outputs.append((output,var_name))
+        return outputs
+    return f
+
+
+def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
+    if files is None:
+        files = config.directory
+        
+    file_manager = default.FileManager.mount(
+        input=files,\
+        output=output,\
+        config=config,\
+        variables=variables,\
+        ids=ids)
     
-    if args.all_bridge_variables:
-        raise Exception("NOT IMPLEMENTED : cannot use all variable yet")
-        return list(requests.values())
-    res = []
-    input_variables = args.bridge_variables.strip().split(",")
-    for output_variable in input_variables:
-        if output_variable in requests:
-            res.append(requests[output_variable])
-        else :
-            raise Exception(f"Wrong variable name : {output_variable}")
+    print(file_manager)
+    
+    for input_files,output_folder,variable,id in file_manager.iter():
+        
+        logger = Logger.file(output_folder.out(),variable.name)
+        output_file = output_folder.out_png_file(f"{id}.{variable.name}")
+        hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
+        hyper_parameters['logger'] = logger
+        for resolution in hyper_parameters['resolutions']:
+            hyper_parameters['resolution'] = resolution
             
-    return res
+            nparr_info = retrieve_data(inputs=input_files,\
+                variable=variable,\
+                hyper_parameters=hyper_parameters,\
+                save=save(output_folder.out_nc()))
+            res_suffixe = ""
+            if resolution < 1:
+                res_suffixe = f".r{int(resolution*100)}"
+            _output_file = output_file + res_suffixe
+            
+            for data,info in nparr_info:
+                png_file = png_converter.convert(input=data,\
+                    output_filename=_output_file,\
+                    threshold=hyper_parameters['threshold'],\
+                    info=info,\
+                    logger=logger)
 
 def main(args):
+    
     Logger.blacklist()
     Logger.debug(False)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
-    requests = load_request()
-    requests = get_active_requests(args,requests)
-
+    
+    config = load_config(args.config)
+    variables = load_variables(args.variables,config)
     vertical_levels = load_verticals()
-
-    Logger.console().debug(requests, "REQUESTS")
+    
     if args.threshold is None:
         threshold = 0.95 
     else :
@@ -155,40 +108,36 @@ def main(args):
         except :
             resolutions = [1] 
             Logger.console().warning(f"can't convert resolutions {args.resolutions} to a float, set to default 1 instead")
-                
-    Logger.console().info(f"threshold : {threshold}")
-    Logger.console().info(f"resolutions : {resolutions}")
     
-    hyper_parameters = {'resolutions':resolutions,'threshold':threshold,'clean':bool(args.clean),'vertical_levels':vertical_levels}
+    hyper_parameters = {'resolutions':resolutions,\
+        'threshold':threshold,\
+        'clean':bool(args.clean),\
+        'vertical_levels':vertical_levels}
     
-    if args.user is not None:
-        user_convert(args.user, requests, hyper_parameters)
-    elif args.bridge is not None and args.new_variables is None:
-        if args.expIds is None:
-            filter = None
-        else :
-            filter = args.expIds.strip().split(",")
-        hyper_parameters['filter'] = filter
-        bridge_convert(args.bridge,requests, hyper_parameters)
-        
+    convert_variables(config=config,\
+        variables=variables,\
+        ids=args.expids.split(","),\
+        files=args.files,\
+        output=args.output if args.output is not None else "./",\
+        hyper_parameters=hyper_parameters)
+    
     Logger.console().info("conversion to png finished ")
+    
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)
-    parser.add_argument('--bridge_variables',"-bv", dest = 'bridge_variables', help = 'select brigde variables')
-    parser.add_argument('--new_variables',"-nv", dest = 'new_variables', help = 'create new variables with default preprocessing and processing')
-    parser.add_argument('--experiences',"-e", dest = 'expIds', help = 'select experince')
-    parser.add_argument('--all-bridge-variables',"-av", action = 'store_true', help = 'select all brigde variables')
-    parser.add_argument('--files',"-f",dest = "user", help = 'convert the given file or folder')
-    parser.add_argument('--bridge',"-b",dest = "bridge", help = 'convert the given file or folder from bridge')
-    parser.add_argument('--clean',"-c",action = 'store_true', help = 'clean the out directory')
+    parser.add_argument('--variables',"-v", dest = 'variables', help = 'select variables')
+    parser.add_argument('--config',"-c", dest = 'config', help = 'select configurations files')
+    parser.add_argument('--experiments',"-e", dest = 'expids', help = 'select experiments')
+    parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
+    parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
+    parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')
     parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
     parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100%% resolutions of netcdf grid input, default is 1')
     
-    
     args = parser.parse_args()
     
-    if (args.bridge_variables is None and args.new_variables is None) and not args.all_bridge_variables :
-        Logger.console().warning(f"Missing arguments \n {parser.format_help()}")
-    else :
+    if args.variables is not None and args.config is not None and args.expids is not None:
         main(args)
+    else :
+        Logger.console().warning(f"Missing arguments \n {parser.format_help()}")
