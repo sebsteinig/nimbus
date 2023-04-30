@@ -179,6 +179,9 @@ files=[
     "{id}/climate/{id}o.pfcldec.nc",
 ]
 variable = "temp_mm_uo"
+[[tos.variables]]
+files="{id}/inidata/{id}.qrparm.omask.nc"
+variable = "lsm"
 
 [mlotst]
 preprocessing = "BRIDGE"
@@ -218,6 +221,10 @@ files=[
     "{id}/climate/{id}o.pfcldec.nc",
 ]
 variable = "iceconc_mm_uo"
+[[siconc.variables]]
+files="{id}/inidata/{id}.qrparm.omask.nc"
+variable = "lsm"
+
 
 [oceanCurrents]
 preprocessing = "BRIDGE"

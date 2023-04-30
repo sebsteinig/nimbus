@@ -101,12 +101,10 @@ class FileManager:
         out_folder = FileManager.__mount_output(output)
         
         io_bind = {variable:{id:{} for id in ids} for variable in variables} 
-        print(ids)
         for id in ids:
             out_folder_id = out_folder.append(id)
             out_folder_id.mount()
             for input_file,nc_var_name,variable in config.look_up(input_folder=input_folder,id=id,variables=variables):
-                print(variable.name)
                 io_bind[variable][id][nc_var_name] = (out_folder_id,input_file)
                 
         return FileManager(io_bind=io_bind)

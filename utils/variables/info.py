@@ -32,18 +32,35 @@ class Axis:
     
     @staticmethod
     def parse(src : str):
-        sections = src.split(":")
-        name = sections[0].strip()
-        tmp = sections[-1].strip().split(" ")
-        bounds = (float(tmp[0]),float(tmp[2]))
-        step = float(tmp[4])
-        direction = tmp[5]
+        if src is None or src == "":
+            return Axis(name=None,bounds=None,step=None,direction=None)
+        tokens = src.strip().split(" ")
+        tokens = [ h for h in tokens if h != ""]
+        
+        cursor = 0
+        name = tokens[cursor]
+        step = None
+        direction = None
+        if len(tokens) <= 1 or tokens[cursor+1] != ":":
+            return Axis(name=name,bounds=None,step=None,direction=None)
+        cursor += 2 # eat ':' 
+        n = len(tokens)
+        if cursor + 3 <= n and "to" in tokens[cursor:cursor+3]:
+            bounds = (float(tokens[cursor]),float(tokens[cursor+2]))
+        else :
+            bounds = None
+        if "by" in tokens:
+            cursor = tokens.index("by")
+            if cursor + 2 < n:
+                step = tokens[cursor+1]
+                direction = tokens[cursor+2]
+
         return Axis(bounds=bounds, direction=direction, name=name, step=step)
         
     def to_dict(self):
         return {
             'name' : self.name,
-            'bounds': list(self.bounds),
+            'bounds':  [] if self.bounds is None else list(self.bounds),
             'step' : self.step,
             'direction':self.direction
         }
@@ -55,18 +72,30 @@ class Grid:
 
     @staticmethod
     def parse(src : List[str],cursor:int):
-        if src[cursor].strip()[0].isdigit():
-            sections = src[cursor].split(":")
-            if len(sections) > 1:
-                category = sections[-2].strip()
-                tmp = sections[-1].split("=")[-1].split(" ")
-                size = int(tmp[0])
-                shape = tuple(tmp[-1][1:-1].split("x"))
-                points = (size,(int(shape[0]),int(shape[1])))
-                axis = (Axis.parse(src[cursor+1]),Axis.parse(src[cursor+2]))
-                return Grid(category=category,axis=axis,points=points)
-        return None
+        header_tokens = src[cursor].strip().split(" ")
+        header_tokens = [ h for h in header_tokens if h != ""]
+        if not header_tokens[0].isdigit():
+            return None
+        h_cursor = 2 # eat ':'
+        n = len(header_tokens)
+        if h_cursor >= n :
+            return Grid(category=None,points=None,axis=None)
+        category = header_tokens[h_cursor]
+        h_cursor += 2 # eat ':'
+        if h_cursor + 1 < n:
+            if "points" in header_tokens[h_cursor] :
+                size = int(header_tokens[h_cursor].split("=")[-1])
+            else :
+                size = None
+            if "x" in header_tokens[h_cursor + 1] :
+                shape = tuple(header_tokens[h_cursor + 1][1:-1].split("x"))
+            else :
+                shape = None
+        points = (size,shape)
             
+        axis = (Axis.parse(src[cursor+1]),Axis.parse(src[cursor+2]))
+        return Grid(category=category,axis=axis,points=points)
+
     def to_dict(self):
         return {
             'category' : self.category,
@@ -84,29 +113,50 @@ class Vertical:
 
     @staticmethod
     def parse(src : List[str],cursor:int):
-        if src[cursor].strip()[0].isdigit():
-            sections = src[cursor].split(":")
-            if len(sections) > 1:
-                category = sections[-2].strip()
-                levels = int(sections[-1].strip().split("=")[-1])
-                tmp = src[cursor+1].split(":")
-                name = tmp[0].strip()
-                tmp = tmp[1].strip().split(" ")
-                if len(tmp) > 2:
-                    bounds = (tmp[0],tmp[2])
-                    unit = tmp[3].strip()
-                else :
-                    bounds = (None,None)
-                    unit = None
-                return Vertical(category=category,name=name,levels=levels,bounds=bounds,unit=unit)
-        return None
+        if cursor >= len(src):
+            return None
+        header_tokens = src[cursor].strip().split(" ")
+        header_tokens = [ h for h in header_tokens if h != ""]
+        
+        if not header_tokens[0].isdigit():
+            return None
+        h_cursor = 2 # eat ':'
+        n = len(header_tokens)
+        if h_cursor >= n :
+            return Vertical(category=None,levels=None,bounds=None,name=None,unit=None)
+        
+        category = header_tokens[h_cursor]
+        h_cursor += 2 # eat ':'
+        levels = None
+        if h_cursor < n and "levels" in header_tokens[h_cursor]:
+            levels = int(header_tokens[h_cursor].split("=")[-1])
+
+        n = len(src)
+        if cursor + 1 >= n :
+            return Vertical(category=category,levels=levels,bounds=None,name=None,unit=None)
+        vertical = src[cursor+1]
+        vertical_tokens = vertical.strip().split(" ")
+        name = vertical_tokens[0]
+        v_cursor = 2 # eat ':'
+        if "to" in vertical_tokens[v_cursor:]:
+            to_index = vertical_tokens.index("to")
+            bounds = (float(vertical_tokens[to_index - 1]),float(vertical_tokens[to_index + 1]))
+            
+            if "by" not in vertical_tokens[to_index:]:
+                unit = vertical_tokens[to_index + 2]
+            else :
+                unit = None
+        else :
+            bounds = None
+            unit = None
+        return Vertical(category=category,name=name,levels=levels,bounds=bounds,unit=unit)
     
     def to_dict(self):
         return {
             'category' : self.category,
             'name': self.name,
             'levels':self.levels,
-            'bounds': list(self.bounds),
+            'bounds': [] if self.bounds is None else list(self.bounds),
             'unit':self.unit
         }
     
@@ -148,14 +198,14 @@ class Info:
                 return vertical
         return None
     def get_time(self,dimensions)->Time:
-        if self.time.name in dimensions:
+        if self.time is not None and self.time.name in dimensions:
             return self.time
         return None
     @staticmethod
     def parseGrids(src : List[str]) -> List[Grid]:
         n = len(src)
         cursor = 0
-        while not src[cursor].startswith("Grid"):
+        while  cursor < n and  not src[cursor].startswith("Grid"):
             cursor += 1
         if cursor >= n:
             return []
@@ -171,7 +221,7 @@ class Info:
     def parseVerticals(src : List[str]) -> List[Grid]:
         n = len(src)
         cursor = 0
-        while not src[cursor].startswith("Vertical"):
+        while cursor < n and not src[cursor].startswith("Vertical"):
             cursor += 1
         if cursor >= n:
             return []
@@ -188,10 +238,10 @@ class Info:
     def parseTime(src : List[str]) -> List[Grid]:
         n = len(src)
         cursor = 0
-        while not src[cursor].startswith("Time"):
+        while  cursor < n and not src[cursor].startswith("Time"):
             cursor += 1
         if cursor >= n:
-            return []
+            return None
         cursor += 1
         return Time.parse(src[cursor])
     @staticmethod

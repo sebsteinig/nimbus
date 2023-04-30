@@ -30,17 +30,29 @@ def in_bounds(data, lb, ub):
 
 cdo = Cdo()
 
+conversion_prefixe = {"m":10e-3,"c":10e-2,"d":10e-1,"":1,"da":10,"h":10e2,"k":10e3}
+
 def convert_unit(levels,from_unit,to_unit):
+    if from_unit is None:
+        return levels
     if from_unit == to_unit:
         return levels
+    if "Pa"  in to_unit:
+        if "bar" in from_unit:
+            rate = 100000
+            from_exp = conversion_prefixe[from_unit.replace("bar",'')]
+            to_exp = conversion_prefixe[to_unit.replace("Pa",'')]
+            return [l*from_exp*rate/to_exp for l in levels]
+            
+    
     raise Exception(f"UNIMPLMENTED : can't convert from {from_unit} to {to_unit}")
 
 @dataclass(eq=True, frozen=True)
 class Variable:
     name : str
     realm : str
-    preprocess : Callable[[Dict,Union[str,List[str]]],Union[str,List[str]]] = lambda x,y:y
-    process : Callable[[List[np.ndarray]],List[np.ndarray]] = lambda x:x
+    preprocess : Callable
+    process : Callable[[List[np.ndarray]],List[np.ndarray]] 
 
 
 def clean_dimensions(variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, logger:_Logger, info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
@@ -85,7 +97,6 @@ def clean_dimensions(variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, l
         data = np.flip(data,lat_index)
 
     if not in_bounds(lat_data,-90,90):
-        print(lat_data)
         raise Exception("Latitude should be between -90 and 90")
     
     if all(x>y for x, y in zip(lon_data, lon_data[1:])) and in_bounds(lat_data,-90,90):
@@ -115,6 +126,9 @@ def clean_dimensions(variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, l
 def select_grid_and_vertical(file:str,var_name:str,info:inf.Info):
         with Dataset(file,"r",format="NETCDF4") as dataset:
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
+
+            if var_name is None:
+                var_name = list(variable_names)[0]
             
             if var_name not in variable_names:
                 raise Exception(f"{var_name} not in file : {file}")
@@ -165,7 +179,8 @@ def select_levels(vertical_levels,file,vertical,cdo):
         return file
     category = vertical_levels['Atmosphere'] if vertical_levels['state'] == 'a' else vertical_levels['Ocean']
     levels,unit = category['levels'],category['unit']
-    levels = convert_unit(levels,unit,vertical.unit)
+
+    levels = convert_unit(levels,vertical.unit,unit)
     
     epsilons = {}
     for i,l in enumerate(levels):
@@ -203,6 +218,7 @@ def select_levels(vertical_levels,file,vertical,cdo):
 def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple[np.ndarray,inf.Info]:
     sinfo = cdo.sinfo(input=file)
     info = inf.Info.parse(sinfo)
+    
     grid,vertical = select_grid_and_vertical(file=file, info=info,var_name=var_name)
     if hyper_parameters['resolution'] < 1  and hyper_parameters['resolution'] > 0:
         Logger.console().debug(f"Start resolution modification", "RESOLUTION")
@@ -211,13 +227,16 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple
         else :
             file,info = resize(hyper_parameters['resolution'],file,grid,cdo)
     
-    if vertical.levels > 1:
+    if vertical is not None and vertical.levels is not None and vertical.levels > 1:
         Logger.console().debug(f"Start levels selection", "LEVEL")
         file = select_levels(hyper_parameters['vertical_levels'],file,vertical,cdo)
         sinfo = cdo.sinfo(input=file)
         info = inf.Info.parse(sinfo)
     with Dataset(file,"r",format="NETCDF4") as dataset:
-        dimensions = dataset.dimensions
+        dimensions = dataset.dimensions        
+        if var_name is None:
+            variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
+            var_name = list(variable_names)[0]
         variable = dataset[var_name]
         np_array = clean_dimensions(variable,dimensions,hyper_parameters['logger'], info,dataset)
     
@@ -226,12 +245,12 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple
     
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,save:Callable) -> List[Tuple[np.ndarray,inf.Info]]:
     np_arrays = []
-    
+     
     inputs = variable.preprocess(inputs=inputs,\
         output_directory=hyper_parameters["tmp_directory"])
-    
     inputs = save(inputs)
     hyper_parameters['vertical_levels']['state'] = variable.realm
+    
     for input_file,var_name in inputs:
         np_arrays.append(\
             retrieve_from_nc_files(\

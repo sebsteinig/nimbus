@@ -6,30 +6,29 @@ else :
     import supported_variables.utils.utils as utils
 from cdo import Cdo
 import numpy as np
-from typing import List,Union
-
+from typing import List, Tuple,Union
+import os.path as path
 
 @supported_variable
 class Height:
     pass
 
-@preprocessing(Height,'BRIGDE')
-def preprocessing(cdo:Cdo,\
-    selected_variable:str,\
-    input:str,\
-    output:str,\
-    inidata) -> Union[str,List[str]]:
-    selvar_orog = cdo.selvar("ht", input = inidata["qrparm"]["orog"])
+@preprocessing(Height,'BRIDGE')
+def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
+    cdo = Cdo()
+    outputs = []
     
+    orog,ht = inputs[0]
+    omask,depthdepth = inputs[1]
+    output = path.join(output_directory,"height.out.nc")
+
+    selvar_orog = cdo.selvar(ht, input = orog)
     shifted_orog = cdo.sellonlatbox(-180,180,90,-90, input = selvar_orog)
     
-    inputTmp = f"-invertlat -setmisstoc,0 -mulc,-1 -selvar,depthdepth {inidata['qrparm']['omask']}"
+    inputTmp = f"-invertlat -setmisstoc,0 -mulc,-1 -selvar,{depthdepth} {omask}"
     shifted_omask = cdo.sellonlatbox(-180,180,90,-90, input = inputTmp)
     
-    tmp_name = output.split("/")[-1]
-    
-    output = output.replace(tmp_name,"/height.out.nc")
     cdo.add(input=f"{shifted_orog} {shifted_omask}", output = output)
     
-    return output
+    return [(output,None)]
     

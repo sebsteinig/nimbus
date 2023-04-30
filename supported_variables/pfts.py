@@ -11,16 +11,5 @@ from typing import List,Union
 class Pfts:
     realm = 'a'
 
-@preprocessing(Pfts,'BRIGDE')
-def preprocessing(cdo:Cdo,\
-    selected_variable:str,\
-    input:str,\
-    output:str,\
-    inidata) -> Union[str,List[str]]:
 
-    return utils.default_preprocessing(cdo=cdo,\
-        selected_variable=selected_variable,\
-        input=input,\
-        output=output,\
-        inidata=inidata)
     

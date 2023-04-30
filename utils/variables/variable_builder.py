@@ -32,6 +32,7 @@ def build(config:Config):
         obj = cls().build()
         
         if key in config.supported_variables:
+            
             variable = Variable(
                 name=key,\
                 realm = obj["realm"],\

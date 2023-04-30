@@ -54,7 +54,6 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids)
     
-    print(file_manager)
     
     for input_files,output_folder,variable,id in file_manager.iter():
         
@@ -74,12 +73,11 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 res_suffixe = f".r{int(resolution*100)}"
             _output_file = output_file + res_suffixe
             
-            for data,info in nparr_info:
-                png_file = png_converter.convert(input=data,\
-                    output_filename=_output_file,\
-                    threshold=hyper_parameters['threshold'],\
-                    info=info,\
-                    logger=logger)
+            png_file = png_converter.convert(input=[data for data,_ in nparr_info],\
+                output_filename=_output_file,\
+                threshold=hyper_parameters['threshold'],\
+                info=nparr_info[0][1],\
+                logger=logger)
 
 def main(args):
     

@@ -5,28 +5,30 @@ else :
     from supported_variables.utils.supported_variable import supported_variable,preprocessing
     import supported_variables.utils.utils as utils
 from cdo import Cdo
-from typing import List,Union
+from typing import List, Tuple,Union
+import os.path as path
 
 @supported_variable
 class Tos:
     realm = 'o'
 
-@preprocessing(Tos,'BRIGDE')
-def preprocessing(cdo:Cdo,\
-    selected_variable:str,\
-    input:str,\
-    output:str,\
-    inidata) -> Union[str,List[str]]:
-
-    mask_file = inidata["qrparm"]["omask"]
-    lsm_var_file = cdo.selvar("lsm", input = mask_file)
-
-    mapped = cdo.ifnotthen(input=f"{lsm_var_file} {input}", options="-r -f nc")
+@preprocessing(Tos,'BRIDGE')
+def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
+    cdo = Cdo()
     
-    shifted = output.replace(".nc",".masked.shifted.out.nc")
-    #cdo.setmisstonn(input = output1, output = prefix + ".clim.nc", options='-r')
-    cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = shifted)
+    file,var = inputs[0]
+    omask,lsm = inputs[1]
     
-    return shifted
+    name = path.basename(file).replace(".nc",".out.nc")
+    output = path.join(output_directory,name)
+    
+    omask = cdo.selvar(lsm, input = omask)
+    
+    mapped = cdo.ifnotthen(input=f"{omask} {file}", options="-r -f nc")
+    
+    mapped = cdo.selvar(var, input = mapped)
+    cdo.sellonlatbox('-180,180,90,-90',input = mapped, output = output)
+    
+    return [(output,var)]
     
         
