@@ -5,9 +5,8 @@ import traceback
 from datetime import datetime
 import os
 from typing import Union
-from file_managers.default_manager import FileManager
-from file_managers.bridge.bridge_manager import BridgeManager
 import os.path as path
+
 @dataclass
 class _Logger:
     std_output: Union[str , None]
@@ -112,9 +111,8 @@ class Logger:
         return Logger._console
     
     @staticmethod
-    def file(file_manager: Union[FileManager , BridgeManager],input,variable_name) -> _Logger:
-        out_folder = file_manager.get_output(input)
-        log_path = path.join(out_folder.out(),str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
+    def file(dir:str,variable_name) -> _Logger:
+        log_path = path.join(dir,str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
         
         return _Logger(log_path)
 
