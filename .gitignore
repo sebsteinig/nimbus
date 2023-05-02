@@ -1,6 +1,5 @@
-out/
-tmp/
-
+nc_to_png_outputs/
+.vscode/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
