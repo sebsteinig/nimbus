@@ -17,7 +17,7 @@ from utils.logger import Logger,_Logger
 import supported_variables.utils.utils as bvu
 
 
-VERSION = '1.0'
+VERSION = '1.2'
 
 
 def load_verticals():
