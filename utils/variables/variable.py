@@ -7,9 +7,8 @@ from os import remove
 from cdo import Cdo
 import sys
 import utils.variables.info as inf
-from file_managers.output_folder import OutputFolder
 from utils.logger import Logger,_Logger
-import json
+from utils.metadata import Metadata
 
 class IncorrectVariable(Exception):pass
  
@@ -215,11 +214,18 @@ def select_levels(vertical_levels,file,vertical,cdo):
     cdo.sellevidx(index_str,input=file, output=output_file)
     return output_file
 
-def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple[np.ndarray,inf.Info]:
+def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,metadata:Metadata) -> Tuple[np.ndarray,inf.Info]:
     sinfo = cdo.sinfo(input=file)
     info = inf.Info.parse(sinfo)
     
     grid,vertical = select_grid_and_vertical(file=file, info=info,var_name=var_name)
+    
+    metadata.extends_for(var_name,\
+        original_grid_type = grid.category,\
+        original_xsize = grid.points[1][0],\
+        original_ysize = grid.points[1][1],\
+        original_xinc = grid.axis[0].step, original_yinc = grid.axis[1].step)
+    
     if hyper_parameters['resolution'] < 1  and hyper_parameters['resolution'] > 0:
         Logger.console().debug(f"Start resolution modification", "RESOLUTION")
         if grid.category != 'lonlat' :
@@ -232,15 +238,29 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple
         file = select_levels(hyper_parameters['vertical_levels'],file,vertical,cdo)
         sinfo = cdo.sinfo(input=file)
         info = inf.Info.parse(sinfo)
+        
+    
+    
     with Dataset(file,"r",format="NETCDF4") as dataset:
         dimensions = dataset.dimensions        
         if var_name is None:
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             var_name = list(variable_names)[0]
         variable = dataset[var_name]
+        
+        metadata.extends(**info.reduce(variable.dimensions).to_metadata())
+        metadata.extends_for(var_name,\
+            original_variable_name = variable.name,\
+            original_variable_long_name = variable.long_name,\
+            std_name = variable.standard_name,\
+            model_name  = "",\
+            variable_unit  = variable.units,\
+            history = str(dataset.history),\
+            original_variable_unit  = variable.units)
+        
         np_array = clean_dimensions(variable,dimensions,hyper_parameters['logger'], info,dataset)
     
-    return np_array,info
+    return np_array
         
     
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,save:Callable) -> List[Tuple[np.ndarray,inf.Info]]:
@@ -251,14 +271,20 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
     inputs = save(inputs)
     hyper_parameters['vertical_levels']['state'] = variable.realm
     
+    metadata = Metadata()
+    metadata.extends(variable_name=variable.name,\
+        resolution=hyper_parameters['resolution'],\
+        threshold=hyper_parameters['threshold']
+    )
     for input_file,var_name in inputs:
         np_arrays.append(\
             retrieve_from_nc_files(\
                 file=input_file,\
                 var_name=var_name,\
-                hyper_parameters=hyper_parameters)
+                hyper_parameters=hyper_parameters,\
+                metadata = metadata)
             )
-    return variable.process(np_arrays)
+    return variable.process(np_arrays),metadata
 
 
 if __name__ == "__main__" :

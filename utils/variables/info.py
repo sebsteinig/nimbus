@@ -187,6 +187,26 @@ class Info:
             'time' : self.time.to_dict()
         }
     
+    def to_metadata(self):
+        res = {}
+        grid = self.grids[0]
+        vertical = self.verticals[0]
+        res['xsize'] = grid.points[1][0]
+        res['ysize'] = grid.points[1][1]
+        res['levels'] = vertical.levels
+        res['timesteps'] = self.time.step
+        res['xfirst'] = grid.axis[0].bounds[0]
+        res['xinc'] = grid.axis[0].step
+        res['yfirst'] = grid.axis[1].bounds[0]
+        res['yinc'] = grid.axis[1].step
+        return res
+        
+    def reduce(self,dimensions) -> 'Info':
+        grid = self.get_grid(dimensions)
+        vertical = self.get_vertical(dimensions)
+        
+        return Info(grids=[grid],verticals=[vertical],time=self.time)
+    
     def get_grid(self,dimensions)->Grid:
         for grid in self.grids:
             if any(name in dimensions for name in (grid.axis[0].name,grid.axis[1].name)):

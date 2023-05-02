@@ -16,6 +16,10 @@ from file_managers.output_folder import OutputFolder
 from utils.logger import Logger,_Logger
 import supported_variables.utils.utils as bvu
 
+
+VERSION = '1.0'
+
+
 def load_verticals():
     with open("./vertical-levels.toml",mode="rb") as fp:
         config = tomli.load(fp)
@@ -64,25 +68,28 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         for resolution in hyper_parameters['resolutions']:
             hyper_parameters['resolution'] = resolution
             
-            nparr_info = retrieve_data(inputs=input_files,\
+            data,metadata = retrieve_data(inputs=input_files,\
                 variable=variable,\
                 hyper_parameters=hyper_parameters,\
                 save=save(output_folder.out_nc()))
+            
             res_suffixe = ""
             if resolution < 1:
                 res_suffixe = f".r{int(resolution*100)}"
             _output_file = output_file + res_suffixe
             
-            png_file = png_converter.convert(input=[data for data,_ in nparr_info],\
+            metadata.extends(version = VERSION)
+            
+            png_file = png_converter.convert(input=data,\
                 output_filename=_output_file,\
                 threshold=hyper_parameters['threshold'],\
-                info=nparr_info[0][1],\
+                metadata=metadata,\
                 logger=logger)
 
 def main(args):
     
     Logger.blacklist()
-    Logger.debug(False)
+    Logger.debug(True)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
