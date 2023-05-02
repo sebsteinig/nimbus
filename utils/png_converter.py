@@ -113,7 +113,7 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
     
     metadata.extends(nan_value_encoding = 255,\
         created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
-        min_max = str(json.dumps(minmaxVars))
+        min_max = minmaxVars
     )
     
     filename = save(output, output_filename, directory, metadata, mode)

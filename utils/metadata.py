@@ -50,7 +50,7 @@ class GeneralMetadata:
     yfirst :float=None
     yinc : float =None
     created_at : str= None          #timestamp when image was created
-    min_max : str= None             #min and max values for each variable and dimension
+    min_max : list = None             #min and max values for each variable and dimension
     resolution : str = None           #image resolution
     version : str = None    #TODO version of netcdf2image converter used
     nan_value_encoding :int= None   #value in image that replace nan values (0 or 255)
@@ -87,6 +87,9 @@ class Metadata:
         else :
             self.vs_metadata[var_name].extends(**kargs)
         
+        
+    def log(self) -> str:
+        return json.dumps(self.to_dict(),indent=2)
     def to_dict(self):
         res = {}
         res.update(self.general_metadata.to_dict())

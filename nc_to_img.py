@@ -67,33 +67,33 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         hyper_parameters['logger'] = logger
         for resolution in config.get_hp(variable.name).resolutions:
             nb_png_total += 1
-            #try : 
-            hyper_parameters['resolution'] = resolution
-            
-            data,metadata = retrieve_data(inputs=input_files,\
-                variable=variable,\
-                hyper_parameters=hyper_parameters,\
-                config=config,\
-                save=save(output_folder.out_nc()))
-            
-            res_suffixe = ""
-            if resolution[0] is not None and resolution[1] is not None:
-                res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-            _output_file = output_file + res_suffixe
-            
-            metadata.extends(version = VERSION)
-            
-            png_file = png_converter.convert(input=data,\
-                output_filename=_output_file,\
-                threshold=config.get_hp(variable.name).threshold,\
-                metadata=metadata,\
-                logger=logger)
-            Logger.console().debug(f"\tsave : {png_file}","SAVE")
-            nb_success_png_count += 1
-            #except Exception as e:
-                #trace = Logger.trace() 
-                #Logger.console().error(trace, "PNG CONVERTER")
-                #logger.error(e.__repr__(), "PNG CONVERTER")
+            try : 
+                hyper_parameters['resolution'] = resolution
+                
+                data,metadata = retrieve_data(inputs=input_files,\
+                    variable=variable,\
+                    hyper_parameters=hyper_parameters,\
+                    config=config,\
+                    save=save(output_folder.out_nc()))
+                
+                res_suffixe = ""
+                if resolution[0] is not None and resolution[1] is not None:
+                    res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
+                _output_file = output_file + res_suffixe
+                
+                metadata.extends(version = VERSION)
+                png_file = png_converter.convert(input=data,\
+                    output_filename=_output_file,\
+                    threshold=config.get_hp(variable.name).threshold,\
+                    metadata=metadata,\
+                    logger=logger)
+                Logger.console().debug(f"\tsave : {png_file}","SAVE")
+                logger.info(metadata.log(),"METADATA")
+                nb_success_png_count += 1
+            except Exception as e:
+                trace = Logger.trace() 
+                Logger.console().error(trace, "PNG CONVERTER")
+                logger.error(e.__repr__(), "PNG CONVERTER")
     return nb_success_png_count,nb_png_total
 
 
