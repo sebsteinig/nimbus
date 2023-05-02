@@ -83,7 +83,6 @@ class FileManager:
 
     @staticmethod
     def __mount_file(input:str,output:str,config:Config,variables,ids):
-        raise Exception("UNIMPLEMENTED : can't mount single file yet")
         if not assert_nc_extension(input):
             raise Exception(f"{input} is not a netCDF file")
         
@@ -94,12 +93,23 @@ class FileManager:
         
         shutil.copyfile(input, out_folder.tmp_nc_file(file_name(input)))
         
-        return FileManager(io_bind={variable:{input:out_folder} for variable in variables},variables=variables)
+        supported_variables = {}
+        for name,sv in config.supported_variables.items():
+            for v in variables:
+                if name == v.name:
+                    supported_variables[v] = [x[1] for x in sv.nc_file_var_binder]
+        
+        name = path.splitext(input)[0]
+        
+        io_bind = {variable:{name:{var_name:(out_folder,input) for var_name in supported_variables[variable] }} for variable in variables} 
+        
+        return FileManager(io_bind=io_bind)
     
     @staticmethod
     def __mount_folder(input_folder:str,output:str,config:Config,variables,ids):
         out_folder = FileManager.__mount_output(output)
-        
+        if ids is None:
+            raise Exception("Experiment ids must be specified")
         io_bind = {variable:{id:{} for id in ids} for variable in variables} 
         for id in ids:
             out_folder_id = out_folder.append(id)
