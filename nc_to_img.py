@@ -113,7 +113,7 @@ def main(args):
     
     success,total = convert_variables(config=config,\
         variables=variables,\
-        ids=args.expids.split(","),\
+        ids= None if args.expids is None else args.expids.split(","),\
         files=args.files,\
         output=args.output if args.output is not None else "./",\
         hyper_parameters=hyper_parameters)
@@ -131,7 +131,7 @@ if __name__ == "__main__" :
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')    
     args = parser.parse_args()
     
-    if args.variables is not None and args.config is not None and args.expids is not None:
+    if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
         main(args)
     else :
         Logger.console().warning(f"Missing arguments \n {parser.format_help()}")
