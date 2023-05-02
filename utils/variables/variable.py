@@ -154,19 +154,18 @@ def resize(resolution,file,grid,cdo):
         'yfirst'    : grid.axis[1].bounds[0],
         'yinc'      : grid.axis[1].step,
     }
-    griddes['xsize'] = int(griddes['xsize']*resolution)
-    griddes['ysize'] = int(griddes['ysize']*resolution)
-    griddes['xinc'] = int(griddes['xinc']/resolution)
-    griddes['yinc'] = int(griddes['yinc']/resolution)
-    
+    new_xinc = -resolution[0] if grid.axis[0].bounds[1] < griddes['xfirst'] else resolution[0]
+    new_yinc = -resolution[1] if grid.axis[1].bounds[1] < griddes['yfirst'] else resolution[1]
+    griddes['xsize'] = int(griddes['xsize'] * griddes['xinc'] / new_xinc)
+    griddes['ysize'] = int(griddes['ysize'] * griddes['yinc'] / new_yinc)
+    griddes['xinc'] = new_xinc
+    griddes['yinc'] = new_yinc
     griddes_str = "".join(f"{key} = {value}\n" for key,value in griddes.items())
     
     with open(resize_file_txt_path,'w') as f:
         f.write(griddes_str)
     
-    res_suffixe = ".r100"
-    if resolution < 1:
-        res_suffixe = f".r{int(resolution*100)}"
+    res_suffixe = f".rx{griddes['xinc']}.ry{griddes['yinc']}"
     output_file = file.replace(".nc",f"{res_suffixe}.nc")
     file = cdo.remapnn(resize_file_txt_path,input=file,output=output_file)
     remove(resize_file_txt_path)
@@ -220,7 +219,7 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict) -> Tuple
     info = inf.Info.parse(sinfo)
     
     grid,vertical = select_grid_and_vertical(file=file, info=info,var_name=var_name)
-    if hyper_parameters['resolution'] < 1  and hyper_parameters['resolution'] > 0:
+    if hyper_parameters['resolution'][0] is not None  and hyper_parameters['resolution'][1] is not None:
         Logger.console().debug(f"Start resolution modification", "RESOLUTION")
         if grid.category != 'lonlat' :
             Logger.console().warning("can't change grid resolution, only lonlat grid are supported", "RESOLUTION")
@@ -252,6 +251,7 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
     hyper_parameters['vertical_levels']['state'] = variable.realm
     
     for input_file,var_name in inputs:
+        Logger.console().info(f"Converting {input_file} for variable {var_name} ...")
         np_arrays.append(\
             retrieve_from_nc_files(\
                 file=input_file,\

@@ -56,7 +56,6 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
     
     
     for input_files,output_folder,variable,id in file_manager.iter():
-        
         logger = Logger.file(output_folder.out(),variable.name)
         output_file = output_folder.out_png_file(f"{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
@@ -69,8 +68,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 hyper_parameters=hyper_parameters,\
                 save=save(output_folder.out_nc()))
             res_suffixe = ""
-            if resolution < 1:
-                res_suffixe = f".r{int(resolution*100)}"
+            if resolution[0] is not None and resolution[1] is not None:
+                res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
             _output_file = output_file + res_suffixe
             
             png_file = png_converter.convert(input=[data for data,_ in nparr_info],\
@@ -98,15 +97,8 @@ def main(args):
         except :
             threshold = 0.95 
             Logger.console().warning(f"can't convert threshold {args.threshold} to a float, set to default 0.95 instead")
-    if args.resolutions is None:
-        resolutions = [1] 
-    else :
-        try:
-            resolutions = [float(r) for r in args.resolutions.split(",")]
-        except :
-            resolutions = [1] 
-            Logger.console().warning(f"can't convert resolutions {args.resolutions} to a float, set to default 1 instead")
-    
+    resolutions = config.resolutions 
+
     hyper_parameters = {'resolutions':resolutions,\
         'threshold':threshold,\
         'clean':bool(args.clean),\

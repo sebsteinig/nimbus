@@ -52,7 +52,7 @@ class Axis:
         if "by" in tokens:
             cursor = tokens.index("by")
             if cursor + 2 < n:
-                step = tokens[cursor+1]
+                step = float(tokens[cursor+1])
                 direction = tokens[cursor+2]
 
         return Axis(bounds=bounds, direction=direction, name=name, step=step)
@@ -89,6 +89,7 @@ class Grid:
                 size = None
             if "x" in header_tokens[h_cursor + 1] :
                 shape = tuple(header_tokens[h_cursor + 1][1:-1].split("x"))
+                shape = (int(shape[0]),int(shape[1]))
             else :
                 shape = None
         points = (size,shape)

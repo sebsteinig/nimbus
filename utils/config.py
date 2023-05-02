@@ -3,6 +3,7 @@ import os.path as path
 from pathlib import PurePath
 from typing import Any, Dict, Generator, List, Tuple, Union
 import tomli
+from utils.logger import Logger,_Logger
 
 class ConfigException(Exception):pass
 
@@ -58,6 +59,7 @@ class VariableDescription:
 class Config:
     directory : str
     name : str
+    resolutions : List[Tuple[float, float]]
     supported_variables : Dict[str,VariableDescription]
         
 
@@ -96,7 +98,13 @@ class Config:
         if "name" not in model:
             raise ConfigException(f"{desc} is not a valid config file, please provide a name in the Model tag")
         name = model["name"]
-        
+        resolutions = [(None, None)]
+        if "resolutions" in model :
+            if any(len(r)!= 2 for r in  model["resolutions"]):
+                Logger.console().warning(f"can't convert resolutions to tuples, set to default (None, None) instead")
+            else :
+                resolutions = [(abs(r[0]), abs(r[1])) for r in model["resolutions"]]
+       
         supported_variable = {}
         
         for var_name,var_desc in config.items():
@@ -104,11 +112,11 @@ class Config:
                 continue
             supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name)
             
-        return Config(directory=directory,name=name,supported_variables=supported_variable)
+        return Config(directory=directory,name=name,supported_variables=supported_variable, resolutions = resolutions)
     
     
 if __name__ == "__main__":
-    config = Config.build("utils/test_config.toml")
+    config = Config.build("BRIDGE.toml")
     
     print(config)
     
