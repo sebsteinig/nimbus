@@ -117,7 +117,6 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
     )
     
     filename = save(output, output_filename, directory, metadata, mode)
-    print(f"\tsave : {filename}")
     return filename
     
 if __name__ == "__main__":

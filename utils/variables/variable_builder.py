@@ -32,18 +32,25 @@ def build(config:Config):
         obj = cls().build()
         
         if key in config.supported_variables:
+            sv = config.supported_variables[key]
+            preprocess = utils.default_preprocessing
+            
+            if sv.hyper_parameters.preprocessing != "default"\
+                and sv.hyper_parameters.preprocessing in obj["preprocessing"]:
+                preprocess = obj["preprocessing"][sv.hyper_parameters.preprocessing]
+            
+            process = utils.default_processing
+            
+            if sv.hyper_parameters.processing != "default"\
+                and sv.hyper_parameters.processing in obj["processing"]:
+                process = obj["processing"][sv.hyper_parameters.processing]
+                 
             
             variable = Variable(
                 name=key,\
-                realm = obj["realm"],\
-                preprocess=\
-                    utils.default_preprocessing \
-                        if config.name.lower() not in obj["preprocessing"] \
-                    else obj["preprocessing"][config.name.lower()],\
-                process=\
-                    utils.default_processing \
-                        if config.name.lower() not in obj["processing"] \
-                    else obj["processing"][config.name.lower()],\
+                realm = obj["realm"] if sv.hyper_parameters.realm is None else sv.hyper_parameters.realm,\
+                preprocess=preprocess,\
+                process=process,\
             )
             variables.append(variable)
             

@@ -24,23 +24,54 @@ class FileDescriptor:
             return FileDescriptor(file_parts=p_path.parts)
         if type(files) is list:
             return FileSum(files=[FileDescriptor.build(file) for file in files])
+@dataclass
+class HyperParametersConfig:
+    preprocessing : str = 'default'
+    processing : str = 'default'
+    realm : str = None
+    
+    @staticmethod
+    def assert_key_value(key,value) -> bool:
+        if key == "resoltions":
+            pass
+        return True
+    
+    @staticmethod
+    def bind(config:'HyperParametersConfig') -> 'HyperParametersConfig':
+        hp = HyperParametersConfig()
+        for key,value in config.__dict__.items():
+            hp.__dict__[key] = value
+        return hp
+    def extends(self,**kargs):
+        types = self.__annotations__
+        for key,value in kargs.items():
+            if key in self.__dict__ and HyperParametersConfig.assert_key_value(key,value):
+                self.__dict__[key] = types[key].__call__(value)
+    @staticmethod
+    def build(**kwargs) -> 'HyperParametersConfig':
+        hp = HyperParametersConfig()
+        types = hp.__annotations__
+        for key,value in kwargs.items():
+            if key in hp.__dict__ and HyperParametersConfig.assert_key_value(key,value):
+                hp.__dict__[key] = types[key].__call__(value)
+        return hp
         
 @dataclass
 class VariableDescription:
     name : str
     nc_file_var_binder : List[Tuple[Union[FileDescriptor,FileSum],str]]
-    preprocessing : str = 'default'
-    processing : str = 'default'
+    hyper_parameters : HyperParametersConfig
+    
     
     @staticmethod
-    def build(var_desc:dict,name:str) -> 'VariableDescription':
+    def build(var_desc:dict,name:str,hyper_parameters_config:HyperParametersConfig) -> 'VariableDescription':
         nc_file_var_binder = []
-        preprocessing = 'default' if "preprocessing" not in var_desc else var_desc["preprocessing"]
-        processing = 'default' if "processing" not in var_desc else var_desc["processing"]
-        
+        hyper_parameters = HyperParametersConfig.bind(hyper_parameters_config)
+        hyper_parameters.extends(**var_desc)
         for file_var in var_desc["variables"]:
             if "files" not in file_var and "variable" not in file_var:
                 raise ConfigException(f"must be a dict with a file and a variable key")
+            
             
             files = file_var["files"]
             variable = file_var["variable"]
@@ -51,15 +82,14 @@ class VariableDescription:
         
         return VariableDescription(name=name,\
             nc_file_var_binder=nc_file_var_binder,\
-            preprocessing=preprocessing,\
-            processing=processing)
-    
+            hyper_parameters=hyper_parameters)
+        
 @dataclass
 class Config:
     directory : str
     name : str
     supported_variables : Dict[str,VariableDescription]
-        
+    hyper_parameters : HyperParametersConfig
 
     def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         
@@ -97,14 +127,16 @@ class Config:
             raise ConfigException(f"{desc} is not a valid config file, please provide a name in the Model tag")
         name = model["name"]
         
+        hyper_parameters = HyperParametersConfig.build(**model)
+        
         supported_variable = {}
         
         for var_name,var_desc in config.items():
             if var_name == "Model":
                 continue
-            supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name)
+            supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name,hyper_parameters_config = hyper_parameters)
             
-        return Config(directory=directory,name=name,supported_variables=supported_variable)
+        return Config(directory=directory,name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
     
     
 if __name__ == "__main__":
