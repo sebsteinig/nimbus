@@ -1,6 +1,12 @@
 [Model]
 dir = "climatearchive_sample_data/data"
 name = "Bridge"
+[Model.Atmosphere]
+levels = [1000, 850, 700, 500, 200, 100, 10]
+unit = "hPa"
+[Model.Ocean]
+levels = [0, 100, 200, 500, 1000, 2000, 4000]
+unit = "m"
 
 [clt]
 preprocessing = "BRIDGE"

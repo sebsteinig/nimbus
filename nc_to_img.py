@@ -71,6 +71,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             data,metadata = retrieve_data(inputs=input_files,\
                 variable=variable,\
                 hyper_parameters=hyper_parameters,\
+                config=config,\
                 save=save(output_folder.out_nc()))
             
             res_suffixe = ""
@@ -82,7 +83,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             
             png_file = png_converter.convert(input=data,\
                 output_filename=_output_file,\
-                threshold=hyper_parameters['threshold'],\
+                threshold=config.get_hp(variable.name).threshold,\
                 metadata=metadata,\
                 logger=logger)
 
@@ -95,16 +96,7 @@ def main(args):
     
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
-    vertical_levels = load_verticals()
     
-    if args.threshold is None:
-        threshold = 0.95 
-    else :
-        try:
-            threshold = float(args.threshold)
-        except :
-            threshold = 0.95 
-            Logger.console().warning(f"can't convert threshold {args.threshold} to a float, set to default 0.95 instead")
     if args.resolutions is None:
         resolutions = [1] 
     else :
@@ -115,9 +107,7 @@ def main(args):
             Logger.console().warning(f"can't convert resolutions {args.resolutions} to a float, set to default 1 instead")
     
     hyper_parameters = {'resolutions':resolutions,\
-        'threshold':threshold,\
-        'clean':bool(args.clean),\
-        'vertical_levels':vertical_levels}
+        'clean':bool(args.clean),}
     
     convert_variables(config=config,\
         variables=variables,\

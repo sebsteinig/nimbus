@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os.path as path
 from pathlib import PurePath
 from typing import Any, Dict, Generator, List, Tuple, Union
@@ -29,10 +29,13 @@ class HyperParametersConfig:
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
+    threshold : float = 0.95
+    Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa'}) 
+    Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m'})
     
     @staticmethod
     def assert_key_value(key,value) -> bool:
-        if key == "resoltions":
+        if key == "resolutions":
             pass
         return True
     
@@ -46,14 +49,16 @@ class HyperParametersConfig:
         types = self.__annotations__
         for key,value in kargs.items():
             if key in self.__dict__ and HyperParametersConfig.assert_key_value(key,value):
-                self.__dict__[key] = types[key].__call__(value)
+                if type(value) is types[key]:
+                    self.__dict__[key] = types[key].__call__(value)
     @staticmethod
     def build(**kwargs) -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
         types = hp.__annotations__
         for key,value in kwargs.items():
             if key in hp.__dict__ and HyperParametersConfig.assert_key_value(key,value):
-                hp.__dict__[key] = types[key].__call__(value)
+                if type(value) is types[key]:
+                    hp.__dict__[key] = types[key].__call__(value)
         return hp
         
 @dataclass
@@ -62,7 +67,7 @@ class VariableDescription:
     nc_file_var_binder : List[Tuple[Union[FileDescriptor,FileSum],str]]
     hyper_parameters : HyperParametersConfig
     
-    
+
     @staticmethod
     def build(var_desc:dict,name:str,hyper_parameters_config:HyperParametersConfig) -> 'VariableDescription':
         nc_file_var_binder = []
@@ -90,6 +95,12 @@ class Config:
     name : str
     supported_variables : Dict[str,VariableDescription]
     hyper_parameters : HyperParametersConfig
+
+    def get_hp(self,var_name) -> HyperParametersConfig:
+        if var_name in self.supported_variables:
+            return self.supported_variables[var_name].hyper_parameters
+        return self.hyper_parameters
+    
 
     def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         

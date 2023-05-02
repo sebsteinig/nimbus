@@ -6,6 +6,7 @@ import os.path as path
 from os import remove
 from cdo import Cdo
 import sys
+from utils.config import Config
 import utils.variables.info as inf
 from utils.logger import Logger,_Logger
 from utils.metadata import Metadata
@@ -173,11 +174,16 @@ def resize(resolution,file,grid,cdo):
     info = inf.Info.parse(sinfo)
     return output_file,info
 
-def select_levels(vertical_levels,file,vertical,cdo):
-    if 'state' not in vertical_levels or vertical_levels['state'] is None:
+def select_levels(variable:Variable,config:Config,file,vertical):
+    
+    if variable.realm is None:
         return file
-    category = vertical_levels['Atmosphere'] if vertical_levels['state'] == 'a' else vertical_levels['Ocean']
-    levels,unit = category['levels'],category['unit']
+    if variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere":
+        atmosphere = config.get_hp(variable.name).Atmosphere
+        levels,unit = atmosphere["levels"],atmosphere["unit"]
+    elif variable.realm.lower() == "o" or variable.realm.lower() == "ocean":
+        ocean = config.get_hp(variable.name).Ocean
+        levels,unit = ocean["levels"],ocean["unit"]
 
     levels = convert_unit(levels,vertical.unit,unit)
     
@@ -214,7 +220,7 @@ def select_levels(vertical_levels,file,vertical,cdo):
     cdo.sellevidx(index_str,input=file, output=output_file)
     return output_file
 
-def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,metadata:Metadata) -> Tuple[np.ndarray,inf.Info]:
+def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,config:Config,metadata:Metadata) -> Tuple[np.ndarray,inf.Info]:
     sinfo = cdo.sinfo(input=file)
     info = inf.Info.parse(sinfo)
     
@@ -235,7 +241,7 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,metadata:
     
     if vertical is not None and vertical.levels is not None and vertical.levels > 1:
         Logger.console().debug(f"Start levels selection", "LEVEL")
-        file = select_levels(hyper_parameters['vertical_levels'],file,vertical,cdo)
+        file = select_levels(variable,config,file,vertical)
         sinfo = cdo.sinfo(input=file)
         info = inf.Info.parse(sinfo)
         
@@ -263,18 +269,17 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,metadata:
     return np_array
         
     
-def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,save:Callable) -> List[Tuple[np.ndarray,inf.Info]]:
+def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,save:Callable) -> List[Tuple[np.ndarray,inf.Info]]:
     np_arrays = []
      
     inputs = variable.preprocess(inputs=inputs,\
         output_directory=hyper_parameters["tmp_directory"])
     inputs = save(inputs)
-    hyper_parameters['vertical_levels']['state'] = variable.realm
     
     metadata = Metadata()
     metadata.extends(variable_name=variable.name,\
         resolution=hyper_parameters['resolution'],\
-        threshold=hyper_parameters['threshold']
+        threshold=config.get_hp(variable.name).threshold
     )
     for input_file,var_name in inputs:
         np_arrays.append(\
@@ -282,6 +287,7 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
                 file=input_file,\
                 var_name=var_name,\
                 hyper_parameters=hyper_parameters,\
+                config=config,\
                 metadata = metadata)
             )
     return variable.process(np_arrays),metadata
