@@ -5,8 +5,8 @@ import traceback
 from datetime import datetime
 import os
 from typing import Union
-from file_managers.default_manager import FileManager
 import os.path as path
+
 @dataclass
 class _Logger:
     std_output: Union[str , None]

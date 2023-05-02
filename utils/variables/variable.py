@@ -140,6 +140,7 @@ def select_grid_and_vertical(file:str,var_name:str,info:inf.Info):
 
     
 def resize(resolution,file,grid,cdo):
+    lb,ub = abs(resolution[0]),abs(resolution[1])
     folder = path.dirname(file)
     resize_file_txt_name = path.basename(file).replace(".nc",".resize.txt")
     resize_file_txt_path = path.join(folder,resize_file_txt_name)
@@ -154,19 +155,18 @@ def resize(resolution,file,grid,cdo):
         'yfirst'    : grid.axis[1].bounds[0],
         'yinc'      : grid.axis[1].step,
     }
-    griddes['xsize'] = int(griddes['xsize']*resolution)
-    griddes['ysize'] = int(griddes['ysize']*resolution)
-    griddes['xinc'] = int(griddes['xinc']/resolution)
-    griddes['yinc'] = int(griddes['yinc']/resolution)
-    
+    new_xinc = -lb if grid.axis[0].bounds[1] < griddes['xfirst'] else lb
+    new_yinc = -ub if grid.axis[1].bounds[1] < griddes['yfirst'] else ub
+    griddes['xsize'] = int(griddes['xsize'] * griddes['xinc'] / new_xinc)
+    griddes['ysize'] = int(griddes['ysize'] * griddes['yinc'] / new_yinc)
+    griddes['xinc'] = new_xinc
+    griddes['yinc'] = new_yinc
     griddes_str = "".join(f"{key} = {value}\n" for key,value in griddes.items())
     
     with open(resize_file_txt_path,'w') as f:
         f.write(griddes_str)
     
-    res_suffixe = ".r100"
-    if resolution < 1:
-        res_suffixe = f".r{int(resolution*100)}"
+    res_suffixe = f".rx{griddes['xinc']}.ry{griddes['yinc']}"
     output_file = file.replace(".nc",f"{res_suffixe}.nc")
     file = cdo.remapnn(resize_file_txt_path,input=file,output=output_file)
     remove(resize_file_txt_path)
@@ -220,19 +220,21 @@ def select_levels(variable:Variable,config:Config,file,vertical):
     cdo.sellevidx(index_str,input=file, output=output_file)
     return output_file
 
-def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,config:Config,metadata:Metadata) -> Tuple[np.ndarray,inf.Info]:
+def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_parameters:dict,config:Config,metadata:Metadata) -> Tuple[np.ndarray,inf.Info]:
     sinfo = cdo.sinfo(input=file)
     info = inf.Info.parse(sinfo)
     
     grid,vertical = select_grid_and_vertical(file=file, info=info,var_name=var_name)
     
-    metadata.extends_for(var_name,\
-        original_grid_type = grid.category,\
-        original_xsize = grid.points[1][0],\
-        original_ysize = grid.points[1][1],\
-        original_xinc = grid.axis[0].step, original_yinc = grid.axis[1].step)
+    original_grid_type = grid.category
+    original_xsize = grid.points[1][0]
+    original_ysize = grid.points[1][1]
+    original_xinc = grid.axis[0].step
+    original_yinc = grid.axis[1].step
     
-    if hyper_parameters['resolution'] < 1  and hyper_parameters['resolution'] > 0:
+
+    
+    if hyper_parameters['resolution'][0] is not None  and hyper_parameters['resolution'][1] is not None:
         Logger.console().debug(f"Start resolution modification", "RESOLUTION")
         if grid.category != 'lonlat' :
             Logger.console().warning("can't change grid resolution, only lonlat grid are supported", "RESOLUTION")
@@ -244,27 +246,31 @@ def retrieve_from_nc_files(file:str,var_name:str,hyper_parameters:dict,config:Co
         file = select_levels(variable,config,file,vertical)
         sinfo = cdo.sinfo(input=file)
         info = inf.Info.parse(sinfo)
-        
-    
     
     with Dataset(file,"r",format="NETCDF4") as dataset:
         dimensions = dataset.dimensions        
         if var_name is None:
             variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
             var_name = list(variable_names)[0]
-        variable = dataset[var_name]
+        __variable = dataset[var_name]
         
-        metadata.extends(**info.reduce(variable.dimensions).to_metadata())
+        metadata.extends(**info.reduce(__variable.dimensions).to_metadata())
+
         metadata.extends_for(var_name,\
-            original_variable_name = variable.name,\
-            original_variable_long_name = variable.long_name,\
-            std_name = variable.standard_name,\
+            original_variable_name = "" if 'name'  not in __variable.__dict__ else __variable.name,\
+            original_variable_long_name = "" if 'long_name' not  in __variable.__dict__ else __variable.long_name,\
+            std_name = "" if 'standard_name' not in __variable.__dict__ else __variable.standard_name,\
             model_name  = "",\
-            variable_unit  = variable.units,\
-            history = str(dataset.history),\
-            original_variable_unit  = variable.units)
-        
-        np_array = clean_dimensions(variable,dimensions,hyper_parameters['logger'], info,dataset)
+            variable_unit  =  "" if 'units' not  in __variable.__dict__ else  __variable.units,\
+            history = "" if 'history' not  in dataset.__dict__ else str(dataset.history),\
+            original_variable_unit  = "" if 'units' not  in __variable.__dict__ else  __variable.units)
+        metadata.extends_for(var_name,\
+            original_grid_type = original_grid_type,\
+            original_xsize = original_xsize,\
+            original_ysize = original_ysize,\
+            original_yinc = original_yinc,\
+            original_xinc = original_xinc)
+        np_array = clean_dimensions(__variable,dimensions,hyper_parameters['logger'], info,dataset)
     
     return np_array
         
@@ -282,8 +288,10 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
         threshold=config.get_hp(variable.name).threshold
     )
     for input_file,var_name in inputs:
+        Logger.console().debug(f"Converting {input_file} for variable {var_name} ...")
         np_arrays.append(\
             retrieve_from_nc_files(\
+                variable=variable,\
                 file=input_file,\
                 var_name=var_name,\
                 hyper_parameters=hyper_parameters,\

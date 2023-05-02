@@ -1,6 +1,7 @@
 [Model]
 dir = "climatearchive_sample_data/data"
 name = "Bridge"
+resolutions = [[3.75, -5.0]]
 [Model.Atmosphere]
 levels = [1000, 850, 700, 500, 200, 100, 10]
 unit = "hPa"

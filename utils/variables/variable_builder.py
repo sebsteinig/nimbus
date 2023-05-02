@@ -36,14 +36,14 @@ def build(config:Config):
             preprocess = utils.default_preprocessing
             
             if sv.hyper_parameters.preprocessing != "default"\
-                and sv.hyper_parameters.preprocessing in obj["preprocessing"]:
-                preprocess = obj["preprocessing"][sv.hyper_parameters.preprocessing]
+                and sv.hyper_parameters.preprocessing.lower() in obj["preprocessing"]:
+                preprocess = obj["preprocessing"][sv.hyper_parameters.preprocessing.lower()]
             
             process = utils.default_processing
             
             if sv.hyper_parameters.processing != "default"\
-                and sv.hyper_parameters.processing in obj["processing"]:
-                process = obj["processing"][sv.hyper_parameters.processing]
+                and sv.hyper_parameters.processing.lower() in obj["processing"]:
+                process = obj["processing"][sv.hyper_parameters.processing.lower()]
                  
             
             variable = Variable(

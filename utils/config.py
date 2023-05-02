@@ -3,6 +3,7 @@ import os.path as path
 from pathlib import PurePath
 from typing import Any, Dict, Generator, List, Tuple, Union
 import tomli
+from utils.logger import Logger,_Logger
 
 class ConfigException(Exception):pass
 
@@ -32,11 +33,17 @@ class HyperParametersConfig:
     threshold : float = 0.95
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa'}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m'})
+    resolutions : List[Tuple[float, float]] =  field(default_factory=lambda: [(None,None)])
+    
     
     @staticmethod
     def assert_key_value(key,value) -> bool:
         if key == "resolutions":
-            pass
+            if all(len(r) == 2 for r in  value):
+                return True
+            else :
+                Logger.console().warning(f"can't convert resolutions to tuples, set to default {HyperParametersConfig().resolutions} instead")
+                return False
         return True
     
     @staticmethod
@@ -151,7 +158,7 @@ class Config:
     
     
 if __name__ == "__main__":
-    config = Config.build("utils/test_config.toml")
+    config = Config.build("BRIDGE.toml")
     
     print(config)
     

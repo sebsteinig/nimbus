@@ -58,14 +58,16 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids)
     
-    
+    nb_success_png_count = 0
+    nb_png_total = 0
     for input_files,output_folder,variable,id in file_manager.iter():
-        
         logger = Logger.file(output_folder.out(),variable.name)
         output_file = output_folder.out_png_file(f"{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
-        for resolution in hyper_parameters['resolutions']:
+        for resolution in config.get_hp(variable.name).resolutions:
+            nb_png_total += 1
+            #try : 
             hyper_parameters['resolution'] = resolution
             
             data,metadata = retrieve_data(inputs=input_files,\
@@ -75,8 +77,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 save=save(output_folder.out_nc()))
             
             res_suffixe = ""
-            if resolution < 1:
-                res_suffixe = f".r{int(resolution*100)}"
+            if resolution[0] is not None and resolution[1] is not None:
+                res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
             _output_file = output_file + res_suffixe
             
             metadata.extends(version = VERSION)
@@ -86,6 +88,15 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 threshold=config.get_hp(variable.name).threshold,\
                 metadata=metadata,\
                 logger=logger)
+            Logger.console().debug(f"\tsave : {png_file}","SAVE")
+            nb_success_png_count += 1
+            #except Exception as e:
+                #trace = Logger.trace() 
+                #Logger.console().error(trace, "PNG CONVERTER")
+                #logger.error(e.__repr__(), "PNG CONVERTER")
+    return nb_success_png_count,nb_png_total
+
+
 
 def main(args):
     
@@ -97,26 +108,17 @@ def main(args):
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
     
-    if args.resolutions is None:
-        resolutions = [1] 
-    else :
-        try:
-            resolutions = [float(r) for r in args.resolutions.split(",")]
-        except :
-            resolutions = [1] 
-            Logger.console().warning(f"can't convert resolutions {args.resolutions} to a float, set to default 1 instead")
+
+    hyper_parameters = {'clean':bool(args.clean),}
     
-    hyper_parameters = {'resolutions':resolutions,\
-        'clean':bool(args.clean),}
-    
-    convert_variables(config=config,\
+    success,total = convert_variables(config=config,\
         variables=variables,\
         ids=args.expids.split(","),\
         files=args.files,\
         output=args.output if args.output is not None else "./",\
         hyper_parameters=hyper_parameters)
     
-    Logger.console().info("conversion to png finished ")
+    Logger.console().info(f"conversion to png finished with {success}/{total} successes")
     
 
 if __name__ == "__main__" :
