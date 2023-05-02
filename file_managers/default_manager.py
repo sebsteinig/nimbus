@@ -1,9 +1,8 @@
 import os.path as path
-from os import mkdir,listdir
+from os import mkdir,listdir,system,remove
 import shutil
 from typing import Any, Generator, List,Dict, Union, Tuple
 from utils.config import Config
-from os import mkdir,listdir,system,remove
 from cdo import Cdo
 if __name__ == "__main__" :
     from output_folder import OutputFolder
@@ -39,14 +38,6 @@ class FileManager:
                 
                 yield input_files,output_folder,variable,id
         
-    
-    def clean(self):
-        for key,value in self.io_bind.items() :
-            FileManager.__clean(value.out_nc())
-            FileManager.__clean(value.out_png())
-            
-        
-        
     @staticmethod
     def __concatenate(files:List[str],output_file_name,output_folder):
         tmp_files = []
@@ -60,13 +51,6 @@ class FileManager:
         for tmp_path in tmp_files:
             remove(tmp_path)
         return output_path
-    
-    
-    @staticmethod
-    def __clean(folder:str):
-        if path.exists(folder):
-            shutil.rmtree(folder)
-        mkdir(folder)
     
     @staticmethod
     def __mount_output(output:str):
@@ -122,10 +106,16 @@ class FileManager:
             return FileManager.__mount_folder(input,output,config,variables,ids)    
             
             
-            
+    @staticmethod
+    def clean(exp_ids, output):
+        out_folder = FileManager.__mount_output(output)
+        for id in exp_ids:
+            out_folder_id = out_folder.append(id)
+            shutil.rmtree(out_folder_id.out())
             
 if __name__ == "__main__" :
     fm = FileManager.mount("./testfolder","/home/willem/workspace/internship-climate-archive/")
     for input,output in fm.iter():
         print(f"Input : {input}")
         print(f"\t{output}")
+    
