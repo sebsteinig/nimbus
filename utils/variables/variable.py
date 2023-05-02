@@ -124,19 +124,19 @@ def clean_dimensions(variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, l
 
 
 def select_grid_and_vertical(file:str,var_name:str,info:inf.Info):
-        with Dataset(file,"r",format="NETCDF4") as dataset:
-            variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
+    with Dataset(file,"r",format="NETCDF4") as dataset:
+        variable_names = set(dataset.variables.keys()) - set(dataset.dimensions.keys())
 
-            if var_name is None:
-                var_name = list(variable_names)[0]
-            
-            if var_name not in variable_names:
-                raise Exception(f"{var_name} not in file : {file}")
-            
-            variable = dataset[var_name]
-            grid = info.get_grid(variable.dimensions)
-            vertical = info.get_vertical(variable.dimensions)
-        return grid,vertical
+        if var_name is None:
+            var_name = list(variable_names)[0]
+        
+        if var_name not in variable_names:
+            raise Exception(f"{var_name} not in file : {file}")
+        
+        variable = dataset[var_name]
+        grid = info.get_grid(variable.dimensions)
+        vertical = info.get_vertical(variable.dimensions)
+    return grid,vertical
 
     
 def resize(resolution,file,grid,cdo):
@@ -231,8 +231,6 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
     original_ysize = grid.points[1][1]
     original_xinc = grid.axis[0].step
     original_yinc = grid.axis[1].step
-    
-
     
     if hyper_parameters['resolution'][0] is not None  and hyper_parameters['resolution'][1] is not None:
         Logger.console().debug(f"Start resolution modification", "RESOLUTION")

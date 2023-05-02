@@ -33,7 +33,7 @@ class HyperParametersConfig:
     threshold : float = 0.95
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa'}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m'})
-    resolutions : List[Tuple[float, float]] =  field(default_factory=lambda: [(None,None)])
+    resolutions : list =  field(default_factory=lambda: [(None,None)])
     
     
     @staticmethod
