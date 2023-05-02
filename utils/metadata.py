@@ -19,6 +19,7 @@ class VariableSpecificMetadata:
     original_ysize : str=None                  #TODO
     original_xinc : str=None                  
     original_yinc : str=None
+    min_max : list = None             #min and max values for each variable and dimension
     
     def extends(self,**kargs):
         types = self.__annotations__
@@ -50,7 +51,6 @@ class GeneralMetadata:
     yfirst :float=None
     yinc : float =None
     created_at : str= None          #timestamp when image was created
-    min_max : list = None             #min and max values for each variable and dimension
     resolution : str = None           #image resolution
     version : str = None    #TODO version of netcdf2image converter used
     nan_value_encoding :int= None   #value in image that replace nan values (0 or 255)
@@ -78,16 +78,20 @@ class Metadata:
     vs_metadata : Dict[str,VariableSpecificMetadata] = {}
     general_metadata : Union[GeneralMetadata, None] = GeneralMetadata()
 
+    vs_metadata_index : list = []
+    
     def extends(self,**kargs):
         self.general_metadata.extends(**kargs)
         
     def extends_for(self,var_name:str,**kargs):
         if var_name not in self.vs_metadata:
+            self.vs_metadata_index.append(var_name)
             self.vs_metadata[var_name] = VariableSpecificMetadata.build(**kargs)
         else :
             self.vs_metadata[var_name].extends(**kargs)
         
-        
+    def name_of(self,index:int) -> str:
+        return self.vs_metadata_index[index]
     def log(self) -> str:
         return json.dumps(self.to_dict(),indent=2)
     def to_dict(self):

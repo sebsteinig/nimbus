@@ -65,29 +65,29 @@ def norm(input:np.ndarray,_min,_max):
         return input 
     return (input - _min)/(_max - _min)
 
-def get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude):
+def get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude):
     if level == 1 :
-        index_output = np.s_[:,:,numVar] if  time == 1 else\
-             np.s_[:, indexTime * longitude  : ((indexTime+1)* longitude), numVar]
+        index_output = np.s_[:,:,num_var] if  time == 1 else\
+             np.s_[:, indexTime * longitude  : ((indexTime+1)* longitude), num_var]
     else :
-        index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), numVar]
+        index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), num_var]
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, numVar:int, input:list, output:np.ndarray, threshold, logger) -> np.ndarray:
-    minmaxTab = []
+def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, input:list, output:np.ndarray, threshold, logger) -> np.ndarray:
+    min_max = []
     for indexLevel in range(level):
         minmaxTimes = []
         for indexTime in range(time):
-                if numVar ==2 and len(input) == 2 :
+                if num_var ==2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
                 else :
-                    _min, _max = minmax(input[numVar, indexLevel, indexTime, :, :],threshold, logger)
+                    _min, _max = minmax(input[num_var, indexLevel, indexTime, :, :],threshold, logger)
                     minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
-                    input_data = norm(input[numVar, indexLevel, indexTime, :, :],_min,_max) * 254
-                index_output = get_index_output(numVar, indexLevel, indexTime, level, time, latitude, longitude)
+                    input_data = norm(input[num_var, indexLevel, indexTime, :, :],_min,_max) * 254
+                index_output = get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude)
                 output[index_output] = input_data
-        minmaxTab.append(minmaxTimes)
-    return output, minmaxTab
+        min_max.append(minmaxTimes)
+    return output, min_max
 
 def minmax(arr,threshold, logger):
     sorted_flat = np.unique(np.sort(arr.flatten()))
@@ -105,15 +105,17 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)    
     output = np.zeros(( latitude * level, longitude * time, dim))
-    minmaxVars = []
-    for numVar in range(len(input)) :
-        output, minmaxTab = fill_output(level, time, longitude, latitude, numVar, input, output, threshold, logger)
-        minmaxVars.append(minmaxTab)
+
+    for num_var in range(len(input)) :
+        output, min_max = fill_output(level, time, longitude, latitude, num_var, input, output, threshold, logger)
+        
+        metadata.extends_for(metadata.name_of(num_var),\
+            min_max = min_max
+        )
     logger.info(mode, "MODE")
     
     metadata.extends(nan_value_encoding = 255,\
         created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
-        min_max = minmaxVars
     )
     
     filename = save(output, output_filename, directory, metadata, mode)
