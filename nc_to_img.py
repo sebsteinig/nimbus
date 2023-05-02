@@ -51,13 +51,16 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
     if files is None:
         files = config.directory
         
+    if hyper_parameters['clean']:
+        default.FileManager.clean(ids, output)
+
     file_manager = default.FileManager.mount(
         input=files,\
         output=output,\
         config=config,\
         variables=variables,\
         ids=ids)
-    
+
     nb_success_png_count = 0
     nb_png_total = 0
     for input_files,output_folder,variable,id in file_manager.iter():
