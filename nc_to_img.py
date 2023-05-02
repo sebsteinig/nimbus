@@ -129,9 +129,7 @@ if __name__ == "__main__" :
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')
-    parser.add_argument('--threshold', "-t", dest = "threshold", help = 'specify threshold of maximum and mininum, must be between 0 and 1, default is 0.95')
-    parser.add_argument('--resolutions', "-r", dest = "resolutions", help = 'specify resolutions of images must be between 1 and 0, where 1 means 100%% resolutions of netcdf grid input, default is 1')
-    
+        
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and args.expids is not None:
