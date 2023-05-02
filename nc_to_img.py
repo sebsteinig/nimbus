@@ -128,8 +128,7 @@ if __name__ == "__main__" :
     parser.add_argument('--experiments',"-e", dest = 'expids', help = 'select experiments')
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
-    parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')
-        
+    parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')    
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and args.expids is not None:
