@@ -52,6 +52,13 @@ class HyperParametersConfig:
         return True
     
     @staticmethod
+    def map_key_value(key,value) ->  Any:
+        if key == "resolutions":
+            new_res = [(r1, r2) if r1!= "default" and r2 != "default" else (None, None) for r1, r2 in value]
+            return new_res
+        return None
+    
+    @staticmethod
     def bind(config:'HyperParametersConfig') -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
         for key,value in config.__dict__.items():
