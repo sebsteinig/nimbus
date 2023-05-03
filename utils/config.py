@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 import os.path as path
-from pathlib import PurePath
+from pathlib import PurePath,Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 import tomli
-from utils.logger import Logger,_Logger
+if __name__ == "__main__":
+    from logger import Logger,_Logger
+else :
+    from utils.logger import Logger,_Logger
+import re
 
 class ConfigException(Exception):pass
 
@@ -13,16 +17,17 @@ class FileSum:
     
 @dataclass
 class FileDescriptor:
-    file_parts : List[str]
-    
-    def join(self,id:str) -> str:
-        return path.join(*(part.replace("{id}",id) for part in self.file_parts))
+    #file_parts : List[str]
+    file : str
+    def join(self,dir:str,id:str) -> List[str]:
+        dir_path = Path(dir)
+        regex = self.file.replace("{id}",id)
+        return [str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))]
     
     @staticmethod
     def build(files:Union[str,List[str]]) -> Union['FileDescriptor',FileSum]:
         if type(files) is str:
-            p_path = PurePath(files)
-            return FileDescriptor(file_parts=p_path.parts)
+            return FileDescriptor(file=files)
         if type(files) is list:
             return FileSum(files=[FileDescriptor.build(file) for file in files])
 @dataclass
@@ -118,15 +123,17 @@ class Config:
                 supported_variable = self.supported_variables[variable.name]
                 for file_desc,var_name in supported_variable.nc_file_var_binder:
                     if type(file_desc) is FileDescriptor:
-                        file_path = file_desc.join(id)
-                        complete_file_path = path.join(directory,file_path)
-                        if path.isfile(complete_file_path):
-                            yield complete_file_path,var_name,variable
+                        file_paths = file_desc.join(directory,id)
+                        if all(path.isfile(file_path) for file_path in file_paths):
+                            yield file_paths,var_name,variable
                     if type(file_desc) is FileSum:
-                        file_paths = [file.join(id) for file in file_desc.files]
-                        complete_file_paths = [path.join(directory,file_path) for file_path in file_paths]
-                        if all(path.isfile(complete_file_path) for complete_file_path in complete_file_paths):
-                            yield complete_file_paths,var_name,variable
+                        file_paths = []
+                        print(file_desc.files)
+                        for file in file_desc.files:
+                            file_paths.extend(file.join(directory,id))
+                        print(file_paths)
+                        if all(path.isfile(file_path) for file_path in file_paths):
+                            yield file_paths,var_name,variable
     
     @staticmethod
     def build(desc:str) -> 'Config':
@@ -155,9 +162,21 @@ class Config:
             supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name,hyper_parameters_config = hyper_parameters)
             
         return Config(directory=directory,name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
-    
+
+
+def glob_re(path, regex="", glob_mask="**/*", inverse=False):
+    p = Path(path)
+    if inverse:
+        res = [str(f) for f in p.glob(glob_mask) if not re.search(regex, str(f))]
+    else:
+        res = [str(f) for f in p.glob(glob_mask) if re.search(regex, str(f))]
+    return res
     
 if __name__ == "__main__":
+    
+    print(glob_re("/home/willem/workspace/internship-climate-archive/climatearchive_sample_data/data/","(texpa1|texqd)/.*ann.nc"))
+    
+    """
     config = Config.build("BRIDGE.toml")
     
     print(config)
@@ -167,3 +186,4 @@ if __name__ == "__main__":
         for file_desc,var_name in var_desc.nc_file_var_binder:
             if type(file_desc) is FileDescriptor:
                 print(file_desc.join("texpa1"))
+    """
