@@ -61,7 +61,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
     nb_success_png_count = 0
     nb_png_total = 0
     for input_files,output_folder,variable,id in file_manager.iter():
-        logger = Logger.file(output_folder.out(),variable.name)
+        logger = Logger.file(output_folder.out_log(),variable.name)
         output_file = output_folder.out_png_file(f"{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
