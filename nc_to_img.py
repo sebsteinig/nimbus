@@ -20,10 +20,7 @@ import supported_variables.utils.utils as bvu
 VERSION = '1.2'
 
 
-def load_verticals():
-    with open("./vertical-levels.toml",mode="rb") as fp:
-        config = tomli.load(fp)
-    return config
+
 
 def load_config(arg_config) -> Config:
     return Config.build(arg_config)

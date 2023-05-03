@@ -14,40 +14,40 @@ class _Logger:
         if not Logger._debug:
             return 
         if tag is None :
-            self.print(f"DEBUG : {msg}")
+            self.print(f"\33[45mDEBUG\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"DEBUG : {tag} >> {msg}")
+            self.print(f"\33[45mDEBUG\33[0m : {tag} >> {msg}")
             return
     
     def warning(self,msg,tag=None):
         if not Logger._warning:
             return 
         if tag is None :
-            self.print(f"WARNING : {msg}")
+            self.print(f"\33[43mWARNING\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"WARNING : {tag} >> {msg}")
+            self.print(f"\33[43mWARNING\33[0m : {tag} >> {msg}")
             return
     
     def info(self,msg,tag=None):
         if not Logger._info:
             return 
         if tag is None :
-            self.print(f"INFO : {msg}")
+            self.print(f"\33[44mINFO\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"INFO : {tag} >> {msg}")
+            self.print(f"\33[44mINFO\33[0m : {tag} >> {msg}")
             return
     
     def error(self,msg,tag=None):
         if not Logger._error:
             return 
         if tag is None :
-            self.print(f"ERROR : {msg}")
+            self.print(f"\33[41mERROR\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"ERROR : {tag} >> {msg}")
+            self.print(f"\33[41mERROR\33[0m : {tag} >> {msg}")
             return
     
     
