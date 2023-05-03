@@ -3,6 +3,7 @@ from os import mkdir,listdir,system,remove
 import shutil
 from typing import Any, Generator, List,Dict, Union, Tuple
 from utils.config import Config
+from utils.logger import Logger,_Logger
 from cdo import Cdo
 if __name__ == "__main__" :
     from output_folder import OutputFolder
@@ -18,24 +19,25 @@ def assert_nc_extension(file:str):
     return path.basename(file).split(".")[-1] == "nc"
 
 class FileManager:
-    def __init__(self,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]]):
+    def __init__(self,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]], missing_ids : List[str]):
         self.io_bind = io_bind
-    
+        self.missing_ids = missing_ids
+
     
     def iter(self) -> Generator[Tuple[List[Tuple[str,str]],OutputFolder,Any],None,None]:
         for variable,value in self.io_bind.items():
             for id,value_2 in value.items():
+                if id in self.missing_ids:
+                    continue                
                 input_files = []
                 for nc_var_name,value_3 in value_2.items():
                     output_folder,files = value_3
-                    
                     if type(files) is str:
                         input_file = files
                     else :
                         output_file_name = f"{id}.{variable.name}.nc"
                         input_file = FileManager.__concatenate(files,output_file_name,output_folder)
                     input_files.append((input_file,nc_var_name))
-                
                 yield input_files,output_folder,variable,id
         
     @staticmethod
@@ -95,13 +97,18 @@ class FileManager:
         if ids is None:
             raise Exception("Experiment ids must be specified")
         io_bind = {variable:{id:{} for id in ids} for variable in variables} 
+        missing_ids = []
         for id in ids:
             out_folder_id = out_folder.append(id)
             out_folder_id.mount()
-            for input_file,nc_var_name,variable in config.look_up(input_folder=input_folder,id=id,variables=variables):
-                io_bind[variable][id][nc_var_name] = (out_folder_id,input_file)
-                
-        return FileManager(io_bind=io_bind)
+            cpt = 0
+            for input_files,nc_var_name,variable in config.look_up(input_folder=input_folder,id=id,variables=variables):
+                io_bind[variable][id][nc_var_name] = (out_folder_id, input_files)
+                cpt+=1
+            if cpt ==0:
+                missing_ids.append(id)
+                Logger.console().warning(f"experiment {id} will not be processed")
+        return FileManager(io_bind=io_bind, missing_ids = missing_ids)
     
     @staticmethod
     def mount(input:str,config,variables,ids,output:str="./"):
@@ -114,14 +121,15 @@ class FileManager:
             return FileManager.__mount_file(input,output,config,variables,ids)
         elif path.isdir(input):
             return FileManager.__mount_folder(input,output,config,variables,ids)    
-            
-            
+        
+
     @staticmethod
     def clean(exp_ids, output):
         out_folder = FileManager.__mount_output(output)
         for id in exp_ids:
             out_folder_id = out_folder.append(id)
-            shutil.rmtree(out_folder_id.out())
+            if path.exists(out_folder_id.out()):
+                shutil.rmtree(out_folder_id.out())
             
 if __name__ == "__main__" :
     fm = FileManager.mount("./testfolder","/home/willem/workspace/internship-climate-archive/")

@@ -34,6 +34,11 @@ class OutputFolder:
             return None
         return path.join(self.out(),"png")
     
+    def out_log(self)  -> Union[str,None]:
+        if self.name is None:
+            return None
+        return path.join(self.out(),"log")
+    
     def out_nc(self) -> Union[str,None]:
         if self.name is None:
             return None
