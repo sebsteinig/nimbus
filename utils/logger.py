@@ -112,8 +112,10 @@ class Logger:
     
     @staticmethod
     def file(dir:str,variable_name) -> _Logger:
-        log_path = path.join(dir,str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
-        
+        newDir = os.path.join(dir, "log")
+        if not os.path.exists(newDir):
+            os.mkdir(newDir)
+        log_path = path.join(newDir,str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
         return _Logger(log_path)
 
 
