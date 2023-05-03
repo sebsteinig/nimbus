@@ -17,7 +17,7 @@ class _Logger:
             self.print(f"\33[45mDEBUG\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"\33[45mDEBUG\33[0m : {tag} >> {msg}")
+            self.print(f"\33[45mDEBUG\33[0m : \33[95m{tag}\33[0m >> {msg}")
             return
     
     def warning(self,msg,tag=None):
@@ -27,7 +27,7 @@ class _Logger:
             self.print(f"\33[43mWARNING\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"\33[43mWARNING\33[0m : {tag} >> {msg}")
+            self.print(f"\33[43mWARNING\33[0m : \33[95m{tag}\33[0m >> {msg}")
             return
     
     def info(self,msg,tag=None):
@@ -37,7 +37,7 @@ class _Logger:
             self.print(f"\33[44mINFO\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"\33[44mINFO\33[0m : {tag} >> {msg}")
+            self.print(f"\33[44mINFO\33[0m : \33[95m{tag}\33[0m >> {msg}")
             return
     
     def error(self,msg,tag=None):
@@ -47,7 +47,7 @@ class _Logger:
             self.print(f"\33[41mERROR\33[0m : {msg}")
             return 
         if Logger.is_granted(tag):
-            self.print(f"\33[41mERROR\33[0m : {tag} >> {msg}")
+            self.print(f"\33[41mERROR\33[0m : \33[95m{tag}\33[0m >> {msg}")
             return
     
     
