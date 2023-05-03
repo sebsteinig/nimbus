@@ -36,26 +36,41 @@ class HyperParametersConfig:
     processing : str = 'default'
     realm : str = None
     threshold : float = 0.95
-    Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa'}) 
-    Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m'})
-    resolutions : list =  field(default_factory=lambda: [(None,None)])
+    Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
+    Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
     
     
     @staticmethod
     def assert_key_value(key,value) -> bool:
-        if key == "resolutions":
-            if all(len(r) == 2 for r in  value):
-                return True
+        if key == "Atmosphere" or key == "Ocean":
+            if "levels" in value:
+                if type(value["levels"]) is not list :
+                    Logger.console().warning("levels must be a list")
+                    return False
+                if not all(type(v) is float or type(v) is int for v in value['levels']):
+                    Logger.console().warning("all values of levels must be integers or floats")
+                    return False
             else :
-                Logger.console().warning(f"can't convert resolutions to tuples, set to default {HyperParametersConfig().resolutions} instead")
+                Logger.console().warning("levels is not present, set to default instead")
                 return False
+            if "unit" not in value:
+                Logger.console().warning("unit is not present, set to default instead")
+                return False
+            if "resolutions" in value: 
+                if all(len(r) == 2 for r in  value["resolutions"]):
+                    return True
+                else :
+                    Logger.console().warning(f"can't convert resolutions to tuples, set to default instead")
+                    return False
         return True
-    
+
     @staticmethod
     def map_key_value(key,value) ->  Any:
-        if key == "resolutions":
-            new_res = [(r1, r2) if r1!= "default" and r2 != "default" else (None, None) for r1, r2 in value]
-            return new_res
+        if key == "Atmosphere" or key == "Ocean":
+            if "resolutions" in value:
+                value["resolutions"] = [(None if r1.lower() == "default" else r1, r2 if r2.lower() == "default" else r2) for r1, r2 in value["resolutions"]]
+            else :
+                value["resolutions"] = [(None,None)]
         return value
     
     @staticmethod
@@ -121,6 +136,14 @@ class Config:
         if var_name in self.supported_variables:
             return self.supported_variables[var_name].hyper_parameters
         return self.hyper_parameters
+    
+    def get_realm_hp(self,variable) -> dict:
+        if variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere":
+            return self.supported_variables[variable.name].hyper_parameters.Atmosphere
+        elif variable.realm.lower() == "o" or variable.realm.lower() == "ocean":
+            return self.supported_variables[variable.name].hyper_parameters.Ocean
+        else :
+            return {"resolutions":[(None,None)]}
     
 
     def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:

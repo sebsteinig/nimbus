@@ -178,12 +178,8 @@ def select_levels(variable:Variable,config:Config,file,vertical):
     
     if variable.realm is None:
         return file
-    if variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere":
-        atmosphere = config.get_hp(variable.name).Atmosphere
-        levels,unit = atmosphere["levels"],atmosphere["unit"]
-    elif variable.realm.lower() == "o" or variable.realm.lower() == "ocean":
-        ocean = config.get_hp(variable.name).Ocean
-        levels,unit = ocean["levels"],ocean["unit"]
+    realm = config.get_realm_hp(variable)
+    levels,unit = realm["levels"],realm["unit"]
 
     levels = convert_unit(levels,vertical.unit,unit)
     

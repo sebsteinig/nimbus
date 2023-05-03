@@ -65,7 +65,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         output_file = output_folder.out_png_file(f"{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
-        for resolution in config.get_hp(variable.name).resolutions:
+        for resolution in config.get_realm_hp(variable)['resolutions']:
             nb_png_total += 1
             try : 
                 hyper_parameters['resolution'] = resolution
