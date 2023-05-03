@@ -65,17 +65,26 @@ class HyperParametersConfig:
         return True
 
     @staticmethod
+    def map_key_value(key,value) ->  Any:
+        if key == "resolutions":
+            new_res = [(r1, r2) if r1!= "default" and r2 != "default" else (None, None) for r1, r2 in value]
+            return new_res
+        return value
+    
+    @staticmethod
     def bind(config:'HyperParametersConfig') -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
         for key,value in config.__dict__.items():
             hp.__dict__[key] = value
         return hp
+    
     def extends(self,**kargs):
         types = self.__annotations__
         for key,value in kargs.items():
             if key in self.__dict__ and HyperParametersConfig.assert_key_value(key,value):
                 if type(value) is types[key]:
-                    self.__dict__[key] = types[key].__call__(value)
+                    self.__dict__[key] = HyperParametersConfig.map_key_value(key,types[key].__call__(value))
+
     @staticmethod
     def build(**kwargs) -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
@@ -83,7 +92,7 @@ class HyperParametersConfig:
         for key,value in kwargs.items():
             if key in hp.__dict__ and HyperParametersConfig.assert_key_value(key,value):
                 if type(value) is types[key]:
-                    hp.__dict__[key] = types[key].__call__(value)
+                    hp.__dict__[key] = HyperParametersConfig.map_key_value(key,types[key].__call__(value))
         return hp
         
 @dataclass
