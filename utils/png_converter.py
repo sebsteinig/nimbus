@@ -90,9 +90,7 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, i
                 output[index_output] = input_data
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
+        output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
     return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):

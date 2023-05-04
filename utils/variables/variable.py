@@ -10,7 +10,7 @@ from utils.config import Config
 import utils.variables.info as inf
 from utils.logger import Logger,_Logger
 from utils.metadata import Metadata
-
+import math
 class IncorrectVariable(Exception):pass
  
 def iter(values:Tuple[Union[str,Set[str]]]):
@@ -155,14 +155,20 @@ def resize(resolution,file,grid,cdo):
         'yfirst'    : grid.axis[1].bounds[0],
         'yinc'      : grid.axis[1].step,
     }
+    print("".join(f"{key} = {value}\n" for key,value in griddes.items()))
+    print(f"xlast {grid.axis[0].bounds[1]}, ylast {grid.axis[1].bounds[1]}")
+    xsize = griddes["xsize"] #if grid.axis[0].bounds[1] >= abs(griddes["xsize"] * griddes["xinc"] + griddes["xfirst"]) else griddes["xsize"] - 1
+    ysize = griddes["ysize"] #if grid.axis[1].bounds[1] >= abs(griddes["ysize"] * griddes["yinc"] + griddes["yfirst"]) else griddes["ysize"] - 1
     new_xinc = -lb if grid.axis[0].bounds[1] < griddes['xfirst'] else lb
     new_yinc = -ub if grid.axis[1].bounds[1] < griddes['yfirst'] else ub
-    griddes['xsize'] = int(griddes['xsize'] * griddes['xinc'] / new_xinc)
-    griddes['ysize'] = int(griddes['ysize'] * griddes['yinc'] / new_yinc)
+    griddes['xsize'] = math.ceil(xsize * griddes['xinc'] / new_xinc)
+    griddes['ysize'] = math.ceil(ysize * griddes['yinc'] / new_yinc)
     griddes['xinc'] = new_xinc
     griddes['yinc'] = new_yinc
     griddes_str = "".join(f"{key} = {value}\n" for key,value in griddes.items())
     
+    print(griddes_str)
+    print(f"xlast {griddes['xsize'] * griddes['xinc'] + griddes['xfirst']}, ylast {griddes['ysize'] * griddes['yinc'] + griddes['yfirst']}")
     with open(resize_file_txt_path,'w') as f:
         f.write(griddes_str)
     
