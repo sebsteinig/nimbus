@@ -1,21 +1,16 @@
 from utils.config import Config
 import utils.png_converter as png_converter
-from dataclasses import dataclass
-from typing import List,Dict, Union
+from typing import List
 import os
 import shutil
 from typing import Tuple
-from cdo import Cdo
-import tomli
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import Variable,retrieve_data
+from utils.variables.variable import retrieve_data
 import file_managers.default_manager as default
-from file_managers.output_folder import OutputFolder
-from utils.logger import Logger,_Logger
-import supported_variables.utils.utils as bvu
-
+from utils.logger import Logger
+import time
 
 VERSION = '1.2'
 
@@ -38,7 +33,7 @@ def save(directory:str):
             name = os.path.basename(input_file)
             output = os.path.join(directory,name)
             shutil.copyfile(input_file, output)
-            Logger.console().debug(f"\tsave : {output}","SAVE")
+            Logger.console().debug(f"{output}","SAVE")
             outputs.append((output,var_name))
         return outputs
     return f
@@ -58,15 +53,33 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids)
 
-    nb_success_png_count = 0
-    nb_png_total = 0
+    current_variable = None
+    current_id = None
+    count_variable = None
+    count_id = 0
+    
     for input_files,output_folder,variable,id in file_manager.iter():
+        if variable != current_variable:
+            if count_variable is not None:
+                Logger.console().status("conversion of",sep='finished with',variable=current_variable.name,rate=f"{count_id}/{len(ids)}")
+            current_variable = variable
+            current_id = None
+            if count_variable is None:
+                count_variable = 0
+            if count_id != 0:
+                count_variable += 1
+            count_id = 0
+            Logger.console().status("Starting conversion of", variable=current_variable.name)
+        if id != current_id:
+            current_id = id
+            Logger.console().status("\tStarting conversion of", id=current_id)
+        
         logger = Logger.file(output_folder.out_log(),variable.name)
         output_file = output_folder.out_png_file(f"{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
+        error = False
         for resolution in config.get_hp(variable.name).resolutions:
-            nb_png_total += 1
             try : 
                 hyper_parameters['resolution'] = resolution
                 
@@ -87,19 +100,25 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                     threshold=config.get_hp(variable.name).threshold,\
                     metadata=metadata,\
                     logger=logger)
-                Logger.console().debug(f"\tsave : {png_file}","SAVE")
+                Logger.console().debug(f"{png_file}","SAVE")
                 logger.info(metadata.log(),"METADATA")
-                nb_success_png_count += 1
             except Exception as e:
+                error = True
                 trace = Logger.trace() 
                 Logger.console().error(trace, "PNG CONVERTER")
                 logger.error(e.__repr__(), "PNG CONVERTER")
-    return nb_success_png_count,nb_png_total
+        if not error :
+            count_id += 1 
+    if count_variable is not None:
+        Logger.console().status("conversion of",sep=' finished with ',variable=current_variable.name,rate=f"{count_id}/{len(ids)}")
+    if count_id != 0:
+        count_variable += 1
+    return count_variable,len(variables)
 
 
 
 def main(args):
-    
+    start = time.time()
     Logger.blacklist()
     Logger.debug(True)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
@@ -118,8 +137,14 @@ def main(args):
         output=args.output if args.output is not None else "./",\
         hyper_parameters=hyper_parameters)
     
-    Logger.console().info(f"conversion to png finished with {success}/{total} successes")
     
+    end = time.time()
+    if success == total:
+        Logger.console().success(success,total,end-start)
+    else :
+        Logger.console().failure(success,total,end-start)
+        
+ 
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser(description = """""", formatter_class = RawDescriptionHelpFormatter)

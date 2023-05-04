@@ -66,7 +66,7 @@ variable = "fracPFTs_mm_srf"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[tos.variables]]
-files="{id}/climate/{id}a.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "temp_mm_uo"
 [[tos.variables]]
 files="{id}/inidata/{id}.qrparm.omask.nc"
@@ -76,7 +76,7 @@ variable = "lsm"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[mlotst.variables]]
-files="{id}/climate/{id}a.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "mixLyrDpth_mm_uo"
 [siconc]
 preprocessing = "BRIDGE"

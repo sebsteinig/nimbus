@@ -128,10 +128,8 @@ class Config:
                             yield file_paths,var_name,variable
                     if type(file_desc) is FileSum:
                         file_paths = []
-                        print(file_desc.files)
                         for file in file_desc.files:
                             file_paths.extend(file.join(directory,id))
-                        print(file_paths)
                         if all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
     

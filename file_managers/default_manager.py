@@ -32,7 +32,9 @@ class FileManager:
                 input_files = []
                 for nc_var_name,value_3 in value_2.items():
                     output_folder,files = value_3
-                    if type(files) is str:
+                    if len(files) == 1 :
+                        input_file = files[0]
+                    elif type(files) is str:
                         input_file = files
                     else :
                         output_file_name = f"{id}.{variable.name}.nc"
@@ -44,6 +46,11 @@ class FileManager:
     def __concatenate(files:List[str],output_file_name,output_folder):
         tmp_files = []
         for file in files:
+            """
+            from netCDF4 import Dataset,_netCDF4
+            with Dataset(file,"r",format="NETCDF4") as dataset:
+                print(dataset.variables.keys())
+            """
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
             system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
             tmp_files.append(tmp_path)

@@ -286,7 +286,7 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
         threshold=config.get_hp(variable.name).threshold
     )
     for input_file,var_name in inputs:
-        Logger.console().debug(f"Converting {input_file} for variable {var_name} ...")
+        Logger.console().debug(f"Converting {input_file} for variable {var_name} ...","CONVERSION")
         np_arrays.append(\
             retrieve_from_nc_files(\
                 variable=variable,\
