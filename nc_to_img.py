@@ -79,7 +79,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
         error = False
-        for resolution in config.get_hp(variable.name).resolutions:
+        for resolution in config.get_realm_hp(variable)['resolutions']:
             try : 
                 hyper_parameters['resolution'] = resolution
                 
