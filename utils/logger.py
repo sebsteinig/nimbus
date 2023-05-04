@@ -117,6 +117,7 @@ class _Logger:
         t = pretty_time_delta(time)
         print(f"{flag.SUCCESS.get()} :\t{flag.SUCCESS.tag(f'conversion to png finished with {count}/{total} in {t}')}")
     def failure(self,count,total,time):
+        t = pretty_time_delta(time)
         print(f"{flag.FAILURE.get()} :\t{flag.FAILURE.tag(f'conversion to png finished with {count}/{total} in {t}')}")
            
     def print(self,flag,msg,tag):
