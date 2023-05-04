@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+import warnings
 import os
 import json
 from datetime import datetime
@@ -79,7 +80,7 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, i
         minmaxTimes = []
         input_mean_times = []
         for indexTime in range(time):
-                if num_var ==2 and len(input) == 2 :
+                if num_var == 2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
                 else :
                     _min, _max = minmax(input[num_var, indexLevel, indexTime, :, :],threshold, logger)
@@ -89,7 +90,9 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, i
                 output[index_output] = input_data
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
-        output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
     return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):
@@ -122,7 +125,7 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
     )
     
     
-    filename_mean = save(output_mean if time != 1 else output, output_filename + ".avg", directory, metadata, mode)
+    filename_mean = save(output_mean, output_filename + ".avg", directory, metadata, mode)
     filename = save(output, output_filename + ".ts", directory, metadata, mode)
     return filename
     
