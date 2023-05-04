@@ -66,5 +66,9 @@ In order to add a new variable, one must define a new python file in the folder 
 And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE.toml](BRIDGE.toml)).
 
 # Output
-This program outputs images in the png folder, the output of the processed netCDF files given in input in the netcdf folder, and a log folder> The images are named as follows : 
-```{expID}.{variableNAME}.{configNAME}.avg.png``` for the time mean image, and ```{expID}.{variableNAME}.{configNAME}.ts.png``` for the time serie image. If resolutions are specified in the config file (and different than "default"), the resolutions will be specified in the image name : ```{expID}.{variableNAME}.rx{xVALUE}.ry{yVALUE}{configNAME}.[avg¦ts].png```. These 3 folders are in a folder named as the expID. 
+This program outputs images in the png folder, the output of the processed netCDF files given in input in the netcdf folder, and a log folder.  These 3 folders are in a folder named as the expID.  
+The images are named as follows :    
+```{expID}.{variableNAME}.{configNAME}.avg.png``` for the time mean image, and    
+```{expID}.{variableNAME}.{configNAME}.ts.png``` for the time serie image.   
+If resolutions are specified in the config file (and different than "default"), the resolutions will be specified in the image name :   
+```{expID}.{variableNAME}.rx{xVALUE}.ry{yVALUE}{configNAME}.[avg¦ts].png```.
