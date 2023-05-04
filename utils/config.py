@@ -68,7 +68,7 @@ class HyperParametersConfig:
     def map_key_value(key,value) ->  Any:
         if key == "Atmosphere" or key == "Ocean":
             if "resolutions" in value:
-                value["resolutions"] = [(None if r1.lower() == "default" else r1, r2 if r2.lower() == "default" else r2) for r1, r2 in value["resolutions"]]
+                value["resolutions"] = [(None if r1 == "default" else r1, None if r2 == "default" else r2) for r1, r2 in value["resolutions"]]
             else :
                 value["resolutions"] = [(None,None)]
         return value
@@ -143,7 +143,7 @@ class Config:
             
         if variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere":
             return self.supported_variables[variable.name].hyper_parameters.Atmosphere
-        elif variable.realm.lower() == "o" or variable.realm.lower() == "ocean":
+        elif variable.realm is not None and (variable.realm.lower() == "o" or variable.realm.lower() == "ocean"):
             return self.supported_variables[variable.name].hyper_parameters.Ocean
         else :
             return {"resolutions":[(None,None)]}
@@ -159,13 +159,13 @@ class Config:
                 for file_desc,var_name in supported_variable.nc_file_var_binder:
                     if type(file_desc) is FileDescriptor:
                         file_paths = file_desc.join(directory,id)
-                        if all(path.isfile(file_path) for file_path in file_paths):
+                        if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
                     if type(file_desc) is FileSum:
                         file_paths = []
                         for file in file_desc.files:
                             file_paths.extend(file.join(directory,id))
-                        if all(path.isfile(file_path) for file_path in file_paths):
+                        if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
     
     @staticmethod

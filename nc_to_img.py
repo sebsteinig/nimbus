@@ -92,7 +92,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 res_suffixe = ""
                 if resolution[0] is not None and resolution[1] is not None:
                     res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-                _output_file = output_file + res_suffixe
+                _output_file = output_file + res_suffixe + "." + config.name
                 
                 metadata.extends(version = VERSION)
                 png_file = png_converter.convert(input=data,\
