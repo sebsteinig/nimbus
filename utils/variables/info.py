@@ -142,8 +142,7 @@ class Vertical:
         if "to" in vertical_tokens[v_cursor:]:
             to_index = vertical_tokens.index("to")
             bounds = (float(vertical_tokens[to_index - 1]),float(vertical_tokens[to_index + 1]))
-            
-            if "by" not in vertical_tokens[to_index:]:
+            if "by" not in vertical_tokens[to_index:] and "level" not in vertical_tokens[to_index:]:
                 unit = vertical_tokens[to_index + 2]
             else :
                 unit = None

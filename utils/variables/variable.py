@@ -9,7 +9,7 @@ import sys
 from utils.config import Config
 import utils.variables.info as inf
 from utils.logger import Logger,_Logger
-from utils.metadata import Metadata
+from utils.metadata import Metadata,VariableSpecificMetadata
 
 class IncorrectVariable(Exception):pass
  
@@ -43,6 +43,11 @@ def convert_unit(levels,from_unit,to_unit):
             from_exp = conversion_prefixe[from_unit.replace("bar",'')]
             to_exp = conversion_prefixe[to_unit.replace("Pa",'')]
             return [l*from_exp*rate/to_exp for l in levels]
+        if "Pa" in from_unit:
+            rate = 1
+            from_exp = conversion_prefixe[from_unit.replace("bar",'')]
+            to_exp = conversion_prefixe[to_unit.replace("Pa",'')]
+            return [l*from_exp*rate/to_exp for l in levels]
             
     
     raise Exception(f"UNIMPLMENTED : can't convert from {from_unit} to {to_unit}")
@@ -52,7 +57,7 @@ class Variable:
     name : str
     realm : str
     preprocess : Callable
-    process : Callable[[List[np.ndarray]],List[np.ndarray]] 
+    process : Callable[[List[np.ndarray]],List[Tuple[List[np.ndarray],str]]] 
 
 
 def clean_dimensions(variable:_netCDF4.Variable,dimensions:_netCDF4.Dimension, logger:_Logger, info:inf.Info,dataset:_netCDF4.Dataset) -> np.ndarray:
@@ -178,11 +183,11 @@ def select_levels(variable:Variable,config:Config,file,vertical):
     
     if variable.realm is None:
         return file
+    if vertical.unit is None:
+        return file
     realm = config.get_realm_hp(variable)
     levels,unit = realm["levels"],realm["unit"]
 
-    levels = convert_unit(levels,vertical.unit,unit)
-    
     epsilons = {}
     for i,l in enumerate(levels):
         if i == 0:
@@ -199,6 +204,9 @@ def select_levels(variable:Variable,config:Config,file,vertical):
     
     with Dataset(file,"r",format="NETCDF4") as dataset:
         file_levels = [ float(f) for f in (dataset[vertical.name][:])]
+    
+    
+    file_levels = convert_unit(file_levels,vertical.unit,unit)
     
     distance = { level:[(i,abs(level-l)) for i,l in enumerate(file_levels) if (l >= level - epsilons[level][0]) and (l <= level + epsilons[level][1])]   for level in levels}
     distance_index = {}
@@ -220,7 +228,10 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
     sinfo = cdo.sinfo(input=file)
     info = inf.Info.parse(sinfo)
     
+    
     grid,vertical = select_grid_and_vertical(file=file, info=info,var_name=var_name)
+    
+    Logger.console().debug(info = info)
     
     original_grid_type = grid.category
     original_xsize = grid.points[1][0]
@@ -241,6 +252,8 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
         sinfo = cdo.sinfo(input=file)
         info = inf.Info.parse(sinfo)
     
+    vs_metadata = VariableSpecificMetadata()
+    
     with Dataset(file,"r",format="NETCDF4") as dataset:
         dimensions = dataset.dimensions        
         if var_name is None:
@@ -250,7 +263,7 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
         
         metadata.extends(**info.reduce(__variable.dimensions).to_metadata())
 
-        metadata.extends_for(var_name,\
+        vs_metadata.extends(
             original_variable_name = "" if 'name'  not in __variable.__dict__ else __variable.name,\
             original_variable_long_name = "" if 'long_name' not  in __variable.__dict__ else __variable.long_name,\
             std_name = "" if 'standard_name' not in __variable.__dict__ else __variable.standard_name,\
@@ -258,7 +271,7 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
             variable_unit  =  "" if 'units' not  in __variable.__dict__ else  __variable.units,\
             history = "" if 'history' not  in dataset.__dict__ else str(dataset.history),\
             original_variable_unit  = "" if 'units' not  in __variable.__dict__ else  __variable.units)
-        metadata.extends_for(var_name,\
+        vs_metadata.extends(
             original_grid_type = original_grid_type,\
             original_xsize = original_xsize,\
             original_ysize = original_ysize,\
@@ -266,11 +279,11 @@ def retrieve_from_nc_files(variable:Variable,file:str,var_name:str,hyper_paramet
             original_xinc = original_xinc)
         np_array = clean_dimensions(__variable,dimensions,hyper_parameters['logger'], info,dataset)
     
-    return np_array
+    return np_array,vs_metadata
         
     
-def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,save:Callable) -> List[Tuple[np.ndarray,inf.Info]]:
-    np_arrays = []
+def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,output_file:str,save:Callable) -> Tuple[List[Tuple[List[np.ndarray],str]],Metadata]:
+    np_arrays_vs_metadata = []
      
     inputs = variable.preprocess(inputs=inputs,\
         output_directory=hyper_parameters["tmp_directory"])
@@ -283,16 +296,15 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
     )
     for input_file,var_name in inputs:
         Logger.console().debug(f"Converting {input_file} for variable {var_name} ...","CONVERSION")
-        np_arrays.append(\
-            retrieve_from_nc_files(\
+        np_array,vs_metadata = retrieve_from_nc_files(\
                 variable=variable,\
                 file=input_file,\
                 var_name=var_name,\
                 hyper_parameters=hyper_parameters,\
                 config=config,\
                 metadata = metadata)
-            )
-    return variable.process(np_arrays),metadata
+        np_arrays_vs_metadata.append((np_array,vs_metadata))
+    return variable.process((np_arrays_vs_metadata,output_file)),metadata
 
 
 if __name__ == "__main__" :

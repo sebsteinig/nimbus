@@ -1,16 +1,25 @@
+from dataclasses import dataclass
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import os
 import json
 from datetime import datetime
-from utils.metadata import Metadata
+from utils.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
-from typing import Tuple
+from typing import List, Tuple
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
 class LongitudeLatitude(Exception):pass
+
+@dataclass
+class Shape:
+    level:int
+    time:int
+    lat:int
+    lon:int
+
 
 def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 255
@@ -30,7 +39,10 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata, mode 
     img_ym.save(path, pnginfo = to_png_info(metadata))
     return path
 
-def eval_shape(input:list) -> Tuple[bool, bool, dict]:
+def eval_shape(input:list) -> Tuple[np.ndarray,Shape]:
+    
+    if any(input[0].shape != x.shape for x in input):
+        raise Exception(f"All arrays must have the same dimensions {[x.shape for x in input]}")
     level, time = 1, 1
     latitude = input[0].shape[-2]
     longitude = input[0].shape[-1]  
@@ -40,11 +52,12 @@ def eval_shape(input:list) -> Tuple[bool, bool, dict]:
         time = input[0].shape[1]
     elif size == 3 :
         time = input[0].shape[0]
-    else:
-        if not(size == 2) :
-            raise TooManyVariables(f"{size} > 4 : there are too many variables")
+    elif size > 4 :
+        raise TooManyVariables(f"{size} > 4 : there are too many variables")
+    elif size < 2 :
+        raise TooManyVariables(f"{size} < 2 : there are too few variables")
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
-    return input_reshaped, level, time, latitude, longitude
+    return input_reshaped, Shape(level, time, latitude, longitude)
 
 def eval_input(size:int) -> Tuple[int, str]:
     if size==1 :
@@ -65,31 +78,40 @@ def norm(input:np.ndarray,_min,_max):
         return input 
     return (input - _min)/(_max - _min)
 
-def get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude):
+def get_index_output(num_var, index_level, index_time,shape:Shape) :
+    level, time, latitude, longitude = shape.level,shape.time,shape.lat,shape.lon
+    
     if level == 1 :
-        index_output = np.s_[:,:,num_var] if  time == 1 else\
-             np.s_[:, indexTime * longitude  : ((indexTime+1)* longitude), num_var]
+        if  time == 1:
+            index_output = np.s_[:,:,num_var] 
+        else :
+            index_output = np.s_[:, index_time * longitude  : ((index_time+1)* longitude), num_var]
     else :
-        index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), num_var]
+        index_output = np.s_[
+            index_level *latitude : (index_level+1)*latitude,\
+            index_time* longitude  : ((index_time+1)* longitude),\
+            num_var]
+        
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, input:list, output:np.ndarray, output_mean, threshold, logger) -> np.ndarray:
+def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_mean, threshold, logger) -> np.ndarray:
     min_max = []
-    for indexLevel in range(level):
+    for index_level in range(shape.level):
         minmaxTimes = []
         input_mean_times = []
-        for indexTime in range(time):
+        for index_time in range(shape.time):
                 if num_var ==2 and len(input) == 2 :
-                      input_data = np.zeros((latitude, longitude))
+                      input_data = np.zeros((shape.lat, shape.lon))
                 else :
-                    _min, _max = minmax(input[num_var, indexLevel, indexTime, :, :],threshold, logger)
+                    _min, _max = minmax(input[num_var, index_level, index_time, :, :],threshold, logger)
                     minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
-                    input_data = norm(input[num_var, indexLevel, indexTime, :, :],_min,_max) * 254
-                index_output = get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude)
+                    input_data = norm(input[num_var, index_level, index_time, :, :],_min,_max) * 254
+                index_output = get_index_output(num_var, index_level, index_time, shape)
                 output[index_output] = input_data
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
-        output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
+        i = get_index_output(num_var, index_level, 0, shape)
+        output_mean[i] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
     return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):
@@ -104,27 +126,43 @@ def minmax(arr,threshold, logger):
 
 
 
-def convert(input:list, output_filename:str, threshold, metadata:Metadata, logger, directory:str = "") -> str:
-    dim, mode = eval_input(len(input))
-    input, level, time, latitude, longitude = eval_shape(input)    
-    output = np.zeros(( latitude * level, longitude * time, dim))
-    output_mean = np.zeros ((latitude * level, longitude, dim))
-    for num_var in range(len(input)) :
-        output, min_max, output_mean = fill_output(level, time, longitude, latitude, num_var, input, output, output_mean, threshold, logger)
+def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold, metadata:Metadata, logger, directory:str = "") -> List[str]:
+    png_outputs = []
+    for input,output_filename in inputs:
         
-        metadata.extends_for(metadata.name_of(num_var),\
-            min_max = min_max
+        tmp = list(zip(*input))
+        input = list(tmp[0])
+        vs_metadatas = list(tmp[1])
+        
+        dim, mode = eval_input(len(input))
+        input, shape= eval_shape(input)    
+        output = np.zeros(( shape.lat * shape.level, shape.lon * shape.time, dim))
+        output_mean = np.zeros ((shape.lat * shape.level, shape.lon, dim))
+        
+        for num_var in range(len(input)) :
+            output, min_max, output_mean = fill_output(
+                shape,\
+                num_var,\
+                input,\
+                output,\
+                output_mean,\
+                threshold,\
+                logger)
+            
+            vs_metadatas[num_var].extends(
+                min_max = min_max
+            )
+        logger.info(mode, "MODE")
+        
+        metadata.extends(nan_value_encoding = 255,\
+            created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
         )
-    logger.info(mode, "MODE")
-    
-    metadata.extends(nan_value_encoding = 255,\
-        created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
-    )
-    
-    
-    filename_mean = save(output_mean if time != 1 else output, output_filename + ".avg", directory, metadata, mode)
-    filename = save(output, output_filename + ".ts", directory, metadata, mode)
-    return filename
+        
+        metadata.push(vs_metadatas)
+        filename_mean = save(output_mean if shape.time != 1 else output, output_filename + ".avg", directory, metadata, mode)
+        filename = save(output, output_filename + ".ts", directory, metadata, mode)
+        png_outputs.append(filename)
+    return png_outputs
     
 if __name__ == "__main__":
     print("Cannot execute in main")

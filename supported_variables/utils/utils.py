@@ -1,6 +1,6 @@
 from cdo import Cdo
 import numpy as np
-from typing import List,Union,Tuple
+from typing import Any, List,Union,Tuple
 import os.path as path
 
 def default_preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
@@ -14,5 +14,5 @@ def default_preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> L
         outputs.append((out,var_name))
     return outputs
 
-def default_processing(inputs:List[np.ndarray]) -> List[np.ndarray]:
-    return inputs
+def default_processing(inputs:Tuple[List[Tuple[np.ndarray,Any]],str]) -> List[Tuple[List[np.ndarray],str]]:
+    return [inputs]
