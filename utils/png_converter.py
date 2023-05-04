@@ -73,10 +73,11 @@ def get_index_output(num_var, indexLevel, indexTime, level, time, latitude, long
         index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), num_var]
     return index_output
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, input:list, output:np.ndarray, threshold, logger) -> np.ndarray:
+def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, input:list, output:np.ndarray, output_mean, threshold, logger) -> np.ndarray:
     min_max = []
     for indexLevel in range(level):
         minmaxTimes = []
+        input_mean_times = []
         for indexTime in range(time):
                 if num_var ==2 and len(input) == 2 :
                       input_data = np.zeros((latitude, longitude))
@@ -86,8 +87,10 @@ def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, i
                     input_data = norm(input[num_var, indexLevel, indexTime, :, :],_min,_max) * 254
                 index_output = get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude)
                 output[index_output] = input_data
+                input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
-    return output, min_max
+        output_mean[get_index_output(num_var, indexLevel, 0, level, 1, latitude, longitude)] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
+    return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):
     sorted_flat = np.unique(np.sort(arr.flatten()))
@@ -105,9 +108,9 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
     dim, mode = eval_input(len(input))
     input, level, time, latitude, longitude = eval_shape(input)    
     output = np.zeros(( latitude * level, longitude * time, dim))
-
+    output_mean = np.zeros ((latitude * level, longitude, dim))
     for num_var in range(len(input)) :
-        output, min_max = fill_output(level, time, longitude, latitude, num_var, input, output, threshold, logger)
+        output, min_max, output_mean = fill_output(level, time, longitude, latitude, num_var, input, output, output_mean, threshold, logger)
         
         metadata.extends_for(metadata.name_of(num_var),\
             min_max = min_max
@@ -118,7 +121,9 @@ def convert(input:list, output_filename:str, threshold, metadata:Metadata, logge
         created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
     )
     
-    filename = save(output, output_filename, directory, metadata, mode)
+    
+    filename_mean = save(output_mean if time != 1 else output, output_filename + ".avg", directory, metadata, mode)
+    filename = save(output, output_filename + ".ts", directory, metadata, mode)
     return filename
     
 if __name__ == "__main__":
