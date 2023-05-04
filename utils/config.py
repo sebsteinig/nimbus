@@ -138,7 +138,10 @@ class Config:
         return self.hyper_parameters
     
     def get_realm_hp(self,variable) -> dict:
-        if variable.realm is not None and (variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere"):
+        if variable.realm is None:
+            return {"resolutions":[(None,None)]}
+            
+        if variable.realm.lower() == "a" or variable.realm.lower() == "atmosphere":
             return self.supported_variables[variable.name].hyper_parameters.Atmosphere
         elif variable.realm is not None and (variable.realm.lower() == "o" or variable.realm.lower() == "ocean"):
             return self.supported_variables[variable.name].hyper_parameters.Ocean
@@ -160,10 +163,8 @@ class Config:
                             yield file_paths,var_name,variable
                     if type(file_desc) is FileSum:
                         file_paths = []
-                        print(file_desc.files)
                         for file in file_desc.files:
                             file_paths.extend(file.join(directory,id))
-                        print(file_paths)
                         if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
     
