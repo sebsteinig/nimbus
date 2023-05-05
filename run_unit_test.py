@@ -11,4 +11,5 @@ suite = unittest.TestSuite(tests)
 
 runner = unittest.TextTestRunner(verbosity=2)
 runner.run(suite)
+
 sys.exit(1)
