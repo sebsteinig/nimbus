@@ -2,9 +2,10 @@ import unittest
 from utils.logger import Logger
 from unit_tests.test import Test
 from unit_tests.utils.test_config import TestConfig
+from unit_tests.utils.test_metadata import TestMetadata
 import sys
 
-test_classes = [Test,TestConfig]
+test_classes = [Test,TestConfig,TestMetadata]
 
 Logger.debug(False)
 Logger.warning(False)
