@@ -75,7 +75,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             Logger.console().status("\tStarting conversion of", id=current_id)
         
         logger = Logger.file(output_folder.out_log(),variable.name)
-        output_file = output_folder.out_png_file(f"{id}.{variable.name}")
+        output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
         error = False
@@ -83,20 +83,22 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             try : 
                 hyper_parameters['resolution'] = resolution
                 
+                res_suffixe = ""
+                if resolution[0] is not None and resolution[1] is not None:
+                    res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
+                _output_file = output_file + res_suffixe
+                
                 data,metadata = retrieve_data(inputs=input_files,\
                     variable=variable,\
                     hyper_parameters=hyper_parameters,\
                     config=config,\
+                    output_file = _output_file,\
                     save=save(output_folder.out_nc()))
                 
-                res_suffixe = ""
-                if resolution[0] is not None and resolution[1] is not None:
-                    res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-                _output_file = output_file + res_suffixe + "." + config.name
                 
                 metadata.extends(version = VERSION)
-                png_file = png_converter.convert(input=data,\
-                    output_filename=_output_file,\
+                
+                png_file = png_converter.convert(inputs=data,\
                     threshold=config.get_hp(variable.name).threshold,\
                     metadata=metadata,\
                     logger=logger)
@@ -120,7 +122,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 def main(args):
     start = time.time()
     Logger.blacklist()
-    Logger.debug(True)
+    Logger.debug(False)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     

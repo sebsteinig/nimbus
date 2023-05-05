@@ -75,30 +75,23 @@ class GeneralMetadata:
 
 
 class Metadata:
-    vs_metadata : Dict[str,VariableSpecificMetadata] = {}
+    vs_metadata : List[VariableSpecificMetadata] = []
     general_metadata : Union[GeneralMetadata, None] = GeneralMetadata()
 
-    vs_metadata_index : list = []
-    
     def extends(self,**kargs):
         self.general_metadata.extends(**kargs)
-        
-    def extends_for(self,var_name:str,**kargs):
-        if var_name not in self.vs_metadata:
-            self.vs_metadata_index.append(var_name)
-            self.vs_metadata[var_name] = VariableSpecificMetadata.build(**kargs)
-        else :
-            self.vs_metadata[var_name].extends(**kargs)
-        
-    def name_of(self,index:int) -> str:
-        return self.vs_metadata_index[index]
+
+    def push(self,vs_metadata : List[VariableSpecificMetadata] ):
+        self.vs_metadata.extend(vs_metadata)
+
     def log(self) -> str:
         return json.dumps(self.to_dict(),indent=2)
     def to_dict(self):
         res = {}
         res.update(self.general_metadata.to_dict())
-        for key,value in self.vs_metadata.items():
-            res[key] = value.to_dict()
+        res["variables"] = []
+        for m in self.vs_metadata:
+            res["variables"].append(m.to_dict())
             
         return res
         
