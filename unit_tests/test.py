@@ -7,7 +7,6 @@ class Test(unittest.TestCase):
         return super().setUp()
     
     def test(self):
-        print("here")
         assert(True)
         
         
