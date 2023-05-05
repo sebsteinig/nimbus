@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 from utils.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
@@ -21,17 +21,41 @@ class Shape:
     lat:int
     lon:int
 
-
+"""
+    functions that replace nan values with 255.
+    param :
+        output : ndarray
+    return :
+        ndarray
+"""
 def clean(output : np.ndarray) -> np.ndarray:
     output[np.isnan(output)] = 255
     return output.clip(0,254)
 
-def to_png_info(metadata):
+"""
+    transform a Metadata instance into a PngInfo.
+    param :
+        metadata : Metadata
+    return :
+        PngInfo
+"""
+def to_png_info(metadata : Metadata):
     png_info = PngInfo()
     for key,value in metadata.to_dict().items():
         png_info.add_text(key,str(json.dumps(value)))
     return png_info
 
+"""
+    save the png image
+    param :
+        output : ndarray
+        output_file : str (name of the image file)
+        directory : str (name of the ouput directory)
+        metadata : PngInfo
+        mode : str (L or RGB or RGBA)
+    return :
+        str (the path to the output image)
+"""
 def save(output : np.ndarray, output_file : str, directory :str, metadata, mode = 'L'):
     out = clean(output)
     out = np.squeeze(out)
@@ -40,8 +64,17 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata, mode 
     img_ym.save(path, pnginfo = to_png_info(metadata))
     return path
 
-def eval_shape(input:list) -> Tuple[np.ndarray,Shape]:
-    
+"""
+    functions that reshape the input to be converted.
+    precondition : 
+        the input is a list of ndarrays that have the same shape : 2, 3 or 4 dimensions
+    param :
+        input : list
+    return :
+        ndarray (reshaped input)
+        Shape
+"""
+def eval_shape(input:list) -> Tuple[np.ndarray,Shape]:    
     if any(input[0].shape != x.shape for x in input):
         raise Exception(f"All arrays must have the same dimensions {[x.shape for x in input]}")
     level, time = 1, 1
@@ -60,6 +93,16 @@ def eval_shape(input:list) -> Tuple[np.ndarray,Shape]:
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
     return input_reshaped, Shape(level, time, latitude, longitude)
 
+"""
+    functions that check the input size.
+    precondition :
+        the input is a list of maximum 4 ndarrays.
+    param :
+        size : int (the size of the input)
+    return :
+        int (the number of channels)
+        str (the mode used to convert as an image)
+"""
 def eval_input(size:int) -> Tuple[int, str]:
     if size==1 :
         dim = 1
@@ -74,14 +117,32 @@ def eval_input(size:int) -> Tuple[int, str]:
         raise TooManyInputs(f"{size} > 4 : there are too many inputs")
     return dim, mode
 
-def norm(input:np.ndarray,_min,_max):
+"""
+    function that calculates the norm
+    param :
+        input : ndarray
+        _min : float
+        _max : float
+    return :
+        ndarray
+"""
+def norm(input:np.ndarray, _min:float, _max:float):
     if _min == _max :
         return input 
     return (input - _min)/(_max - _min)
 
-def get_index_output(num_var, index_level, index_time,shape:Shape) :
-    level, time, latitude, longitude = shape.level,shape.time,shape.lat,shape.lon
-    
+"""
+    get the indexes to fill the output
+    param :
+        num_var : int
+        index_level : int
+        index_time : int
+        shape : Shape
+    return :
+        tuple (indexes)
+"""
+def get_index_output(num_var:int, index_level:int, index_time:int,shape:Shape)-> tuple:
+    level, time, latitude, longitude = shape.level,shape.time,shape.lat,shape.lon    
     if level == 1 :
         if  time == 1:
             index_output = np.s_[:,:,num_var] 
@@ -92,10 +153,25 @@ def get_index_output(num_var, index_level, index_time,shape:Shape) :
             index_level *latitude : (index_level+1)*latitude,\
             index_time* longitude  : ((index_time+1)* longitude),\
             num_var]
-        
     return index_output
 
-def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_mean, threshold, logger) -> np.ndarray:
+"""
+    function that fill the output with normalized input.
+    it iterates over levels and times.
+    param :
+        shape : Shape
+        num_var : int
+        input : list
+        output : np.ndarray
+        output_mean : np.ndarray
+        threshold : float
+        logger : Logger
+    return :
+        ndarray (the output for one variable)
+        List[Dict[str, str]] (the min and max values to be added in the metadata)
+        ndarray (the mean over time of the output)
+"""
+def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_mean : np.ndarray, threshold : float, logger : Logger) -> Tuple[np.ndarray, List[Dict[str,str]], np.ndarray]:
     min_max = []
     for index_level in range(shape.level):
         minmaxTimes = []
@@ -112,11 +188,18 @@ def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
         output_mean[get_index_output(num_var, index_level, 0, shape)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
-        i = get_index_output(num_var, index_level, 0, shape)
-        #output_mean[i] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
     return output, min_max, output_mean
 
-def minmax(arr,threshold, logger):
+"""
+    calcul of the min and max values.
+    param :
+        arr : ndarray (some input data)
+        threshold : float
+        logger : Logger
+    return :
+        tuple (contains the min and max values)
+"""
+def minmax(arr : np.ndarray, threshold : float, logger : Logger) -> Tuple[float, float]:
     sorted_flat = np.unique(np.sort(arr.flatten()))
     if np.isnan(sorted_flat[-1]) :
         sorted_flat = sorted_flat[:-1]
@@ -127,8 +210,19 @@ def minmax(arr,threshold, logger):
     return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
 
 
-
-def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold, metadata:Metadata, logger, directory:str = "") -> List[str]:
+"""
+    main function that sets up the needed variables and checks the input. 
+    it iterates over the number of inputs and the number of variables.
+    param :
+        inputs : List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]]
+        threshold : float
+        metadata : Metadata
+        logger : Logger
+        directory : str
+    return :
+        List[str] (the list of filenames of the created images)
+"""
+def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold : float, metadata:Metadata, logger : Logger, directory:str = "") -> List[str]:
     png_outputs = []
     for input,output_filename in inputs:
         

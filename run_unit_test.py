@@ -1,14 +1,16 @@
 import unittest
+from unit_tests.utils.test_metadata import TestMetadata
+from unit_tests.utils.test_png_converter import TestPngConverter
 from unit_tests.test import Test
 import sys
 
-test_classes = [Test]
+test_classes = [Test, TestMetadata, TestPngConverter]
 
 
 loader = unittest.TestLoader()
 tests = [
     loader.loadTestsFromTestCase(test)
-    for test in (Test,)
+    for test in (test_classes)
 ]
 suite = unittest.TestSuite(tests)
 
