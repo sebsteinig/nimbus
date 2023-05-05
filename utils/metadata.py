@@ -64,6 +64,7 @@ class GeneralMetadata:
         
     def to_dict(self):
         return dict(self.__dict__.copy())
+    
     @staticmethod
     def build(**kargs) -> 'GeneralMetadata':
         gm = GeneralMetadata()
