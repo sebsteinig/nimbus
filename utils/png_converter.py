@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+import warnings
 import os
 import json
 from datetime import datetime
@@ -110,8 +111,9 @@ def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_
                 output[index_output] = input_data
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
+        output_mean[get_index_output(num_var, index_level, 0, shape)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
         i = get_index_output(num_var, index_level, 0, shape)
-        output_mean[i] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
+        #output_mean[i] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
     return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):
@@ -159,7 +161,7 @@ def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],s
         )
         
         metadata.push(vs_metadatas)
-        filename_mean = save(output_mean if shape.time != 1 else output, output_filename + ".avg", directory, metadata, mode)
+        filename_mean = save(output_mean, output_filename + ".avg", directory, metadata, mode)
         filename = save(output, output_filename + ".ts", directory, metadata, mode)
         png_outputs.append(filename)
     return png_outputs
