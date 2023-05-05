@@ -1,14 +1,15 @@
 import unittest
 from unit_tests.test import Test
+from unit_tests.utils.test_config import TestConfig
 import sys
 
-test_classes = [Test]
+test_classes = [Test,TestConfig]
 
 
 loader = unittest.TestLoader()
 tests = [
     loader.loadTestsFromTestCase(test)
-    for test in (Test,)
+    for test in test_classes
 ]
 suite = unittest.TestSuite(tests)
 

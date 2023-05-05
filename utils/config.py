@@ -14,22 +14,71 @@ class ConfigException(Exception):pass
 @dataclass
 class FileSum:
     files : List['FileDescriptor']
+    """
+        resolve file paths according to the given id and dir,
+        first replace {id} flag by real id and regex match filename to retrieve
+        correct file path
+        param : 
+            dir : str
+            id : str
+        return :
+            List[str]
+    """
+    def join(self,dir:str,id:str) -> List[str]:
+        file_paths = []
+        for file in self.files:
+            file_paths.append(file.join(dir,id))
+        return file_paths
+            
+@dataclass
+class FileRegex:
+    files : List[str]
+    """
+        resolve file paths according to the given id and dir,
+        first replace {id} flag by real id and regex match filename to retrieve
+        correct file path
+        param : 
+            dir : str
+            id : str
+        return :
+            Set[str]
+    """
+    def join(self,dir:str,id:str) -> List[str]:
+        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.files[:-1])))
+        regex = self.files[-1].replace("{id}",id)
+        return {str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))}
     
 @dataclass
 class FileDescriptor:
     file_parts : List[str]
-    #file : str
-    def join(self,dir:str,id:str) -> List[str]:
-        #dir_path = Path(dir)
-        #regex = self.file.replace("{id}",id)
-        
-        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1])))
-        regex = self.file_parts[-1].replace("{id}",id)
-        return [str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))]
     
+    """
+        resolve file path according to the given id and dir,
+        first replace {id} flag by real id
+        correct file path
+        param : 
+            dir : str
+            id : str
+        return :
+            str
+    """
+    def join(self,dir:str,id:str) -> List[str]:
+        return path.join(dir,*(part.replace("{id}",id) for part in self.file_parts))
+    
+    """
+    build
+        build a file descriptors or file sum with the parts of the file paths
+        param :
+            files : str | List[str]
+        return :
+            FileDescriptor | FileSum
+
+    """
     @staticmethod
     def build(files:Union[str,List[str]]) -> Union['FileDescriptor',FileSum]:
         if type(files) is str:
+            if "{regex}" in files:
+                return FileRegex(files=files.replace("{regex}",""))
             p = PurePath(files)
             return FileDescriptor(file_parts=p.parts)
         if type(files) is list:
@@ -43,9 +92,16 @@ class HyperParametersConfig:
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
     
-    
+    """
+        check if the value provided for the key correct
+        param :
+            key : str
+            value : Any 
+        return :
+            bool
+    """
     @staticmethod
-    def assert_key_value(key,value) -> bool:
+    def assert_key_value(key:str,value:Any) -> bool:
         if key == "Atmosphere" or key == "Ocean":
             if "levels" in value:
                 if type(value["levels"]) is not list :
@@ -67,7 +123,14 @@ class HyperParametersConfig:
                     Logger.console().warning(f"can't convert resolutions to tuples, set to default instead")
                     return False
         return True
-
+    """
+        change the value of the given to the correct form
+        param :
+            key : str
+            value : Any
+        return :
+            Any
+    """ 
     @staticmethod
     def map_key_value(key,value) ->  Any:
         if key == "Atmosphere" or key == "Ocean":
@@ -76,21 +139,40 @@ class HyperParametersConfig:
             else :
                 value["resolutions"] = [(None,None)]
         return value
-    
+    """
+        bind the create hyper parameters to the previous 
+        to set all parameters like the previous one
+        param :
+            config : HyperParametersConfig
+        return :
+            HyperParametersConfig
+    """
     @staticmethod
     def bind(config:'HyperParametersConfig') -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
         for key,value in config.__dict__.items():
             hp.__dict__[key] = value
         return hp
-    
-    def extends(self,**kargs):
+    """
+        set the parameters to the given value if the key exist
+        param :
+            kargs : dict
+        return :
+            None
+    """
+    def extends(self,**kargs) -> None:
         types = self.__annotations__
         for key,value in kargs.items():
             if key in self.__dict__ and HyperParametersConfig.assert_key_value(key,value):
                 if type(value) is types[key]:
                     self.__dict__[key] = HyperParametersConfig.map_key_value(key,types[key].__call__(value))
-
+    """
+        build the parameters with the given value if the key exist
+        param :
+            kargs : dict
+        return :
+            HyperParametersConfig
+    """
     @staticmethod
     def build(**kwargs) -> 'HyperParametersConfig':
         hp = HyperParametersConfig()
@@ -107,7 +189,16 @@ class VariableDescription:
     nc_file_var_binder : List[Tuple[Union[FileDescriptor,FileSum],str]]
     hyper_parameters : HyperParametersConfig
     
-
+    """
+        build a variable description checking for the inner variables list 
+        with correct files and variable names
+        param :
+            var_desc:dict
+            name:str
+            hyper_parameters_config:HyperParametersConfig
+        return :
+            VariableDescription
+    """
     @staticmethod
     def build(var_desc:dict,name:str,hyper_parameters_config:HyperParametersConfig) -> 'VariableDescription':
         nc_file_var_binder = []
@@ -135,12 +226,26 @@ class Config:
     name : str
     supported_variables : Dict[str,VariableDescription]
     hyper_parameters : HyperParametersConfig
-
+    """
+        get hyper parameters of the variable
+        param :
+            var_name : str
+        return :
+            HyperParametersConfig
+    """
     def get_hp(self,var_name) -> HyperParametersConfig:
         if var_name in self.supported_variables:
             return self.supported_variables[var_name].hyper_parameters
         return self.hyper_parameters
     
+    """
+        get realm (either atmosphere or ocean) of the given variable
+        and set default resolution if no real;
+        param :
+            variable : Variable
+        return :
+            dict
+    """
     def get_realm_hp(self,variable) -> dict:
         if variable.realm is None:
             return {"resolutions":[(None,None)]}
@@ -152,7 +257,17 @@ class Config:
         else :
             return {"resolutions":[(None,None)]}
     
-
+    """
+        look up the files associatied with the provided variables 
+        in the given directory
+        and yield the file path, the variable name and the variable
+        param :
+            input_folder:str
+            id:str
+            variables:list
+        return :
+            Generator of ( (str | List[str]) , str, Any)
+    """
     def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         
         directory = input_folder if input_folder != self.directory else self.directory
@@ -162,16 +277,27 @@ class Config:
                 supported_variable = self.supported_variables[variable.name]
                 for file_desc,var_name in supported_variable.nc_file_var_binder:
                     if type(file_desc) is FileDescriptor:
+                        file_path = file_desc.join(directory,id)
+                        if path.isfile(file_path):
+                            yield file_path,var_name,variable
+                        else :
+                            raise Exception(f"{file_path} does not exist")
+                    if type(file_desc) is FileSum:
                         file_paths = file_desc.join(directory,id)
                         if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
-                    if type(file_desc) is FileSum:
-                        file_paths = []
-                        for file in file_desc.files:
-                            file_paths.extend(file.join(directory,id))
+                    if type(file_desc) is FileRegex:
+                        file_paths = file_desc.join(directory,id)
+                        print(file_paths)
                         if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
-    
+    """
+        build the config with the path to the toml files
+        param :
+            desc : str
+        return :
+            Config
+    """
     @staticmethod
     def build(desc:str) -> 'Config':
         if not path.isfile(desc) and path.basename(desc).split('.')[-1] == "toml":
@@ -201,26 +327,9 @@ class Config:
         return Config(directory=directory,name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
 
 
-def glob_re(path, regex="", glob_mask="**/*", inverse=False):
-    p = Path(path)
-    if inverse:
-        res = [str(f) for f in p.glob(glob_mask) if not re.search(regex, str(f))]
-    else:
-        res = [str(f) for f in p.glob(glob_mask) if re.search(regex, str(f))]
-    return res
+
     
 if __name__ == "__main__":
-    
-    print(glob_re("/home/willem/workspace/internship-climate-archive/climatearchive_sample_data/data/","(texpa1|texqd)/.*ann.nc"))
-    
-    """
-    config = Config.build("BRIDGE.toml")
-    
-    print(config)
-    
-    for name,var_desc in config.supported_variables.items():
-        print(name)
-        for file_desc,var_name in var_desc.nc_file_var_binder:
-            if type(file_desc) is FileDescriptor:
-                print(file_desc.join("texpa1"))
-    """
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)
