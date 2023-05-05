@@ -12,14 +12,14 @@ unit = "m"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[clt.variables]]
-files="{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "totCloud_mm_ua"
 
 [tas]
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[tas.variables]]
-files="{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "temp_mm_1_5m"
 
 
@@ -27,24 +27,37 @@ variable = "temp_mm_1_5m"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[pr.variables]]
-files="{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "precip_mm_srf"
 
 [winds]
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[winds.variables]]
-files="{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "u_mm_p"
 [[winds.variables]]
-files="{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "v_mm_p"
 
 [snc]
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[snc.variables]]
-files="{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files=[
+    "{id}/climate/{id}a.ptcljan.nc",
+    "{id}/climate/{id}a.ptclfeb.nc",
+    "{id}/climate/{id}a.ptclmar.nc",
+    "{id}/climate/{id}a.ptclapr.nc",
+    "{id}/climate/{id}a.ptclmay.nc",
+    "{id}/climate/{id}a.ptcljun.nc",
+    "{id}/climate/{id}a.ptcljul.nc",
+    "{id}/climate/{id}a.ptclaug.nc",
+    "{id}/climate/{id}a.ptclsep.nc",
+    "{id}/climate/{id}a.ptcloct.nc",
+    "{id}/climate/{id}a.ptclnov.nc",
+    "{id}/climate/{id}a.ptcldec.nc",
+]
 variable = "snowCover_mm_srf"
 
 
@@ -52,21 +65,21 @@ variable = "snowCover_mm_srf"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[liconc.variables]]
-files="{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "fracPFTs_mm_srf"
 
 [pfts]
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[pfts.variables]]
-files="{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "fracPFTs_mm_srf"
 
 [tos]
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[tos.variables]]
-files="{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "temp_mm_uo"
 [[tos.variables]]
 files="{id}/inidata/{id}.qrparm.omask.nc"
@@ -76,7 +89,7 @@ variable = "lsm"
 preprocessing = "BRIDGE"
 processing = "BRIDGE"
 [[mlotst.variables]]
-files="{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "mixLyrDpth_mm_uo"
 [siconc]
 preprocessing = "BRIDGE"
