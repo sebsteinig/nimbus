@@ -68,7 +68,7 @@ And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' i
 # Output
 This program outputs images in the png folder, the output of the processed netCDF files given in input in the netcdf folder, and a log folder.  These 3 folders are in a folder named as the expID.  
 The images are named as follows :    
-```{expID}.{variableNAME}.{configNAME}.avg.png``` for the time mean image, and    
-```{expID}.{variableNAME}.{configNAME}.ts.png``` for the time serie image.   
+```{configNAME}.{expID}.{variableNAME}.avg.png``` for the time mean image, and    
+```{configNAME}.{expID}.{variableNAME}.ts.png``` for the time serie image.   
 If resolutions are specified in the config file (and different than "default"), the resolutions will be specified in the image name :   
-```{expID}.{variableNAME}.rx{xVALUE}.ry{yVALUE}{configNAME}.[avg¦ts].png```.
+```{configNAME}.{expID}.{variableNAME}.rx{xVALUE}.ry{yVALUE}.[avg¦ts].png```.

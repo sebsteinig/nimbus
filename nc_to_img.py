@@ -75,7 +75,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             Logger.console().status("\tStarting conversion of", id=current_id)
         
         logger = Logger.file(output_folder.out_log(),variable.name)
-        output_file = output_folder.out_png_file(f"{id}.{variable.name}")
+        output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
         hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
         hyper_parameters['logger'] = logger
         error = False
@@ -86,7 +86,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 res_suffixe = ""
                 if resolution[0] is not None and resolution[1] is not None:
                     res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-                _output_file = output_file + res_suffixe + "." + config.name
+                _output_file = output_file + res_suffixe
                 
                 data,metadata = retrieve_data(inputs=input_files,\
                     variable=variable,\
