@@ -17,17 +17,21 @@ class FileSum:
     
 @dataclass
 class FileDescriptor:
-    #file_parts : List[str]
-    file : str
+    file_parts : List[str]
+    #file : str
     def join(self,dir:str,id:str) -> List[str]:
-        dir_path = Path(dir)
-        regex = self.file.replace("{id}",id)
+        #dir_path = Path(dir)
+        #regex = self.file.replace("{id}",id)
+        
+        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1])))
+        regex = self.file_parts[-1].replace("{id}",id)
         return [str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))]
     
     @staticmethod
     def build(files:Union[str,List[str]]) -> Union['FileDescriptor',FileSum]:
         if type(files) is str:
-            return FileDescriptor(file=files)
+            p = PurePath(files)
+            return FileDescriptor(file_parts=p.parts)
         if type(files) is list:
             return FileSum(files=[FileDescriptor.build(file) for file in files])
 @dataclass
