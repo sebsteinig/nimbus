@@ -30,7 +30,6 @@ class FileManager:
                 if id in self.missing_ids:
                     continue                
                 input_files = []
-                Logger.console().debug(v = value_2)
                 output_folder = None
                 for nc_var_name,value_3 in value_2.items():
                     output_folder,files = value_3

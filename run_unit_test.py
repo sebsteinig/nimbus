@@ -1,10 +1,15 @@
 import unittest
+from utils.logger import Logger
 from unit_tests.test import Test
 from unit_tests.utils.test_config import TestConfig
 import sys
 
 test_classes = [Test,TestConfig]
 
+Logger.debug(False)
+Logger.warning(False)
+Logger.info(False)
+Logger.error(False)
 
 loader = unittest.TestLoader()
 tests = [

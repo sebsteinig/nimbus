@@ -32,7 +32,7 @@ class FileSum:
             
 @dataclass
 class FileRegex:
-    files : List[str]
+    file_parts : List[str]
     """
         resolve file paths according to the given id and dir,
         first replace {id} flag by real id and regex match filename to retrieve
@@ -44,9 +44,9 @@ class FileRegex:
             Set[str]
     """
     def join(self,dir:str,id:str) -> List[str]:
-        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.files[:-1])))
-        regex = self.files[-1].replace("{id}",id)
-        return {str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))}
+        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1])))
+        regex = self.file_parts[-1].replace("{id}",id)
+        return set([str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))])
     
 @dataclass
 class FileDescriptor:
@@ -63,7 +63,9 @@ class FileDescriptor:
             str
     """
     def join(self,dir:str,id:str) -> List[str]:
-        return path.join(dir,*(part.replace("{id}",id) for part in self.file_parts))
+        parts = self.file_parts[1:] if self.file_parts[0] == path.sep else self.file_parts
+        return path.join(dir, *(part.replace("{id}",id) for part in parts))
+
     
     """
     build
@@ -78,7 +80,8 @@ class FileDescriptor:
     def build(files:Union[str,List[str]]) -> Union['FileDescriptor',FileSum]:
         if type(files) is str:
             if "{regex}" in files:
-                return FileRegex(files=files.replace("{regex}",""))
+                p = PurePath(files.replace("{regex}",""))
+                return FileRegex(file_parts=p.parts)
             p = PurePath(files)
             return FileDescriptor(file_parts=p.parts)
         if type(files) is list:
@@ -271,7 +274,7 @@ class Config:
     def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         
         directory = input_folder if input_folder != self.directory else self.directory
-        
+        print(directory)
         for variable in variables:
             if variable.name in self.supported_variables:
                 supported_variable = self.supported_variables[variable.name]
@@ -284,11 +287,11 @@ class Config:
                             raise Exception(f"{file_path} does not exist")
                     if type(file_desc) is FileSum:
                         file_paths = file_desc.join(directory,id)
+                        print(file_paths)
                         if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
                     if type(file_desc) is FileRegex:
                         file_paths = file_desc.join(directory,id)
-                        print(file_paths)
                         if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                             yield file_paths,var_name,variable
     """

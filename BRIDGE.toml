@@ -82,7 +82,7 @@ processing = "BRIDGE"
 files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "temp_mm_uo"
 [[tos.variables]]
-files="{regex}{id}/inidata/{id}.qrparm.omask.nc"
+files="{id}/inidata/{id}.qrparm.omask.nc"
 variable = "lsm"
 
 [mlotst]

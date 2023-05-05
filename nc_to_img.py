@@ -122,7 +122,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 def main(args):
     start = time.time()
     Logger.blacklist()
-    Logger.debug(True)
+    Logger.debug(False)
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
