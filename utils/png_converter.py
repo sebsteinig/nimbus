@@ -111,22 +111,26 @@ def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_
                 output[index_output] = input_data
                 input_mean_times.append(input_data)
         min_max.append(minmaxTimes)
+        Logger.console().debug(f"output image dynamic range for last timestep: min={float(minmaxTimes[-1]['min']):.2f}, max={float(minmaxTimes[-1]['max']):.2f}")
         output_mean[get_index_output(num_var, index_level, 0, shape)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
         i = get_index_output(num_var, index_level, 0, shape)
         #output_mean[i] = np.mean(np.asarray(input_mean_times), dtype='int', axis = 0)
     return output, min_max, output_mean
 
 def minmax(arr,threshold, logger):
-    sorted_flat = np.unique(np.sort(arr.flatten()))
-    if np.isnan(sorted_flat[-1]) :
-        sorted_flat = sorted_flat[:-1]
-    n = len(sorted_flat)
-    if n<=1 :
-        logger.warning("min and max are equals to 0")
-        return 0, 0
-    return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
+    # filter outliers from 1D array without NaN values
+    arr_clean = reject_outliers(arr.flatten()[~np.isnan(arr.flatten())], threshold)
+    return np.min(arr_clean),np.max(arr_clean)
 
-
+def reject_outliers(data, m = 3.):
+    # https://stackoverflow.com/a/16562028
+    # remove outliers based on distribution of the data
+    # median is more robust than the mean to outliers and the standard
+    # deviation is replaced with the median absolute distance to the median
+    d = np.abs(data - np.median(data))
+    mdev = np.median(d)
+    s = d/mdev if mdev else np.zeros(len(d))
+    return data[s<m]
 
 def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold, metadata:Metadata, logger, directory:str = "") -> List[str]:
     png_outputs = []
