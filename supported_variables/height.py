@@ -16,19 +16,17 @@ class Height:
 @preprocessing(Height,'BRIDGE')
 def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
     cdo = Cdo()
-    outputs = []
-    
+    # create global field of surface elevation in m
+    # orography > 0; bathymetry < 0    
     orog,ht = inputs[0]
     omask,depthdepth = inputs[1]
     output = path.join(output_directory,"height.out.nc")
-
+    # prepare orography
     selvar_orog = cdo.selvar(ht, input = orog)
     shifted_orog = cdo.sellonlatbox(-180,180,90,-90, input = selvar_orog)
-    
-    inputTmp = f"-invertlat -setmisstoc,0 -mulc,-1 -selvar,{depthdepth} {omask}"
-    shifted_omask = cdo.sellonlatbox(-180,180,90,-90, input = inputTmp)
-    
-    cdo.add(input=f"{shifted_orog} {shifted_omask}", output = output)
+    # interpolate bathymtery to orography grid to guarentee grid consistency
+    omask_remap = f"-setmisstoc,0 -mulc,-1 -remapnn,{shifted_orog} -selvar,{depthdepth} {omask}"
+    # add both fields
+    cdo.add(input=f"{shifted_orog} {omask_remap}", output = output)
     
     return [(output,None)]
-    
