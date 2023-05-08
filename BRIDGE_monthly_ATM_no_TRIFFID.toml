@@ -38,3 +38,10 @@ variable = "u_mm_p"
 [[winds.variables]]
 files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
 variable = "v_mm_p"
+
+[height]
+preprocessing = "BRIDGE"
+processing = "BRIDGE"
+[[height.variables]]
+files="{id}/inidata/{id}.qrparm.orog.nc"
+variable = "ht"
