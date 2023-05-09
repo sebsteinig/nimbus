@@ -13,13 +13,30 @@ import supported_variables
 import supported_variables.utils.utils as utils
 import sys, inspect
 
+"""
+    import the submodules of the given module
+    param :
+        package_name : module
+    return :
+        Dict[str,module]
+"""
 def import_submodules(package_name):
     package = sys.modules[package_name]
     return {
         name: importlib.import_module(package_name + '.' + name)
         for loader, name, is_pkg in pkgutil.walk_packages(package.__path__)
     }
-
+"""
+    build the supported variables by scanning and importing 
+    the modules from the supported_variables folder and retrieving 
+    for each modules the SupportedVariable class with the correct information
+    set the variables with their corresponding attribut or with their default attribut 
+    according to the config
+    param :
+        config : Config
+    return :
+        List[Variables]
+"""
 def build(config:Config):
     sub_modules = import_submodules(supported_variables.__name__)
     variables = []
