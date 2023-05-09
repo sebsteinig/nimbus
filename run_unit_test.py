@@ -4,9 +4,16 @@ from unit_tests.test import Test
 from unit_tests.utils.test_config import TestConfig
 from unit_tests.utils.test_metadata import TestMetadata
 from unit_tests.utils.variables.test_variable_builder import TestVariableBuilder
+from unit_tests.supported_variables.utils.test_supported_variable import TestSupportedVariable
 import sys
 
-test_classes = [Test,TestConfig,TestMetadata,TestVariableBuilder]
+test_classes = [
+    Test,
+    TestConfig,
+    TestMetadata,
+    TestVariableBuilder,
+    TestSupportedVariable
+]
 
 Logger.debug(False)
 Logger.warning(False)
