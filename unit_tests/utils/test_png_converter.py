@@ -6,4 +6,46 @@ class TestPngConverter(unittest.TestCase):
     data : MockPngConverter
     
     def setUp(self) -> None:
-        pass
+        self.data = MockPngConverter()
+        
+    def test_get_mode_incorrect_types_failure(self):
+        with self.assertRaises(IncorrectInputTypes):
+            get_mode([1, 2, 3])
+    
+    def test_get_mode_too_many_inputs_failure(self):
+        with self.assertRaises(IncorrectInputSize):
+            get_mode(self.data.input_5)
+    
+    def test_get_mode_empty_list_failure(self):
+        with self.assertRaises(IncorrectInputSize):
+            get_mode([])
+
+    def test_get_mode_success(self):
+        self.assertEqual(get_mode(self.data.input_1), Mode.L)
+        self.assertEqual(get_mode(self.data.input_2), Mode.RGB)
+        self.assertEqual(get_mode(self.data.input_3), Mode.RGB)
+        self.assertEqual(get_mode(self.data.input_4), Mode.RGBA)
+
+    def test_reshape_input_incorrect_input_failure(self) :
+        with self.assertRaises(IncorrectInputDim):
+            reshape_input([self.data.z_1_dim, self.data.z_2_dim])
+
+    def test_reshape_input_incorrect_n_variables_failure(self) :
+        with self.assertRaises(IncorrectNumberOfVariables):
+            reshape_input([self.data.z_5_dim])
+        with self.assertRaises(IncorrectNumberOfVariables):
+            reshape_input([self.data.z_1_dim])
+
+    def test_reshape_input_success(self):
+        reshaped, shape = reshape_input(self.data.input_4)
+        self.assertEqual(reshaped.shape, (4, 12, 12, 12, 12))
+        self.assertEqual(shape, Shape(12, 12, 12, 12))
+        
+    def test_minmax_succes(self):
+        self.assertEqual(minmax(self.data.z_2_dim, 0.9, Logger.console()), (0,0))
+        
+    def test_fill_output_success(self):
+        for i in range(3):
+            self.data.output, _, self.data.output_mean = fill_output(self.data.shape, i, self.data.reshaped,\
+                    self.data.output, self.data.output_mean, 0.9, Logger.console())
+        

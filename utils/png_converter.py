@@ -9,10 +9,19 @@ from datetime import datetime
 from utils.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
 from typing import List, Tuple, Dict
+from enum import Enum
 
-class TooManyVariables(Exception):pass
 class TooManyInputs(Exception):pass
 class LongitudeLatitude(Exception):pass
+class IncorrectInputTypes(Exception): pass
+class IncorrectInputDim(Exception) : pass
+class IncorrectNumberOfVariables(Exception) : pass
+class IncorrectInputSize(Exception) : pass
+
+class Mode(Enum):
+    L = 1
+    RGB = 3
+    RGBA = 4
 
 @dataclass
 class Shape:
@@ -22,7 +31,7 @@ class Shape:
     lon:int
 
 """
-    functions that replace nan values with 255.
+    function that replaces nan values with 255in the output.
     param :
         output : ndarray
     return :
@@ -65,7 +74,7 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata, mode 
     return path
 
 """
-    functions that reshape the input to be converted.
+    function that reshapes the input to be converted.
     precondition : 
         the input is a list of ndarrays that have the same shape : 2, 3 or 4 dimensions
     param :
@@ -74,48 +83,48 @@ def save(output : np.ndarray, output_file : str, directory :str, metadata, mode 
         ndarray (reshaped input)
         Shape
 """
-def eval_shape(input:list) -> Tuple[np.ndarray,Shape]:    
+def reshape_input(input:list) -> Tuple[np.ndarray,Shape]:    
     if any(input[0].shape != x.shape for x in input):
-        raise Exception(f"All arrays must have the same dimensions {[x.shape for x in input]}")
+        raise IncorrectInputDim(f"All arrays must have the same dimensions {[x.shape for x in input]}")
+    size = len (np.shape(input[0]))    
     level, time = 1, 1
+    if size < 2 :
+        raise IncorrectNumberOfVariables(f"{size} < 2 : there are too few variables")
     latitude = input[0].shape[-2]
     longitude = input[0].shape[-1]  
-    size = len (np.shape(input[0]))    
     if size == 4:
         level = input[0].shape[0]
         time = input[0].shape[1]
     elif size == 3 :
         time = input[0].shape[0]
     elif size > 4 :
-        raise TooManyVariables(f"{size} > 4 : there are too many variables")
-    elif size < 2 :
-        raise TooManyVariables(f"{size} < 2 : there are too few variables")
+        raise IncorrectNumberOfVariables(f"{size} > 4 : there are too many variables")
     input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
     return input_reshaped, Shape(level, time, latitude, longitude)
 
 """
-    functions that check the input size.
+    function that checks the input size and returns the mode.
     precondition :
         the input is a list of maximum 4 ndarrays.
     param :
         size : int (the size of the input)
     return :
-        int (the number of channels)
-        str (the mode used to convert as an image)
+        Mode (the mode used to convert as an image)
 """
-def eval_input(size:int) -> Tuple[int, str]:
-    if size==1 :
-        dim = 1
-        mode = 'L'
-    elif size == 2 or size == 3:
-        dim = 3
-        mode = 'RGB'
-    elif size == 4 :
-        dim = 4
-        mode = "RGBA"
+def get_mode(input : list) -> Mode:
+    if len(input) == 0 :
+        raise IncorrectInputSize(f"this input list is empty")
+    if any(not isinstance(x, np.ndarray) for x in input):
+        raise IncorrectInputTypes("at least one input is not ndarray")
+    if len(input)==1 :
+        mode = Mode.L
+    elif len(input) == 2 or len(input) == 3:
+        mode = Mode.RGB
+    elif len(input) == 4 :
+        mode = Mode.RGBA
     else:
-        raise TooManyInputs(f"{size} > 4 : there are too many inputs")
-    return dim, mode
+        raise IncorrectInputSize(f"{len(input)} > 4 : there are too many inputs")
+    return mode
 
 """
     function that calculates the norm
@@ -130,30 +139,6 @@ def norm(input:np.ndarray, _min:float, _max:float):
     if _min == _max :
         return input 
     return (input - _min)/(_max - _min)
-
-"""
-    get the indexes to fill the output
-    param :
-        num_var : int
-        index_level : int
-        index_time : int
-        shape : Shape
-    return :
-        tuple (indexes)
-"""
-def get_index_output(num_var:int, index_level:int, index_time:int,shape:Shape)-> tuple:
-    level, time, latitude, longitude = shape.level,shape.time,shape.lat,shape.lon    
-    if level == 1 :
-        if  time == 1:
-            index_output = np.s_[:,:,num_var] 
-        else :
-            index_output = np.s_[:, index_time * longitude  : ((index_time+1)* longitude), num_var]
-    else :
-        index_output = np.s_[
-            index_level *latitude : (index_level+1)*latitude,\
-            index_time* longitude  : ((index_time+1)* longitude),\
-            num_var]
-    return index_output
 
 """
     function that fill the output with normalized input.
@@ -172,22 +157,24 @@ def get_index_output(num_var:int, index_level:int, index_time:int,shape:Shape)->
         ndarray (the mean over time of the output)
 """
 def fill_output(shape:Shape, num_var:int, input:list, output:np.ndarray, output_mean : np.ndarray, threshold : float, logger : Logger) -> Tuple[np.ndarray, List[Dict[str,str]], np.ndarray]:
-    min_max = []
+    min_max = np.empty(shape = (shape.level, shape.time), dtype = dict)
     for index_level in range(shape.level):
-        minmaxTimes = []
         input_mean_times = []
         for index_time in range(shape.time):
-                if num_var ==2 and len(input) == 2 :
+                #when only two variables in input -> zeros for the 3rd channel
+                if num_var == 2 and len(input) == 2 :
                       input_data = np.zeros((shape.lat, shape.lon))
                 else :
                     _min, _max = minmax(input[num_var, index_level, index_time, :, :],threshold, logger)
-                    minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
-                    input_data = norm(input[num_var, index_level, index_time, :, :],_min,_max) * 254
-                index_output = get_index_output(num_var, index_level, index_time, shape)
-                output[index_output] = input_data
+                    min_max[index_level, index_time] = {"min" : str(_min), "max" : str(_max)}
+                    input_data = norm(input[num_var, index_level, index_time, :, :],_min,_max) * 254                
                 input_mean_times.append(input_data)
-        min_max.append(minmaxTimes)
-        output_mean[get_index_output(num_var, index_level, 0, shape)] = np.nanmean(np.asarray(input_mean_times),  axis = 0)
+                output[index_level * shape.lat : (index_level+1) * shape.lat,\
+                    index_time * shape.lon  : ((index_time+1)* shape.lon),\
+                    num_var] = input_data
+        #calculates mean over time
+        output_mean[index_level * shape.lat : (index_level+1) * shape.lat, :, num_var]\
+            = np.nanmean(np.asarray(input_mean_times), axis = 0)
     return output, min_max, output_mean
 
 """
@@ -230,10 +217,10 @@ def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],s
         input = list(tmp[0])
         vs_metadatas = list(tmp[1])
         
-        dim, mode = eval_input(len(input))
-        input, shape= eval_shape(input)    
-        output = np.zeros(( shape.lat * shape.level, shape.lon * shape.time, dim))
-        output_mean = np.zeros ((shape.lat * shape.level, shape.lon, dim))
+        mode = get_mode(input)
+        input, shape = reshape_input(input)    
+        output = np.zeros(( shape.lat * shape.level, shape.lon * shape.time, mode.value))
+        output_mean = np.zeros ((shape.lat * shape.level, shape.lon, mode.value))
         
         for num_var in range(len(input)) :
             output, min_max, output_mean = fill_output(
@@ -246,17 +233,17 @@ def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],s
                 logger)
             
             vs_metadatas[num_var].extends(
-                min_max = min_max
+                min_max = min_max.tolist()
             )
-        logger.info(mode, "MODE")
+        logger.info(mode.name, "MODE")
         
         metadata.extends(nan_value_encoding = 255,\
             created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
         )
         
         metadata.push(vs_metadatas)
-        filename_mean = save(output_mean, output_filename + ".avg", directory, metadata, mode)
-        filename = save(output, output_filename + ".ts", directory, metadata, mode)
+        save(output_mean, output_filename + ".avg", directory, metadata, mode.name)
+        filename = save(output, output_filename + ".ts", directory, metadata, mode.name)
         png_outputs.append(filename)
     return png_outputs
     
