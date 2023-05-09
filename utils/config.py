@@ -300,13 +300,9 @@ class Config:
         return :
             Config
     """
+    
     @staticmethod
-    def build(desc:str) -> 'Config':
-        if not path.isfile(desc) and path.basename(desc).split('.')[-1] == "toml":
-            raise ConfigException(f"{desc} is not a valid toml file")
-        with open(desc,mode="rb") as fp:
-            config = tomli.load(fp)
-        
+    def _build(config:dict,desc:str) -> 'Config':
         if "Model" not in config :
             raise ConfigException(f"{desc} is not a valid config file, please provide a Model tag")
         model = config["Model"]
@@ -328,6 +324,16 @@ class Config:
             
         return Config(directory=directory,name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
 
+
+    
+    
+    @staticmethod
+    def build(desc:str) -> 'Config':
+        if not path.isfile(desc) and path.basename(desc).split('.')[-1] == "toml":
+            raise ConfigException(f"{desc} is not a valid toml file")
+        with open(desc,mode="rb") as fp:
+            config = tomli.load(fp)
+        return Config._build(config=config,desc=desc)
 
 
     

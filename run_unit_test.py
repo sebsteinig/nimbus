@@ -3,9 +3,10 @@ from utils.logger import Logger
 from unit_tests.test import Test
 from unit_tests.utils.test_config import TestConfig
 from unit_tests.utils.test_metadata import TestMetadata
+from unit_tests.utils.variables.test_variable_builder import TestVariableBuilder
 import sys
 
-test_classes = [Test,TestConfig,TestMetadata]
+test_classes = [Test,TestConfig,TestMetadata,TestVariableBuilder]
 
 Logger.debug(False)
 Logger.warning(False)
