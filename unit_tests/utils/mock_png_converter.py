@@ -25,16 +25,16 @@ class MockPngConverter:
         self.z_1_dim = np.zeros((12))
         self.input_1 = [self.z_4_dim]
         self.input_2 = [self.z_4_dim, self.z_4_dim]
+        
+        arr = [np.zeros((3, 100)), np.zeros((3, 100)), np.zeros((3, 100))]
+        #arr[0, 0, :] = 1
+        #arr[1, 1, :] = 1
+        #arr[2, 2, :] = 1
+        self.input_3 = arr
         self.mode = get_mode(self.input_3)
         self.reshaped, self.shape = reshape_input(self.input_3)
         self.output = np.zeros((self.shape.lat, self.shape.lon * self.shape.time, self.mode.value))
         self.output_mean = np.zeros((self.shape.lat, self.shape.lon, self.mode.value))
-
         
-        arr = [np.zeros((3, 100)), np.zeros((3, 100)), np.zeros((3, 100))]
-        arr[0, 0, :] = 1
-        arr[1, 1, :] = 1
-        arr[2, 2, :] = 1
-        self.input_3 = arr
         self.input_4 = [self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim]
         self.input_5 = [self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim]
