@@ -84,7 +84,7 @@ class CleaningPipeline:
             np.ndarray 
     """
     @staticmethod
-    def clean(dataset,approved,variable) -> np.ndarray:
+    def clean(dataset,approved,variable,data) -> np.ndarray:
         black_list = ((i,dim) for i,dim in enumerate(variable.dimensions) if dim not in approved )
         for i,rejected in black_list:
             if dataset.dimensions[rejected].size == 1 :
@@ -152,8 +152,8 @@ class CleaningPipeline:
             vertical_index = None
             vertical_size = 1
         
-        data = CleaningPipeline.clean(dataset,approved,variable)
-        data = CleaningPipeline.threshold(variable._FillValue)
+        data = CleaningPipeline.clean(dataset,approved,variable,data)
+        data = CleaningPipeline.threshold(variable._FillValue,data)
             
         return CleaningPipeline(
             logger=logger,\

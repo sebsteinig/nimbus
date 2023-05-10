@@ -112,7 +112,7 @@ class VerticalPipeline:
     def exec(self,file:str,info:Info) -> Tuple[str,Info]:
         
         with Dataset(file,"r",format="NETCDF4") as dataset:
-            file_levels = [ float(f) for f in (dataset[self.vertical_name][:])]
+            file_levels = dataset[self.vertical_name][:]
         
         converter = UnitConverter.build(\
             from_unit = self.vertical_unit,\
