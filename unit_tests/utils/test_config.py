@@ -56,7 +56,7 @@ class TestConfig(unittest.TestCase):
         
     def test_get_hp_success(self):
         hp = HyperParametersConfig.build(preprocessing = "NEW")
-        config = Config(directory="",name="",
+        config = Config(name="",
             supported_variables=
                 {"var":VariableDescription(name="var",nc_file_var_binder=[],hyper_parameters=hp)},
             hyper_parameters=hp)
@@ -68,7 +68,7 @@ class TestConfig(unittest.TestCase):
             name:str
             realm:str
         hp = HyperParametersConfig.build(preprocessing = "NEW")
-        config = Config(directory="",name="",
+        config = Config(name="",
             supported_variables=
                 {"var":VariableDescription(name="var",nc_file_var_binder=[],hyper_parameters=hp)},
             hyper_parameters=hp)
@@ -83,18 +83,17 @@ class TestConfig(unittest.TestCase):
             name:str
             realm:str     
         hp = HyperParametersConfig.build(preprocessing = "NEW")
-        config = Config(directory="",name="",
+        config = Config(name="",
             supported_variables=
-                {"var":VariableDescription(name="var",nc_file_var_binder=[(FileDescriptor.build(["/{id}/climate/{id}a.pccljan.nc","{id}/climate/{id}a.pcclfeb.nc"]),"varname")],hyper_parameters=hp)},
+                {"var":VariableDescription(name="var",nc_file_var_binder=[(FileDescriptor.build(["/{id}/climate/{id}a.pccljan.nc","{id}/climate/{id}a.pcclfeb.nc"]),"varname",False)],hyper_parameters=hp)},
             hyper_parameters=hp)
         mock_variable = MockVariable(name="var",realm=None)
         res = (list(config.look_up(input_folder="climatearchive_sample_data/data",
                                    id="texpa1",
-                                   variables=[mock_variable])))
+                                   variable=mock_variable)))
 
         assert(len(res) == 1)
-        file_paths,var_name,variable = res[0]
-        assert(variable == mock_variable)
+        file_paths,var_name = res[0]
         assert(len(file_paths) == 2)
         assert(var_name == "varname")
         

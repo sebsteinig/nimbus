@@ -43,7 +43,7 @@ def save(directory:str):
 
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
-        files = config.directory
+        files = config.hyper_parameters.dir
         
     if hyper_parameters['clean']:
         default.FileManager.clean(ids, output)

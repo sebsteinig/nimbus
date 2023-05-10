@@ -91,6 +91,7 @@ class FileDescriptor:
             return FileSum(files=[FileDescriptor.build(file) for file in files])
 @dataclass
 class HyperParametersConfig:
+    dir : str = ''
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
@@ -233,7 +234,6 @@ class VariableDescription:
         
 @dataclass
 class Config:
-    directory : str
     name : str
     supported_variables : Dict[str,VariableDescription]
     hyper_parameters : HyperParametersConfig
@@ -281,25 +281,25 @@ class Config:
     """
     def look_up(self,input_folder:str,id:str,variable) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         
-        directory = input_folder if input_folder != self.directory else self.directory
+        dir = input_folder if input_folder != self.get_hp(variable.name).dir else self.get_hp(variable.name).dir 
 
         if variable.name in self.supported_variables:
             supported_variable = self.supported_variables[variable.name]
             for file_desc,var_name,optional in supported_variable.nc_file_var_binder:
                 if type(file_desc) is FileDescriptor:
-                    file_path = file_desc.join(directory,id)
+                    file_path = file_desc.join(dir,id)
                     if path.isfile(file_path):
                         yield file_path,var_name
                     elif not optional :
                         raise FileNotFoundError
                 elif type(file_desc) is FileSum:
-                    file_paths = file_desc.join(directory,id)
+                    file_paths = file_desc.join(dir,id)
                     if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                         yield file_paths,var_name
                     elif not optional :
                         raise FileNotFoundError
                 elif type(file_desc) is FileRegex:
-                    file_paths = file_desc.join(directory,id)
+                    file_paths = file_desc.join(dir,id)
                     if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
                         yield file_paths,var_name
                     elif not optional :
@@ -319,7 +319,7 @@ class Config:
         model = config["Model"]
         if "dir" not in model:
             raise ConfigException(f"{desc} is not a valid config file, please provide a directory in the Model tag")
-        directory = model["dir"]
+        #directory = model["dir"]
         if "name" not in model:
             raise ConfigException(f"{desc} is not a valid config file, please provide a name in the Model tag")
         name = model["name"]
@@ -333,7 +333,7 @@ class Config:
                 continue
             supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name,hyper_parameters_config = hyper_parameters)
             
-        return Config(directory=directory,name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
+        return Config(name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
 
 
     
