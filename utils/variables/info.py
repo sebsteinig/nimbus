@@ -23,7 +23,7 @@ YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:
 from dataclasses import dataclass
 from typing import List,Union,Set,Callable,Tuple,Dict,Type
 
-@dataclass(eq=True, frozen=True)
+@dataclass(eq=True)
 class Axis:
     name   : str
     bounds : Tuple[float,float]
@@ -64,7 +64,7 @@ class Axis:
             'step' : self.step,
             'direction':self.direction
         }
-@dataclass(eq=True, frozen=True)
+@dataclass(eq=True)
 class Grid:
     category : str
     points   : Tuple[int,Tuple[int,int]]
