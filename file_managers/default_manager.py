@@ -30,10 +30,12 @@ class FileManager:
                 if id in self.missing_ids:
                     continue                
                 input_files = []
+                output_folder = None
                 for nc_var_name,value_3 in value_2.items():
                     output_folder,files = value_3
-                    if len(files) == 1 :
-                        input_file = files[0]
+                    if type(files) is set:
+                        output_file_name = f"{id}.{variable.name}.nc"
+                        input_file = FileManager.__mergetime(files,output_file_name,output_folder)
                     elif type(files) is str:
                         input_file = files
                     else :
@@ -46,11 +48,6 @@ class FileManager:
     def __concatenate(files:List[str],output_file_name,output_folder):
         tmp_files = []
         for file in files:
-            """
-            from netCDF4 import Dataset,_netCDF4
-            with Dataset(file,"r",format="NETCDF4") as dataset:
-                print(dataset.variables.keys())
-            """
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
             system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
             tmp_files.append(tmp_path)
@@ -60,7 +57,20 @@ class FileManager:
         for tmp_path in tmp_files:
             remove(tmp_path)
         return output_path
-    
+            
+    @staticmethod
+    def __mergetime(files:List[str],output_file_name,output_folder):
+        tmp_files = []
+        for file in files:
+            tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
+            system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
+            tmp_files.append(tmp_path)
+            
+        output_path = output_folder.tmp_nc_file(output_file_name)
+        cdo.mergetime(input = tmp_files, output = output_path)
+        for tmp_path in tmp_files:
+            remove(tmp_path)
+        return output_path
     @staticmethod
     def __mount_output(output:str):
         main = path.join(output,"nc_to_png_outputs")
