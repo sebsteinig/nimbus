@@ -19,31 +19,51 @@ def assert_nc_extension(file:str):
     return path.basename(file).split(".")[-1] == "nc"
 
 class FileManager:
-    def __init__(self,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]], missing_ids : List[str]):
+    def __init__(self,main_folder:OutputFolder,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]], black_list : dict):
+        self.main_folder = main_folder
         self.io_bind = io_bind
-        self.missing_ids = missing_ids
-
+        self.black_list = black_list
     
-    def iter(self) -> Generator[Tuple[List[Tuple[str,str]],OutputFolder,Any],None,None]:
-        for variable,value in self.io_bind.items():
-            for id,value_2 in value.items():
-                if id in self.missing_ids:
-                    continue                
-                input_files = []
-                output_folder = None
-                for nc_var_name,value_3 in value_2.items():
-                    output_folder,files = value_3
+    def __enter__(self):
+        return self
+    
+    def __exit__(self,*args,**kwargs):
+        if path.exists(self.main_folder.tmp_dir):
+            shutil.rmtree(self.main_folder.tmp_dir)
+        
+    
+    def iter_variables(self) : 
+        for variable in self.io_bind.keys():
+            if variable in self.black_list and self.black_list[variable] == True:
+                continue
+            else :
+                yield variable
+            
+    def iter_id_from(self,variable):
+        for id,binder in self.io_bind[variable].items() :
+            if id in self.black_list and self.black_list[id]:
+                continue
+            
+            output_folder = binder['folder']
+            
+            def iter():
+                for nc_var_name,files in binder['binder'].items():
+                    # FILE REGEX
                     if type(files) is set:
                         output_file_name = f"{id}.{variable.name}.nc"
                         input_file = FileManager.__mergetime(files,output_file_name,output_folder)
+                    # FILE DESCRIPTOR
                     elif type(files) is str:
                         input_file = files
+                    # FILE SUM
                     else :
                         output_file_name = f"{id}.{variable.name}.nc"
                         input_file = FileManager.__concatenate(files,output_file_name,output_folder)
-                    input_files.append((input_file,nc_var_name))
-                yield input_files,output_folder,variable,id
-        
+                    yield input_file,nc_var_name
+            yield id,output_folder,iter
+            
+    
+    
     @staticmethod
     def __concatenate(files:List[str],output_file_name,output_folder):
         tmp_files = []
@@ -73,7 +93,7 @@ class FileManager:
         return output_path
     @staticmethod
     def __mount_output(output:str):
-        main = path.join(output,"nc_to_png_outputs")
+        main = path.join(output,"nimbus_outputs")
         if not path.isdir(main):
             mkdir(main)
         out = path.join(main,"output")
@@ -85,12 +105,12 @@ class FileManager:
         return OutputFolder(main_dir=main,out_dir=out,tmp_dir=tmp)
 
     @staticmethod
-    def __mount_file(input:str,output:str,config:Config,variables,ids):
+    def __mount_file(input:str,output:str,config:Config,variables,ids) -> 'FileManager':
         if not assert_nc_extension(input):
             raise Exception(f"{input} is not a netCDF file")
         
-        out_folder = FileManager.__mount_output(output)
-        out_folder = out_folder.append("user")
+        main_folder = FileManager.__mount_output(output)
+        out_folder = main_folder.append("user")
         
         out_folder.mount()
         
@@ -106,29 +126,38 @@ class FileManager:
         
         io_bind = {variable:{name:{var_name:(out_folder,input) for var_name in supported_variables[variable] }} for variable in variables} 
         
-        return FileManager(io_bind=io_bind)
+        return FileManager(main_folder=main_folder,io_bind=io_bind)
     
     @staticmethod
-    def __mount_folder(input_folder:str,output:str,config:Config,variables,ids):
-        out_folder = FileManager.__mount_output(output)
+    def __mount_folder(input_folder:str,output:str,config:Config,variables,ids) -> 'FileManager':
+        main_folder = FileManager.__mount_output(output)
         if ids is None:
             raise Exception("Experiment ids must be specified")
-        io_bind = {variable:{id:{} for id in ids} for variable in variables} 
-        missing_ids = []
-        for id in ids:
-            out_folder_id = out_folder.append(id)
-            out_folder_id.mount()
-            cpt = 0
-            for input_files,nc_var_name,variable in config.look_up(input_folder=input_folder,id=id,variables=variables):
-                io_bind[variable][id][nc_var_name] = (out_folder_id, input_files)
-                cpt+=1
-            if cpt ==0:
-                missing_ids.append(id)
-                Logger.console().warning(f"experiment {id} will not be processed")
-        return FileManager(io_bind=io_bind, missing_ids = missing_ids)
+        io_bind = {variable:{id:{'binder':{},'folder':None} for id in ids} for variable in variables} 
+        
+        black_list = {}
+        
+        for variable in variables:
+            ids_black_list = {}
+            for id in ids:
+                out_folder_id = main_folder.append(id)
+                out_folder_id.mount()
+                io_bind[variable][id]['folder'] = out_folder_id
+                try :
+                    for input_files,nc_var_name in config.look_up(input_folder=input_folder,id=id,variable=variable):
+                        io_bind[variable][id]['binder'][nc_var_name] = input_files
+                except :
+                    ids_black_list[id] = True
+                    Logger.console().warning(f"experiment {id} will not be processed for variable {variable.name}")
+            black_list[variable] = ids_black_list
+            if len(ids_black_list) == len(ids) :
+                black_list[variable] = True
+                Logger.console().warning(f"variable {variable.name} will not be processed")
+            
+        return FileManager(main_folder=main_folder,io_bind=io_bind, black_list = black_list)
     
     @staticmethod
-    def mount(input:str,config,variables,ids,output:str="./"):
+    def mount(input:str,config,variables,ids,output:str="./") -> 'FileManager':
         if not path.isdir(output):
             raise Exception(f"{output} is not a folder")
         if not path.exists(input):

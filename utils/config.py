@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import os.path as path
+from os import scandir
 from pathlib import PurePath,Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 import tomli
@@ -44,9 +45,11 @@ class FileRegex:
             Set[str]
     """
     def join(self,dir:str,id:str) -> List[str]:
-        dir_path = Path(path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1])))
-        regex = self.file_parts[-1].replace("{id}",id)
-        return set([str(f) for f in dir_path.glob("**/*") if re.search(regex, str(f))])
+        dir_path = path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1]))
+        if not path.isdir(dir_path):
+            return {}
+        regex = re.compile(self.file_parts[-1].replace("{id}",id))
+        return set(path.join(dir_path,f.name) for f in scandir(dir_path) if regex.match(f.name))
     
 @dataclass
 class FileDescriptor:
@@ -189,7 +192,7 @@ class HyperParametersConfig:
 @dataclass
 class VariableDescription:
     name : str
-    nc_file_var_binder : List[Tuple[Union[FileDescriptor,FileSum],str]]
+    nc_file_var_binder : List[Tuple[Union[FileDescriptor,FileSum,FileRegex],str,bool]]
     hyper_parameters : HyperParametersConfig
     
     """
@@ -217,7 +220,12 @@ class VariableDescription:
             if type(variable) is not str or variable is None or variable == "":
                 raise ConfigException(f" must have a non empty string variable")
             
-            nc_file_var_binder.append((FileDescriptor.build(files),variable))
+            if "optional" in file_var:
+                optional = True
+            else :
+                optional = False
+            
+            nc_file_var_binder.append((FileDescriptor.build(files),variable,optional))
         
         return VariableDescription(name=name,\
             nc_file_var_binder=nc_file_var_binder,\
@@ -271,28 +279,31 @@ class Config:
         return :
             Generator of ( (str | List[str]) , str, Any)
     """
-    def look_up(self,input_folder:str,id:str,variables:list) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
+    def look_up(self,input_folder:str,id:str,variable) -> Generator[Tuple[Union[str,List[str]],str,Any], None, None]:
         
         directory = input_folder if input_folder != self.directory else self.directory
 
-        for variable in variables:
-            if variable.name in self.supported_variables:
-                supported_variable = self.supported_variables[variable.name]
-                for file_desc,var_name in supported_variable.nc_file_var_binder:
-                    if type(file_desc) is FileDescriptor:
-                        file_path = file_desc.join(directory,id)
-                        if path.isfile(file_path):
-                            yield file_path,var_name,variable
-                        else :
-                            raise Exception(f"{file_path} does not exist")
-                    if type(file_desc) is FileSum:
-                        file_paths = file_desc.join(directory,id)
-                        if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
-                            yield file_paths,var_name,variable
-                    if type(file_desc) is FileRegex:
-                        file_paths = file_desc.join(directory,id)
-                        if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
-                            yield file_paths,var_name,variable
+        if variable.name in self.supported_variables:
+            supported_variable = self.supported_variables[variable.name]
+            for file_desc,var_name,optional in supported_variable.nc_file_var_binder:
+                if type(file_desc) is FileDescriptor:
+                    file_path = file_desc.join(directory,id)
+                    if path.isfile(file_path):
+                        yield file_path,var_name
+                    elif not optional :
+                        raise FileNotFoundError
+                elif type(file_desc) is FileSum:
+                    file_paths = file_desc.join(directory,id)
+                    if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
+                        yield file_paths,var_name
+                    elif not optional :
+                        raise FileNotFoundError
+                elif type(file_desc) is FileRegex:
+                    file_paths = file_desc.join(directory,id)
+                    if len(file_paths) != 0 and all(path.isfile(file_path) for file_path in file_paths):
+                        yield file_paths,var_name
+                    elif not optional :
+                        raise FileNotFoundError
     """
         build the config with the path to the toml files
         param :

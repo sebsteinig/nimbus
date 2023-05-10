@@ -1,4 +1,5 @@
 nc_to_png_outputs/
+nimbus_outputs/
 .vscode/
 # Byte-compiled / optimized / DLL files
 __pycache__/
