@@ -1,10 +1,13 @@
 import unittest
+from unit_tests.utils.variables.pipelines.test_cleaning_pipelines import TestCleaningPipeLine
 from utils.logger import Logger
 from unit_tests.test import Test
 from unit_tests.utils.test_config import TestConfig
 from unit_tests.utils.test_metadata import TestMetadata
 from unit_tests.utils.variables.test_variable_builder import TestVariableBuilder
 from unit_tests.supported_variables.utils.test_supported_variable import TestSupportedVariable
+from unit_tests.utils.variables.pipelines.test_horizontal_pipelines import TestHorizontalPipeLine
+from unit_tests.utils.variables.pipelines.test_vertical_pipelines import TestVerticalPipeLine
 import sys
 
 test_classes = [
@@ -12,7 +15,10 @@ test_classes = [
     TestConfig,
     TestMetadata,
     TestVariableBuilder,
-    TestSupportedVariable
+    TestSupportedVariable,
+    TestHorizontalPipeLine,
+    TestVerticalPipeLine,
+    TestCleaningPipeLine,
 ]
 
 Logger.debug(False)
