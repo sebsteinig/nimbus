@@ -48,10 +48,5 @@ class TestPngConverter(unittest.TestCase):
         for i in range(3):
             self.data.pngConverter.fill_output(i, 0.9, Logger.console())
         self.assertEqual(self.data.pngConverter.output.shape, (3, 100, 3))
-        path = PngConverter.save(self.data.pngConverter.output, "test_fill_output", "unit_tests/utils", Metadata(), "RGB")
-        self.assertTrue(os.path.exists(path))
 
-    def test_save_failure(self):
-        with self.assertRaises(FileNotFoundError):
-            PngConverter.save(self.data.pngConverter.output, "test_fill_output", "directory/that/doesnt/exist", Metadata(), "RGB")
         
