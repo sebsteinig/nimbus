@@ -4,7 +4,7 @@ if __name__ == "__main__":
 else :
     from supported_variables.utils.supported_variable import supported_variable,processing,preprocessing
     import supported_variables.utils.utils as utils
-from cdo import Cdo
+from utils.import_cdo import cdo
 from typing import Any, List,Union,Tuple
 import numpy as np
 import os.path as path
@@ -16,7 +16,6 @@ class Pfts:
 
 @preprocessing(Pfts,'BRIDGE')
 def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
-    cdo = Cdo()
     
     file,var_name = inputs[0]
     name_levels_1 = path.basename(file).replace(".nc","l1.out.nc")

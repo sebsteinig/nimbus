@@ -10,7 +10,7 @@ else:
         preprocessing,
     )
     import supported_variables.utils.utils as utils
-from cdo import Cdo
+from utils.import_cdo import cdo
 from typing import List, Union, Tuple
 import os.path as path
 
@@ -24,7 +24,6 @@ class Currents:
 def preprocessing(
     inputs: List[Tuple[str, str]], output_directory: str
 ) -> List[Tuple[str, str]]:
-    cdo = Cdo()
     outputs = []
 
     u_file, u_var = inputs[0]

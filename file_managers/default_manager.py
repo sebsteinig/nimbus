@@ -4,13 +4,12 @@ import shutil
 from typing import Any, Generator, List,Dict, Union, Tuple
 from utils.config import Config
 from utils.logger import Logger,_Logger
-from cdo import Cdo
 if __name__ == "__main__" :
     from output_folder import OutputFolder
 else :
     from file_managers.output_folder import OutputFolder
-    
-cdo = Cdo()
+
+from utils.import_cdo import cdo
 
 def file_name(filepath:str)->str:
     return path.basename(filepath)

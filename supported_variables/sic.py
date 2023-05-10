@@ -10,7 +10,7 @@ else:
         preprocessing,
     )
     import supported_variables.utils.utils as utils
-from cdo import Cdo
+from utils.import_cdo import cdo
 from typing import List, Tuple, Union
 import os.path as path
 
@@ -24,7 +24,6 @@ class Sic:
 def preprocessing_1(
     inputs: List[Tuple[str, str]], output_directory: str
 ) -> List[Tuple[str, str]]:
-    cdo = Cdo()
 
     file, var = inputs[0]
 

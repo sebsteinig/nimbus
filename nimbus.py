@@ -14,8 +14,8 @@ from utils.logger import Logger
 from tqdm import tqdm
 import time
 
-VERSION = '1.2'
 
+VERSION = '1.2'
 
 
 
