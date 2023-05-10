@@ -28,7 +28,7 @@ experimentList+="texPc2 texPb2 texPa2 texpz1 texpy1 texpx2 texpw2 texpv1 texpu1 
 experimentList+="texps2 texpr2 texpq texpp texpo1 texpn1 texpm1 texpl1 texpk2 texpj2 " 
 experimentList+="texpi1 texph1 texpg1 texpf texpe texpd texpc texpb texpa1 " 
 
-# variableList="pr siconc tos height oceanSurfaceCurrents winds pfts1 pfts2"
+# variableList="pr sic tos height oceanSurfaceCurrents winds pfts1 pfts2"
 #variableList="oceanSurfaceCurrents"
 variableList="surfaceWinds"
 
@@ -47,7 +47,7 @@ variableList="surfaceWinds"
 
 # experimentList="tEyee tEyed"
 
-#variableList="tas pr clt snc siconc liconc tos oceanCurrents oceanSurfaceCurrents height"
+#variableList="tas pr clt snc sic liconc tos currents oceanSurfaceCurrents height"
 #variableList="winds"
 
 

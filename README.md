@@ -59,9 +59,9 @@ The preprocessing and processing attributes allows to reference the processing s
 Here we specify the list of levels that we are interested to display in the output images, the unit of these levels, and the resolutions. The resolutions are a list of lists where each list contains new values for longitude and latitude spacing in degrees. For each couple of values, an image will be produced with the desired resolution. If no resolutions are specified, or if the couple ```["default", "default"]``` is in the list, there will be no resizing of the input data.
 
 # Add New Variables
-In order to add a new variable, one must define a new python file in the folder [supported_variables](supported_variables). The preprocessing and processing functions can be defined in this file, as well as the realm that corresponds to the variable. For example the variable [oceanCurrents](supported_variables/oceanCurrents.py) has a specific preprocessing function that we annotate with :
+In order to add a new variable, one must define a new python file in the folder [supported_variables](supported_variables). The preprocessing and processing functions can be defined in this file, as well as the realm that corresponds to the variable. For example the variable [currents](supported_variables/currents.py) has a specific preprocessing function that we annotate with :
 ```console
-    @preprocessing(OceanCurrents,'BRIDGE')
+    @preprocessing(currents,'BRIDGE')
 ```
 And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE.toml](BRIDGE.toml)).
 
