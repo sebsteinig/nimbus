@@ -46,12 +46,12 @@
 
 [tos]                                           # Sea Surface Temperature  [°C]
     [[tos.variables]]                           
-        files="{regex}{id}/pj/{id}a#ph0000000(jan|feb|mar).nc"
+        files="{regex}{id}/ph/{id}o#ph0000000(jan|feb|mar).nc"
         variable = "temp_6hr_dpth"
 
 [sic]                                           # Sea Ice Area Fraction [0-1]
     [[sic.variables]]                           
-        files="{regex}{id}/pj/{id}a#ph0000000(jan|feb|mar).nc"
+        files="{regex}{id}/ph/{id}o#ph0000000(jan|feb|mar).nc"
         variable = "iceconc_6hr_uo"
 
 ####################################################################################################
@@ -59,13 +59,13 @@
 ####################################################################################################
 
 [height]                                        # surface elevation [m]
+    dir = "/home/bridge/wb19586/ummodel/data"   # Different data path for boundary condition
     [[height.variables]]                        # Mandatory: ATM orography [ positive values]
         files="{id}/inidata/{id}.qrparm.orog.nc"
         variable = "ht"
     [[height.variables]]                        # Optional: OCN bathymetry [ negative values]
         files="{id}/inidata/{id}.qrparm.omask.nc"
         variable = "depthdepth"
-
 
 ####################################################################################################
 # examples of providing input files
