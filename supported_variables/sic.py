@@ -21,22 +21,38 @@ class Sic:
 
 
 @preprocessing(Sic, "BRIDGE")
-def preprocessing(
+def preprocessing_1(
     inputs: List[Tuple[str, str]], output_directory: str
 ) -> List[Tuple[str, str]]:
     cdo = Cdo()
 
     file, var = inputs[0]
-    omask, lsm = inputs[1]
 
     name = path.basename(file).replace(".nc", ".out.nc")
     output = path.join(output_directory, name)
 
-    omask = cdo.selvar(lsm, input=omask)
+    selected = cdo.selvar(var, input=file)
+    cdo.sellonlatbox("-180,180,90,-90", input=selected, output=output)
 
-    mapped = cdo.ifnotthen(input=f"{omask} {file}", options="-r -f nc")
+    return [(output, var)]
 
-    mapped = cdo.selvar(var, input=mapped)
-    cdo.sellonlatbox("-180,180,90,-90", input=mapped, output=output)
+
+# SST data is not saved in annual mean data,
+# so we need to calculate the annual mean from monthly data
+@preprocessing(Sic, "BRIDGE-monthly-to-annual")
+def preprocessing_2(
+    inputs: List[Tuple[str, str]], output_directory: str
+) -> List[Tuple[str, str]]:
+    cdo = Cdo()
+
+    file, var = inputs[0]
+
+    name = path.basename(file).replace(".nc", ".out.nc")
+    output = path.join(output_directory, name)
+
+    selected = cdo.selvar(var, input=file)
+    cdo.sellonlatbox(
+        "-180,180,90,-90", input=f" -yearmean {selected}", output=output
+    )
 
     return [(output, var)]
