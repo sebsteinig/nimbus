@@ -110,7 +110,7 @@ def build(name:str = "TEST_CONFIG"):
     }
     
    
-    config["siconc"] = {
+    config["sic"] = {
         "variables" : [{
             "files":[
                 "{id}/climate/{id}o.pfcljan.nc",
@@ -135,7 +135,7 @@ def build(name:str = "TEST_CONFIG"):
         ]
     }
     
-    config["oceanCurrents"] = {
+    config["currents"] = {
         "variables" : [{
             "files":"{id}/climate/{id}o.pgclann.nc",
             "variable": "ucurrTot_ym_dpth"

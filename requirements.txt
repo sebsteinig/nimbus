@@ -1,8 +1,9 @@
-
-cdo
+python-cdo
 h5netcdf
 h5py
 netCDF4
+nco
+pillow
 toml
 tomli
 xarray

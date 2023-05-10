@@ -186,18 +186,28 @@ class PngConverter :
     def minmax(arr : np.ndarray, threshold : float, logger : Logger) -> Tuple[float, float]:
         # filter outliers from 1D array without NaN values
         arr_clean = PngConverter.reject_outliers(arr.flatten()[~np.isnan(arr.flatten())], threshold)
+        if len(arr_clean) == 0:
+            return 0, 0
         return np.min(arr_clean),np.max(arr_clean)
 
+    """
+        remove outliers based on distribution of the data
+        median is more robust than the mean to outliers and the standard
+        deviation is replaced with the median absolute distance to the median
+        https://stackoverflow.com/a/16562028
+        param :
+            data : ndarray
+            m : float
+        return :
+            ndarray
+    """
     @staticmethod
     def reject_outliers(data, m = 3.):
-        # https://stackoverflow.com/a/16562028
-        # remove outliers based on distribution of the data
-        # median is more robust than the mean to outliers and the standard
-        # deviation is replaced with the median absolute distance to the median
         d = np.abs(data - np.median(data))
         mdev = np.median(d)
         s = d/mdev if mdev else np.zeros(len(d))
         return data[s<m]
+    
     """
         function that calculates the norm
         param :

@@ -1,0 +1,98 @@
+####################################################################################################
+# Global parameters 
+# Used for all variables, unless overwritten in individual variable sections below.
+####################################################################################################
+[Model]
+    name = "BRIDGE_6-hourly"                    # Name for this configuration
+    dir = "/home/bridge/wb19586/ummodel/data"         # Path to data
+    preprocessing = "BRIDGE"                    # Optional processing with CDO
+    processing = "BRIDGE"                       # Optional processing with NumPy
+
+    [Model.Atmosphere]                         
+        levels = [1000,850,700,500,200,100,10]  # Atmospheric levels to process
+        unit = "hPa"
+    [Model.Ocean]
+        levels = [0,100,200,500,1000,2000,4000] # Ocean levels to process
+        unit = "m"
+
+####################################################################################################
+# Atmospheric variables
+####################################################################################################
+
+[tas]                                           # Near-Surface Air Temperature [°C]
+    [[tas.variables]]
+        files="{regex}{id}/pj/{id}a#pj000000010(jan|feb|mar)\\+.nc"
+        variable = "temp_1_5m"
+
+[pr]                                            # Total Precipitation [mm/day]
+    [[pr.variables]]
+        files="{regex}{id}/pj/{id}a#pj000000010(jan|feb|mar)\\+.nc"
+        variable = "precip_6hr_srf"
+
+[clt]                                           # Total Cloud Fraction [0-1]
+    [[clt.variables]]
+        files="{regex}{id}/pj/{id}a#pj000000010(jan|feb|mar)\\+.nc"
+        variable = "totCloud_6hr_ua"
+
+
+####################################################################################################
+# Land surface variables
+####################################################################################################
+
+
+####################################################################################################
+# Ocean variables
+####################################################################################################
+
+[tos]                                           # Sea Surface Temperature  [°C]
+    [[tos.variables]]                           
+        files="{regex}{id}/ph/{id}o#ph000000010(jan|feb|mar)\\+.nc"
+        variable = "temp_6hr_dpth"
+
+[sic]                                           # Sea Ice Area Fraction [0-1]
+    [[sic.variables]]                           
+        files="{regex}{id}/ph/{id}o#ph000000010(jan|feb|mar)\\+.nc"
+        variable = "iceconc_6hr_uo"
+
+####################################################################################################
+# Boundary Conditions
+####################################################################################################
+
+#[height]                                        # surface elevation [m]
+#    dir = "/home/bridge/wb19586/ummodel/data"   # Different data path for boundary conditions (DOESN'T WORK))
+#    [[height.variables]]                        # Mandatory: ATM orography [ positive values]
+#        files="{id}/inidata/{id}.qrparm.orog.nc"
+#        variable = "ht"
+#    [[height.variables]]                        # Optional: OCN bathymetry [ negative values]
+#        variable = "depthdepth"
+#        files="{id}/inidata/{id}.qrparm.omask.nc"
+
+
+####################################################################################################
+# examples of providing input files
+####################################################################################################
+
+# files can be provides as:
+#     [[tas.variables]]
+#
+#         # single file:
+#         files="{id}/climate/{id}a.pdclann.nc" 
+# 
+#         # list of files:
+#         files=[
+#           "{id}/climate/{id}o.pdcljan.nc",
+#           "{id}/climate/{id}o.pdclfeb.nc",
+#           "{id}/climate/{id}o.pdclmar.nc",
+#           "{id}/climate/{id}o.pdclapr.nc",
+#           "{id}/climate/{id}o.pdclmay.nc",
+#           "{id}/climate/{id}o.pdcljun.nc",
+#           "{id}/climate/{id}o.pdcljul.nc",
+#           "{id}/climate/{id}o.pdclaug.nc",
+#           "{id}/climate/{id}o.pdclsep.nc",
+#           "{id}/climate/{id}o.pdcloct.nc",
+#           "{id}/climate/{id}o.pdclnov.nc",
+#           "{id}/climate/{id}o.pdcldec.nc",
+#         ]
+#
+#         # or using a regular expression:
+#         files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"

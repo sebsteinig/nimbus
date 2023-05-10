@@ -91,7 +91,7 @@ class HyperParametersConfig:
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
-    threshold : float = 0.95
+    threshold : float = 3.0
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
     

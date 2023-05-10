@@ -7,8 +7,8 @@ from utils.variables.variable_builder import *
 
 class TestVariableBuilder(unittest.TestCase):
     def setUp(self) -> None:
-        self.supported_variables_names = ["clt","height","liconc","mlotst","oceanCurrents","pfts","pr","siconc","snc","tas","tos","winds"]
-        
+        self.supported_variables_names = ["clt","sic", 'currents', "height","liconc","mlotst","pfts","pr","snc","tas","tos","winds"]
+        #,"oceanCurrents","siconc"
         self.config = mock_config.build()
         
         return super().setUp()

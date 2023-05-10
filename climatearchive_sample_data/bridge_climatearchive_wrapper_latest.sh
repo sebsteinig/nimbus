@@ -42,8 +42,8 @@ experimentList+="texpi1 texph1 texpg1 texpf texpe texpd texpc texpb texpa1 "
 
 # experimentList="tEyee tEyed tEyec"
 
-variableList="pr siconc tos oceanCurrents pfts winds"
-#variableList="oceanCurrents"
+variableList="pr sic tos currents pfts winds"
+#variableList="currents"
 
 if [ -d ${scriptDir}/tmp ]; then rm -r ${scriptDir}/tmp; fi
 mkdir ${scriptDir}/tmp
@@ -95,16 +95,16 @@ for experiment in ${experimentList}; do
       elif [[ "${variable}" == "mlotst" ]]; then
         variableBRIDGE="mixLyrDpth_mm_uo"
         fileBRIDGE=o.pf
-      elif [[ "${variable}" == "siconc" ]]; then
+      elif [[ "${variable}" == "sic" ]]; then
         variableBRIDGE="iceconc_mm_uo"
         fileBRIDGE=o.pf
-      elif [[ "${variable}" == "oceanCurrents" ]]; then
+      elif [[ "${variable}" == "currents" ]]; then
         variableBRIDGE="ucurrTot_ym_dpth"
         fileBRIDGE=o.pg
       fi    
            
       # merge monthly mean files to climatology
-      if [ ! -f ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.nc ] && [ "${variable}" != "oceanCurrents" ] && [ "${variable}" != "winds" ]; then
+      if [ ! -f ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.nc ] && [ "${variable}" != "currents" ] && [ "${variable}" != "winds" ]; then
         monthList="jan feb mar apr may jun jul aug sep oct nov dec"
         fileList=()
         
@@ -128,7 +128,7 @@ for experiment in ${experimentList}; do
       fi
       
 
-      if [  "${variable}" == "oceanCurrents" ]; then    
+      if [  "${variable}" == "currents" ]; then    
         
         # process annual mean ocean velocities
 #        cdo -r -setmisstoc,0 -remapnn,${inputDir}/${experiment}/inidata/${experiment}.qrparm.omask.nc ${inputDir}/${experiment}/climate/${experiment}${fileBRIDGE}clann.nc ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.remapnn.nc
@@ -160,8 +160,8 @@ for experiment in ${experimentList}; do
       fi
       
       # create annual mean png file for THREE.js front-end access
-      if [[ "${variable}" == "oceanCurrents" ]]; then
-        python ${scriptDir}/bridge_netcdf2png_oceanCurrents.py --uvFile ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.remapnn.shifted.nc --variableBRIDGE ${variableBRIDGE} --wFile ${scriptDir}/tmp/${experiment}${fileBRIDGE}.W.clim.masked.shifted.nc  --variableOUT ${variable} --experiment ${experiment} --outputDir ${pngDir}/${experiment}/
+      if [[ "${variable}" == "currents" ]]; then
+        python ${scriptDir}/bridge_netcdf2png_currents.py --uvFile ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.remapnn.shifted.nc --variableBRIDGE ${variableBRIDGE} --wFile ${scriptDir}/tmp/${experiment}${fileBRIDGE}.W.clim.masked.shifted.nc  --variableOUT ${variable} --experiment ${experiment} --outputDir ${pngDir}/${experiment}/
       elif [[ "${variable}" == "winds" ]]; then
         python ${scriptDir}/bridge_netcdf2png_winds.py --uvFile ${scriptDir}/tmp/${experiment}${fileBRIDGE}.clim.shifted.nc --variableBRIDGE ${variableBRIDGE} --variableOUT ${variable} --experiment ${experiment} --outputDir ${pngDir}/${experiment}/
       elif [[ "${fileBRIDGE}" == "o.pf" ]]; then
