@@ -186,6 +186,8 @@ class PngConverter :
     def minmax(arr : np.ndarray, threshold : float, logger : Logger) -> Tuple[float, float]:
         # filter outliers from 1D array without NaN values
         arr_clean = PngConverter.reject_outliers(arr.flatten()[~np.isnan(arr.flatten())], threshold)
+        if len(arr_clean) == 0:
+            return 0, 0
         return np.min(arr_clean),np.max(arr_clean)
 
     """
