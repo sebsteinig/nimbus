@@ -222,7 +222,7 @@ class VariableDescription:
                 raise ConfigException(f" must have a non empty string variable")
             
             if "optional" in file_var:
-                optional = True
+                optional = bool(file_var["optional"])
             else :
                 optional = False
             
