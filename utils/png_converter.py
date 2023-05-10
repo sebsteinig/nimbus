@@ -1,125 +1,295 @@
+from dataclasses import dataclass
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+import warnings
 import os
 import json
 from datetime import datetime
-from utils.metadata import Metadata
+from utils.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
-from typing import Tuple
+from typing import List, Tuple, Dict
+from enum import Enum
 
-class TooManyVariables(Exception):pass
-class TooManyInputs(Exception):pass
-class LongitudeLatitude(Exception):pass
+class IncorrectInputTypes(Exception): pass
+class IncorrectInputDim(Exception) : pass
+class IncorrectNumberOfVariables(Exception) : pass
+class IncorrectInputSize(Exception) : pass
 
-def clean(output : np.ndarray) -> np.ndarray:
-    output[np.isnan(output)] = 255
-    return output.clip(0,254)
+"""
+    enum Mode for creating an image, with the number of channels as value
+"""
+class Mode(Enum):
+    L = 1
+    RGB = 3
+    RGBA = 4
 
-def to_png_info(metadata):
-    png_info = PngInfo()
-    for key,value in metadata.to_dict().items():
-        png_info.add_text(key,str(json.dumps(value)))
-    return png_info
+"""
+    class PngConverter, which contains 4 non static methods which are called by the convert function.
+"""
+class PngConverter :
+    level:int
+    time:int
+    lat:int
+    lon:int
+    mode : Mode
+    input : list
+    output : np.ndarray
+    output_mean : np.ndarray
 
-def save(output : np.ndarray, output_file : str, directory :str, metadata, mode = 'L'):
-    out = clean(output)
-    out = np.squeeze(out)
-    img_ym = Image.fromarray(np.uint8(out), mode)
-    path = os.path.join(directory, output_file + ".png")
-    img_ym.save(path, pnginfo = to_png_info(metadata))
-    return path
+    """
+        (1/4) constructor of the PngConverter. intializes the size of the outputs
+        param :
+            input : a list of ndarrays
+        return :
+            None
+    """
+    def __init__(self, input):
+        self.mode = PngConverter.get_mode(input)
+        self.input, self.level, self.time, self.lat, self.lon = PngConverter.reshape_input(input)
+        self.output = np.zeros(( self.lat * self.level, self.lon * self.time, self.mode.value))
+        self.output_mean = np.zeros ((self.lat * self.level, self.lon, self.mode.value))
 
-def eval_shape(input:list) -> Tuple[bool, bool, dict]:
-    level, time = 1, 1
-    latitude = input[0].shape[-2]
-    longitude = input[0].shape[-1]  
-    size = len (np.shape(input[0]))    
-    if size == 4:
-        level = input[0].shape[0]
-        time = input[0].shape[1]
-    elif size == 3 :
-        time = input[0].shape[0]
-    else:
-        if not(size == 2) :
-            raise TooManyVariables(f"{size} > 4 : there are too many variables")
-    input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
-    return input_reshaped, level, time, latitude, longitude
+    """
+        (2/4) calculates the output
+        param :
+            vs_metadatas : list
+            metadata : Metadata
+            threshold : float
+            logger : Logger
+        return :
+            Metadata
+    """
+    def set_output(self, vs_metadatas : list, metadata : Metadata, threshold : float, logger : Logger) -> Metadata:
+        for num_var in range(len(self.input)) :
+            min_max = self.fill_output(num_var, threshold, logger)
+            vs_metadatas[num_var].extends( min_max = min_max.tolist() )
+        logger.info(self.mode.name, "MODE")        
+        metadata.extends( nan_value_encoding = 255, created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S") )
+        metadata.push(vs_metadatas)
+        return metadata
 
-def eval_input(size:int) -> Tuple[int, str]:
-    if size==1 :
-        dim = 1
-        mode = 'L'
-    elif size == 2 or size == 3:
-        dim = 3
-        mode = 'RGB'
-    elif size == 4 :
-        dim = 4
-        mode = "RGBA"
-    else:
-        raise TooManyInputs(f"{size} > 4 : there are too many inputs")
-    return dim, mode
+    """
+        (3/4) save the output as a png image, and calculates the mean
+        param :
+            directory : str
+            output_filename:str
+            png_outputs : list
+            metadata : Metadata
+        return :
+            list (the name of the newly created file is added to te list)
+    """
+    def save_output(self, directory : str, output_filename:str, png_outputs : list, metadata : Metadata) -> list:    
+        out = PngConverter.clean(self.output)
+        ### calcul of output_mean, after cleaning the output ###
+        for num_var in range (self.mode.value):
+            for index_level in range(self.level):
+                arr = np.reshape(out[index_level * self.lat : (index_level+1) * self.lat, :, num_var], (self.lat, self.time, self.lon))
+                self.output_mean[index_level * self.lat : (index_level+1) * self.lat, :, num_var] = np.mean(arr, axis = 1)
+        ### save two png files : "avg" for the output_mean and "ts" for the cleaned output ###
+        PngConverter.save(self.output_mean, output_filename + ".avg", directory, metadata, self.mode.name)
+        filename = PngConverter.save(out, output_filename + ".ts", directory, metadata, self.mode.name)
+        png_outputs.append(filename)
+        return png_outputs
 
-def norm(input:np.ndarray,_min,_max):
-    if _min == _max :
-        return input 
-    return (input - _min)/(_max - _min)
+    """
+        (4/4) function that fill the output with normalized input.
+        it iterates over levels and times.
+        param :
+            num_var : int
+            threshold : float
+            logger : Logger
+        return :
+            ndarray (of size (level x time) where each element is a dict containing min and max values)
+    """
+    def fill_output(self, num_var:int, threshold : float, logger : Logger) -> np.ndarray :
+        min_max = np.empty(shape = (self.level, self.time), dtype = dict)
+        for index_level in range(self.level):
+            for index_time in range(self.time):
+                    ### when only two variables in input -> zeros for the 3rd channel ###
+                    if num_var == 2 and len(self.input) == 2 :
+                        input_data = np.zeros((self.lat, self.lon))
+                    else :
+                        _min, _max = PngConverter.minmax(self.input[num_var, index_level, index_time, :, :], threshold, logger)
+                        ### min and max values that will be added to the metadata ###
+                        min_max[index_level, index_time] = {"min" : str(_min), "max" : str(_max)}
+                        input_data = PngConverter.norm(self.input[num_var, index_level, index_time, :, :],_min,_max) * 254 
+                    self.output[index_level * self.lat : (index_level+1) * self.lat,\
+                        index_time * self.lon  : ((index_time+1)* self.lon), num_var] = input_data
+        return min_max
+  
 
-def get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude):
-    if level == 1 :
-        index_output = np.s_[:,:,num_var] if  time == 1 else\
-             np.s_[:, indexTime * longitude  : ((indexTime+1)* longitude), num_var]
-    else :
-        index_output = np.s_[indexLevel *latitude : (indexLevel+1)*latitude, indexTime* longitude  : ((indexTime+1)* longitude), num_var]
-    return index_output
+    """
+        function that reshapes the input to be converted.
+        precondition : 
+            the input is a list of ndarrays that have the same shape : 2, 3 or 4 dimensions
+        param :
+            input : list
+        return :
+            (ndarray, int, int, int, int, int) (reshaped input and the 4 dimensions)
+    """
+    @staticmethod
+    def reshape_input(input:list) -> Tuple[np.ndarray, int, int, int, int]:    
+        if any(input[0].shape != x.shape for x in input):
+            raise IncorrectInputDim(f"All arrays must have the same dimensions {[x.shape for x in input]}")
+        size = len (np.shape(input[0]))    
+        level, time = 1, 1
+        if size < 2 :
+            raise IncorrectNumberOfVariables(f"{size} < 2 : there are too few variables")
+        latitude = input[0].shape[-2]
+        longitude = input[0].shape[-1]  
+        if size == 4:
+            level = input[0].shape[0]
+            time = input[0].shape[1]
+        elif size == 3 :
+            time = input[0].shape[0]
+        elif size > 4 :
+            raise IncorrectNumberOfVariables(f"{size} > 4 : there are too many variables")
+        input_reshaped = np.reshape(input, (len(input), level, time, latitude, longitude))
+        return input_reshaped, level, time, latitude, longitude
 
-def fill_output(level:int, time:int, longitude:int, latitude:int, num_var:int, input:list, output:np.ndarray, threshold, logger) -> np.ndarray:
-    min_max = []
-    for indexLevel in range(level):
-        minmaxTimes = []
-        for indexTime in range(time):
-                if num_var ==2 and len(input) == 2 :
-                      input_data = np.zeros((latitude, longitude))
-                else :
-                    _min, _max = minmax(input[num_var, indexLevel, indexTime, :, :],threshold, logger)
-                    minmaxTimes.append({"min" : str(_min), "max" : str(_max)})
-                    input_data = norm(input[num_var, indexLevel, indexTime, :, :],_min,_max) * 254
-                index_output = get_index_output(num_var, indexLevel, indexTime, level, time, latitude, longitude)
-                output[index_output] = input_data
-        min_max.append(minmaxTimes)
-    return output, min_max
-
-def minmax(arr,threshold, logger):
-    sorted_flat = np.unique(np.sort(arr.flatten()))
-    if np.isnan(sorted_flat[-1]) :
-        sorted_flat = sorted_flat[:-1]
-    n = len(sorted_flat)
-    if n<=1 :
-        logger.warning("min and max are equals to 0")
-        return 0, 0
-    return sorted_flat[int((1-threshold)*n)],sorted_flat[int(threshold*n)]
-
-
-
-def convert(input:list, output_filename:str, threshold, metadata:Metadata, logger, directory:str = "") -> str:
-    dim, mode = eval_input(len(input))
-    input, level, time, latitude, longitude = eval_shape(input)    
-    output = np.zeros(( latitude * level, longitude * time, dim))
-
-    for num_var in range(len(input)) :
-        output, min_max = fill_output(level, time, longitude, latitude, num_var, input, output, threshold, logger)
-        
-        metadata.extends_for(metadata.name_of(num_var),\
-            min_max = min_max
-        )
-    logger.info(mode, "MODE")
+    """
+        function that checks the input size and returns the mode.
+        precondition :
+            the input is a list of maximum 4 ndarrays.
+        param :
+            input : list
+        return :
+            Mode (the mode used to convert as an image)
+    """
+    @staticmethod
+    def get_mode(input : list) -> Mode:
+        if len(input) == 0 :
+            raise IncorrectInputSize(f"this input list is empty")
+        if any(not isinstance(x, np.ndarray) for x in input):
+            raise IncorrectInputTypes("at least one input is not ndarray")
+        if len(input)==1 :
+            mode = Mode.L
+        elif len(input) == 2 or len(input) == 3:
+            mode = Mode.RGB
+        elif len(input) == 4 :
+            mode = Mode.RGBA
+        else:
+            raise IncorrectInputSize(f"{len(input)} > 4 : there are too many inputs")
+        return mode
     
-    metadata.extends(nan_value_encoding = 255,\
-        created_at = datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),\
-    )
+    """
+        calcul of the min and max values.
+        param :
+            arr : ndarray (some input data)
+            threshold : float
+            logger : Logger
+        return :
+            tuple (contains the min and max values)
+    """
+    @staticmethod
+    def minmax(arr : np.ndarray, threshold : float, logger : Logger) -> Tuple[float, float]:
+        # filter outliers from 1D array without NaN values
+        arr_clean = PngConverter.reject_outliers(arr.flatten()[~np.isnan(arr.flatten())], threshold)
+        if len(arr_clean) == 0:
+            return 0, 0
+        return np.min(arr_clean),np.max(arr_clean)
+
+    """
+        remove outliers based on distribution of the data
+        median is more robust than the mean to outliers and the standard
+        deviation is replaced with the median absolute distance to the median
+        https://stackoverflow.com/a/16562028
+        param :
+            data : ndarray
+            m : float
+        return :
+            ndarray
+    """
+    @staticmethod
+    def reject_outliers(data, m = 3.):
+        d = np.abs(data - np.median(data))
+        mdev = np.median(d)
+        s = d/mdev if mdev else np.zeros(len(d))
+        return data[s<m]
     
-    filename = save(output, output_filename, directory, metadata, mode)
-    return filename
+    """
+        function that calculates the norm
+        param :
+            input : ndarray
+            _min : float
+            _max : float
+        return :
+            ndarray
+    """
+    @staticmethod
+    def norm(input:np.ndarray, _min:float, _max:float):
+        if _min == _max :
+            return input 
+        return (input - _min)/(_max - _min)
+ 
+    """
+        function that replaces nan values with 255 in the output.
+        param :
+            output : ndarray
+        return :
+            ndarray
+    """
+    @staticmethod
+    def clean(output : np.ndarray) -> np.ndarray:
+        output[np.isnan(output)] = 255
+        return output.clip(0,254)
+
+    """
+        transform a Metadata instance into a PngInfo.
+        param :
+            metadata : Metadata
+        return :
+            PngInfo
+    """
+    @staticmethod
+    def to_png_info(metadata : Metadata) -> PngInfo:
+        png_info = PngInfo()
+        for key,value in metadata.to_dict().items():
+            png_info.add_text(key,str(json.dumps(value)))
+        return png_info
+          
+    """
+        save the png image
+        param :
+            out : ndarray
+            output_file : str (name of the image file)
+            directory : str (name of the ouput directory)
+            metadata : PngInfo
+            mode : str (L or RGB or RGBA)
+        return :
+            str (the path to the output image)
+    """
+    @staticmethod
+    def save(out : np.ndarray, output_file : str, directory :str, metadata : Metadata, mode = 'L'):        
+        img_ym = Image.fromarray(np.uint8(np.squeeze(out)), mode)
+        path = os.path.join(directory, output_file + ".png")
+        img_ym.save(path, pnginfo = PngConverter.to_png_info(metadata))
+        return path
+
+
+"""
+    main function that sets up the needed variables and checks the input. 
+    it iterates over the number of inputs and the number of variables.
+    param :
+        inputs : List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]]
+        threshold : float
+        metadata : Metadata
+        logger : Logger
+        directory : str
+    return :
+        List[str] (the list of filenames of the created images)
+"""
+def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold : float, metadata:Metadata, logger : Logger, directory:str = "") -> List[str]:
+    png_outputs = []
+    for input,output_filename in inputs:        
+        tmp = list(zip(*input))
+        input = list(tmp[0])
+        vs_metadatas = list(tmp[1])
+        png_converter = PngConverter(input)         
+        metadata = png_converter.set_output(vs_metadatas, metadata, threshold, logger)
+        png_outputs = png_converter.save_output(directory, output_filename, png_outputs, metadata)
+    return png_outputs
     
 if __name__ == "__main__":
     print("Cannot execute in main")
