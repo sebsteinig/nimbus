@@ -11,11 +11,10 @@ import utils.variables.variable_builder as vb
 from utils.variables.variable import retrieve_data
 import file_managers.default_manager as default
 from utils.logger import Logger
-from tqdm import tqdm
 import time
 
 
-VERSION = '1.2'
+VERSION = '1.3'
 
 
 
