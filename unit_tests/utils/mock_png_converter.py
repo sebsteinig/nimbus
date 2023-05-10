@@ -11,11 +11,7 @@ class MockPngConverter:
     input_3 : list
     input_4 : list
     input_5 : list
-    shape : Shape
-    mode : Mode
-    reshaped : np.ndarray
-    output : np.ndarray
-    output_mean : np.ndarray
+    pngConverter : PngConverter
 
     def __init__(self) -> None:
         self.z_5_dim = np.zeros((12, 12, 12, 12, 12))
@@ -26,15 +22,14 @@ class MockPngConverter:
         self.input_1 = [self.z_4_dim]
         self.input_2 = [self.z_4_dim, self.z_4_dim]
         
-        arr = [np.zeros((3, 100)), np.zeros((3, 100)), np.zeros((3, 100))]
-        #arr[0, 0, :] = 1
-        #arr[1, 1, :] = 1
-        #arr[2, 2, :] = 1
-        self.input_3 = arr
-        self.mode = get_mode(self.input_3)
-        self.reshaped, self.shape = reshape_input(self.input_3)
-        self.output = np.zeros((self.shape.lat, self.shape.lon * self.shape.time, self.mode.value))
-        self.output_mean = np.zeros((self.shape.lat, self.shape.lon, self.mode.value))
+        arr0 = np.zeros((3, 100))
+        arr1 = np.zeros((3, 100))
+        arr2 = np.zeros((3, 100))
+        arr0[0, :] = 1
+        arr1[1, :] = 1
+        arr2[2, :] = 1
+        self.input_3 = [arr0, arr1, arr2]
+        self.pngConverter = PngConverter(self.input_3)
         
         self.input_4 = [self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim]
         self.input_5 = [self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim, self.z_4_dim]
