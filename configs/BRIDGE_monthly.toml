@@ -1,0 +1,131 @@
+####################################################################################################
+# Global parameters 
+# Used for all variables, unless overwritten in individual variable sections below.
+####################################################################################################
+[Model]
+    name = "BRIDGE_monthly"                     # Name for this configuration
+    dir = "climatearchive_sample_data/data"     # Path to data
+    preprocessing = "BRIDGE"                    # Optional processing with CDO
+    processing = "BRIDGE"                       # Optional processing with NumPy
+
+    [Model.Atmosphere]                         
+        levels = [1000,850,700,500,200,100,10]  # Atmospheric levels to process
+        unit = "hPa"
+    [Model.Ocean]
+        levels = [0,100,200,500,1000,2000,4000] # Ocean levels to process
+        unit = "m"
+
+####################################################################################################
+# Atmospheric variables
+####################################################################################################
+
+[tas]                                           # Near-Surface Air Temperature [°C]
+    [[tas.variables]]
+        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "temp_mm_1_5m"
+
+[pr]                                            # Total Precipitation [mm/day]
+    [[pr.variables]]
+        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "precip_mm_srf"
+
+[clt]                                           # Total Cloud Fraction [0-1]
+    [[clt.variables]]
+        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "totCloud_mm_ua"
+
+[winds]                                         # Atmospheric wind on pressure levels [m/s]
+    [[winds.variables]]                         # Mandatory: Eastward (i.e. ua) component
+        files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "u_mm_p"
+    [[winds.variables]]                         # Mandatory: Northward (i.e. va) component
+        files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "v_mm_p"
+
+####################################################################################################
+# Land surface variables
+####################################################################################################
+
+[snc]                                           # Snow Area Fraction [0-1]
+    [[snc.variables]]
+        files="{regex}{id}/climate/{id}a.ptcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "snowCover_mm_srf"
+
+[liconc]                                        # Land Ice Fraction [0-1]
+    [[liconc.variables]]
+        files="{id}/climate/{id}a.ptclann.nc"
+        variable = "fracPFTs_mm_srf"
+
+[pfts]                                          # Plant Functional Types [0-1]
+    [[pfts.variables]]
+        files="{id}/climate/{id}a.ptclann.nc"
+        variable = "fracPFTs_mm_srf"
+
+####################################################################################################
+# Ocean variables
+####################################################################################################
+
+[tos]                                           # Sea Surface Temperature  [°C]
+    [[tos.variables]]                           # Mandatory: SST Field
+        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "temp_mm_uo"
+
+[mlotst]                                        # Ocean Mixed Layer Thickness Defined by Sigma T  [m]
+    [[mlotst.variables]]
+        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "mixLyrDpth_mm_uo"
+
+[sic]                                           # Sea Ice Area Fraction [0-1]
+    [[sic.variables]]                           # 
+        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
+        variable = "iceconc_mm_uo"
+                        
+[currents]                                      # Atmospheric wind on pressure levels [m/s]
+    [[currents.variables]]                      # Mandatory: Sea Water X Velocity 
+        files="{id}/climate/{id}o.pgclann.nc"
+        variable = "ucurrTot_ym_dpth"
+    [[currents.variables]]                      # Mandatory: Sea Water Y Velocity 
+        files="{id}/climate/{id}o.pgclann.nc"
+        variable = "vcurrTot_ym_dpth"
+
+####################################################################################################
+# Boundary Conditions
+####################################################################################################
+
+[height]                                        # surface elevation [m]
+    [[height.variables]]                        # Mandatory: ATM orography [ positive values]
+        files="{id}/inidata/{id}.qrparm.orog.nc"
+        variable = "ht"
+    [[height.variables]]                        # Optional: OCN bathymetry [ negative values]
+        files="{id}/inidata/{id}.qrparm.omask.nc"
+        variable = "depthdepth"
+
+
+####################################################################################################
+# examples of providing input files
+####################################################################################################
+
+# files can be provides as:
+#     [[tas.variables]]
+#
+#         # single file:
+#         files="{id}/climate/{id}a.pdclann.nc" 
+# 
+#         # list of files:
+#         files=[
+#           "{id}/climate/{id}o.pdcljan.nc",
+#           "{id}/climate/{id}o.pdclfeb.nc",
+#           "{id}/climate/{id}o.pdclmar.nc",
+#           "{id}/climate/{id}o.pdclapr.nc",
+#           "{id}/climate/{id}o.pdclmay.nc",
+#           "{id}/climate/{id}o.pdcljun.nc",
+#           "{id}/climate/{id}o.pdcljul.nc",
+#           "{id}/climate/{id}o.pdclaug.nc",
+#           "{id}/climate/{id}o.pdclsep.nc",
+#           "{id}/climate/{id}o.pdcloct.nc",
+#           "{id}/climate/{id}o.pdclnov.nc",
+#           "{id}/climate/{id}o.pdcldec.nc",
+#         ]
+#
+#         # or using a regular expression:
+#         files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"

@@ -3,8 +3,8 @@
 # Used for all variables, unless overwritten in individual variable sections below.
 ####################################################################################################
 [Model]
-    name = "BRIDGE_monthly"                     # Name for this configuration
-    dir = "climatearchive_sample_data/data"     # Path to data
+    name = "BRIDGE_6-hourly"                    # Name for this configuration
+    dir = "/home/bridge/wb19586/umdata"         # Path to data
     preprocessing = "BRIDGE"                    # Optional processing with CDO
     processing = "BRIDGE"                       # Optional processing with NumPy
 
@@ -21,78 +21,38 @@
 
 [tas]                                           # Near-Surface Air Temperature [°C]
     [[tas.variables]]
-        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "temp_mm_1_5m"
+        files="{regex}{id}/pj/{id}a#pj0000000(jan|feb|mar).nc"
+        variable = "temp_1_5m"
 
 [pr]                                            # Total Precipitation [mm/day]
     [[pr.variables]]
-        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "precip_mm_srf"
+        files="{regex}{id}/pj/{id}a#pj0000000(jan|feb|mar).nc"
+        variable = "precip_6hr_srf"
 
 [clt]                                           # Total Cloud Fraction [0-1]
     [[clt.variables]]
-        files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "totCloud_mm_ua"
+        files="{regex}{id}/pj/{id}a#pj0000000(jan|feb|mar).nc"
+        variable = "totCloud_6hr_ua"
 
-[winds]                                         # Atmospheric wind on pressure levels [m/s]
-    [[winds.variables]]                         # Mandatory: Eastward (i.e. ua) component
-        files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "u_mm_p"
-    [[winds.variables]]                         # Mandatory: Northward (i.e. va) component
-        files="{regex}{id}/climate/{id}a.pccl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "v_mm_p"
 
 ####################################################################################################
 # Land surface variables
 ####################################################################################################
 
-[snc]                                           # Snow Area Fraction [0-1]
-    [[snc.variables]]
-        files=["{id}/climate/{id}a.ptclann.nc"]
-        variable = "snowCover_mm_srf"
-
-[liconc]                                        # Land Ice Fraction [0-1]
-    [[liconc.variables]]
-        files=["{id}/climate/{id}a.ptclann.nc"]
-        variable = "fracPFTs_mm_srf"
-
-[pfts]                                          # Plant Functional Types [0-1]
-    [[pfts.variables]]
-        files=["{id}/climate/{id}a.ptclann.nc"]
-        variable = "fracPFTs_mm_srf"
 
 ####################################################################################################
 # Ocean variables
 ####################################################################################################
 
 [tos]                                           # Sea Surface Temperature  [°C]
-    [[tos.variables]]                           # Mandatory: SST Field
-        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "temp_mm_uo"
-    [[tos.variables]]                           # Mandatory: Land-sea mask on ocean grid
-        files="{id}/inidata/{id}.qrparm.omask.nc"
-        variable = "lsm"
-
-[mlotst]                                        # Ocean Mixed Layer Thickness Defined by Sigma T  [m]
-    [[mlotst.variables]]
-        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "mixLyrDpth_mm_uo"
+    [[tos.variables]]                           
+        files="{regex}{id}/pj/{id}a#ph0000000(jan|feb|mar).nc"
+        variable = "temp_6hr_dpth"
 
 [sic]                                           # Sea Ice Area Fraction [0-1]
-    [[sic.variables]]                           # Mandatory: Sea ice field
-        files="{regex}{id}/climate/{id}o.pfcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
-        variable = "iceconc_mm_uo"
-    [[sic.variables]]                           # Mandatory: Land-sea mask on ocean grid
-        files="{id}/inidata/{id}.qrparm.omask.nc"
-        variable = "lsm"
-                        
-[currents]                                      # Atmospheric wind on pressure levels [m/s]
-    [[currents.variables]]                      # Mandatory: Sea Water X Velocity 
-        files="{id}/climate/{id}o.pgclann.nc"
-        variable = "ucurrTot_ym_dpth"
-    [[currents.variables]]                      # Mandatory: Sea Water Y Velocity 
-        files="{id}/climate/{id}o.pgclann.nc"
-        variable = "vcurrTot_ym_dpth"
+    [[sic.variables]]                           
+        files="{regex}{id}/pj/{id}a#ph0000000(jan|feb|mar).nc"
+        variable = "iceconc_6hr_uo"
 
 ####################################################################################################
 # Boundary Conditions
