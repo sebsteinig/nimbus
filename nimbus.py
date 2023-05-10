@@ -1,3 +1,4 @@
+import sys
 from utils.config import Config
 import utils.png_converter as png_converter
 from typing import List
@@ -10,6 +11,7 @@ import utils.variables.variable_builder as vb
 from utils.variables.variable import retrieve_data
 import file_managers.default_manager as default
 from utils.logger import Logger
+from tqdm import tqdm
 import time
 
 VERSION = '1.2'
@@ -46,83 +48,73 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
     if hyper_parameters['clean']:
         default.FileManager.clean(ids, output)
 
-    file_manager = default.FileManager.mount(
+    with default.FileManager.mount(
         input=files,\
         output=output,\
         config=config,\
         variables=variables,\
-        ids=ids)
+        ids=ids) as file_manager:
 
-    current_variable = None
-    current_id = None
-    count_variable = None
-    count_id = 0
-    
-    for input_files,output_folder,variable,id in file_manager.iter():
-        if variable != current_variable:
-            if count_variable is not None:
-                Logger.console().status("conversion of",sep='finished with',variable=current_variable.name,rate=f"{count_id}/{len(ids)}")
-            current_variable = variable
-            current_id = None
-            if count_variable is None:
-                count_variable = 0
-            if count_id != 0:
-                count_variable += 1
-            count_id = 0
-            Logger.console().status("Starting conversion of", variable=current_variable.name)
-        if id != current_id:
-            current_id = id
-            Logger.console().status("\tStarting conversion of", id=current_id)
-        
-        logger = Logger.file(output_folder.out_log(),variable.name)
-        output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
-        hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
-        hyper_parameters['logger'] = logger
-        error = False
-        for resolution in config.get_realm_hp(variable)['resolutions']:
-            try : 
-                hyper_parameters['resolution'] = resolution
+        note = {}
+
+        for variable in file_manager.iter_variables():
+            Logger.console().status("Starting conversion of", variable=variable.name)
+            success = 0
+            total = 0
+            for id,output_folder,iter in file_manager.iter_id_from(variable):
+                Logger.console().progress_bar()  
+                total += 1
+                Logger.console().status("\tStarting conversion of", id=id)
+                logger = Logger.file(output_folder.out_log(),variable.name)
+                output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
+                hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
+                hyper_parameters['logger'] = logger
                 
-                res_suffixe = ""
-                if resolution[0] is not None and resolution[1] is not None:
-                    res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-                _output_file = output_file + res_suffixe
-                
-                data,metadata = retrieve_data(inputs=input_files,\
-                    variable=variable,\
-                    hyper_parameters=hyper_parameters,\
-                    config=config,\
-                    output_file = _output_file,\
-                    save=save(output_folder.out_nc()))
-                
-                
-                metadata.extends(version = VERSION)
-                
-                png_file = png_converter.convert(inputs=data,\
-                    threshold=config.get_hp(variable.name).threshold,\
-                    metadata=metadata,\
-                    logger=logger)
-                Logger.console().debug(f"{png_file}","SAVE")
-                logger.info(metadata.log(),"METADATA")
-            except Exception as e:
-                error = True
-                trace = Logger.trace() 
-                Logger.console().error(trace, "PNG CONVERTER")
-                logger.error(e.__repr__(), "PNG CONVERTER")
-        if not error :
-            count_id += 1 
-    if count_variable is not None:
-        Logger.console().status("conversion of",sep=' finished with ',variable=current_variable.name,rate=f"{count_id}/{len(ids)}")
-    if count_id != 0:
-        count_variable += 1
-    return count_variable,len(variables)
+                files_var_binder = list(iter())
+                try:
+                    for resolution in config.get_realm_hp(variable)['resolutions']:
+                        hyper_parameters['resolution'] = resolution
+                            
+                        res_suffixe = ""
+                        if resolution[0] is not None and resolution[1] is not None:
+                            res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
+                        _output_file = output_file + res_suffixe
+                        
+                        data,metadata = retrieve_data(inputs=files_var_binder,\
+                            variable=variable,\
+                            hyper_parameters=hyper_parameters,\
+                            config=config,\
+                            output_file = _output_file,\
+                            save=save(output_folder.out_nc()))
+                        
+                        
+                        metadata.extends(version = VERSION)
+                        
+                        png_file = png_converter.convert(inputs=data,\
+                            threshold=config.get_hp(variable.name).threshold,\
+                            metadata=metadata,\
+                            logger=logger)
+                        Logger.console().debug(f"{png_file}","SAVE")
+                        logger.info(metadata.log(),"METADATA")
+                    success += 1
+                except Exception as e:
+                    trace = Logger.trace() 
+                    Logger.console().error(trace, "PNG CONVERTER")
+                    logger.error(e.__repr__(), "PNG CONVERTER")   
+                Logger.console().status("conversion finished for",id=id)
+            
+            note[variable.name] = (success,total)
+            
+            Logger.console().status("conversion finished for",variable=variable.name)
+
+    return note
 
 
 
 def main(args):
     start = time.time()
     Logger.blacklist()
-    Logger.debug(bool(args.debug))
+    Logger.all(bool(args.debug))
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
@@ -132,7 +124,7 @@ def main(args):
 
     hyper_parameters = {'clean':bool(args.clean),}
     
-    success,total = convert_variables(config=config,\
+    note = convert_variables(config=config,\
         variables=variables,\
         ids= None if args.expids is None else args.expids.split(","),\
         files=args.files,\
@@ -141,10 +133,10 @@ def main(args):
     
     
     end = time.time()
-    if success == total:
-        Logger.console().success(success,total,end-start)
+    if all( success == total for success,total in note.values()):
+        Logger.console().success(note,end-start)
     else :
-        Logger.console().failure(success,total,end-start)
+        Logger.console().failure(note,end-start)
         
  
 

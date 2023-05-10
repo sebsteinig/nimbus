@@ -3,6 +3,7 @@ from enum import Enum
 import traceback
 from datetime import datetime
 import os
+import sys
 from typing import Union
 import os.path as path
 from datetime import timedelta
@@ -51,6 +52,7 @@ def pretty_time_delta(seconds):
 @dataclass
 class _Logger:
     std_output: Union[str , None]
+    i = 0
     def debug(self,msg="",tag=None,**var):
         if not Logger._debug:
             return 
@@ -99,6 +101,8 @@ class _Logger:
             return
     
     def status(self,msg,sep='',**arg):
+        if not Logger._status:
+            return 
         items = list(arg.items())
         suffixe = []
         
@@ -111,21 +115,42 @@ class _Logger:
         
         print(f"{flag.STATUS.get()} : {flag.STATUS.value[1].wrap(msg)} {''.join(suffixe)}")
     
+    def progress_bar(self):
+        if Logger._status or Logger._debug:
+            return
+        loading_sign = [ '-' , '\\' , '|', '/' ,]
+        sys.stdout.write(flag.STATUS.tag(f'\r\tprogress {loading_sign[self.i]}'))
+        sys.stdout.flush()
+        self.i = (self.i + 1) % 4
 
     
-    def success(self,count,total,time):
+    def success(self,note,time):
         t = pretty_time_delta(time)
-        print(f"{flag.SUCCESS.get()} :\t{flag.SUCCESS.tag(f'conversion to png finished with {count}/{total} in {t}')}")
-    def failure(self,count,total,time):
+        summary = ""
+        for name,(success,total) in note.items():
+            summary += f"\t{name} : {success}/{total}\n"
+        
+        print()
+        print(flag.SUCCESS.tag(f'Summary :\n{summary}'))
+        print(f"{flag.SUCCESS.get()} :{flag.SUCCESS.tag(f'conversion to png finished in {t}')}")
+    def failure(self,note,time):
         t = pretty_time_delta(time)
-        print(f"{flag.FAILURE.get()} :\t{flag.FAILURE.tag(f'conversion to png finished with {count}/{total} in {t}')}")
+        summary = ""
+        for name,(success,total) in note.items():
+            summary += f"\t{name} : {success}/{total}\n"
+            
+        print()
+        print(flag.FAILURE.tag(f'Summary :\n{summary}'))
+        print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")
            
     def print(self,flag,msg,tag):
         if self.std_output is None:
+            print()
             if tag is None:
                 print(f"{flag.get()} : {msg}")
             else :
                 print(f"{flag.get()} : {flag.tag(tag + ' >>')} {msg}")
+            print()
             return
         with open(self.std_output,"a") as file:
             if tag is None:
@@ -145,6 +170,7 @@ class Logger:
     _warning = True
     _info = True
     _error = True
+    _status = True
     _console : _Logger = _Logger(None)
     @staticmethod   
     def filter(*arg):
@@ -157,10 +183,17 @@ class Logger:
     @staticmethod
     def whitelist():
         Logger.mode = LoggerMode.WHITE_LIST
-       
+              
+    @staticmethod
+    def all(to:bool):
+        Logger._debug = to   
+        Logger._status = to 
     @staticmethod
     def debug(to:bool):
         Logger._debug = to    
+    @staticmethod
+    def status(to:bool):
+        Logger._status = to    
              
     @staticmethod
     def warning(to:bool):
