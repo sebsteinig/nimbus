@@ -122,7 +122,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 def main(args):
     start = time.time()
     Logger.blacklist()
-    Logger.debug(True)
+    Logger.debug(bool(args.debug))
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
@@ -155,7 +155,8 @@ if __name__ == "__main__" :
     parser.add_argument('--experiments',"-e", dest = 'expids', help = 'select experiments')
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
-    parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory')    
+    parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
+    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')    
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):

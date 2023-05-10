@@ -5,7 +5,7 @@ This program is a data converter that allows you to preprocess data from netCDF4
 
 ## Usage:
 ```console
-python nc_to_img.py [OPTIONS]
+python nimbus.py [OPTIONS]
 ```
 Options:
 * --variables, -v: Select variables for conversion, 'all' for every variable specified in the configuration file. [See more](#configuration)
