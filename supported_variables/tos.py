@@ -42,8 +42,6 @@ def preprocessing_1(
 def preprocessing_2(
     inputs: List[Tuple[str, str]], output_directory: str
 ) -> List[Tuple[str, str]]:
-    cdo = Cdo()
-
     file, var = inputs[0]
 
     name = path.basename(file).replace(".nc", ".out.nc")
