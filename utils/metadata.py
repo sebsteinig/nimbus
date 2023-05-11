@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from PIL.PngImagePlugin import PngInfo
 from typing import Dict, Union, List, Any, Callable
 import json
@@ -70,6 +70,8 @@ class GeneralMetadata:
     ysize : int=None                   #number of latitudes for each level/timestep in image
     levels : int=None                  #number of vertical levels in image
     timesteps : int=None               #number of timesteps in image
+    timestamps : list = field\
+        (default_factory=lambda:[])     #list of dates for each timestep
     xfirst : float=None                #first longitude value in degrees in image
     xinc : float=None                  #longitude spacing in degrees in image
     yfirst :float=None
