@@ -8,7 +8,6 @@ import pkgutil
 from typing import Dict
 from utils.config import Config
 from utils.variables.variable import *
-from cdo import Cdo
 import supported_variables
 import supported_variables.utils.utils as utils
 import sys, inspect

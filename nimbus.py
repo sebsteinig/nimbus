@@ -17,7 +17,6 @@ VERSION = '1.3'
 
 
 
-
 def load_config(arg_config) -> Config:
     return Config.build(arg_config)
 

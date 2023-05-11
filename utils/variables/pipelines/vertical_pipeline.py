@@ -5,11 +5,10 @@ import numpy as np
 from utils.logger import Logger
 from utils.config import Config
 from utils.variables.info import Info, Vertical
-from cdo import Cdo
 from netCDF4 import Dataset,_netCDF4
+from utils.import_cdo import cdo
 
 EPSILON = 0.25
-cdo = Cdo()
 
 @dataclass
 class UnitConverter:

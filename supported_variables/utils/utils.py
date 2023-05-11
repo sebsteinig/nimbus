@@ -1,10 +1,10 @@
-from cdo import Cdo
+
+from utils.import_cdo import cdo
 import numpy as np
 from typing import Any, List,Union,Tuple
 import os.path as path
 
 def default_preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
-    cdo = Cdo()
     outputs = []
     for input_file,var_name in inputs:
         selvar = cdo.selvar(var_name, input=input_file)

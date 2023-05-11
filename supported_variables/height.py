@@ -12,7 +12,7 @@ else:
         processing,
     )
     import supported_variables.utils.utils as utils
-from cdo import Cdo
+from utils.import_cdo import cdo
 import numpy as np
 from typing import List, Tuple, Union
 import os.path as path
@@ -27,7 +27,6 @@ class Height:
 def preprocessing(
     inputs: List[Tuple[str, str]], output_directory: str
 ) -> List[Tuple[str, str]]:
-    cdo = Cdo()
     # create global field of surface elevation in m
     # orography > 0; bathymetry < 0
     orog, ht = inputs[0]

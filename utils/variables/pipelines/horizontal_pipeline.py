@@ -3,11 +3,11 @@ import math
 from typing import Tuple
 from utils.logger import Logger
 from utils.variables.info import Grid, Info
-from cdo import Cdo
 import os.path as path
+
+from utils.import_cdo import cdo
 from os import remove
 
-cdo = Cdo()
 
 @dataclass
 class HorizontalPipeline:

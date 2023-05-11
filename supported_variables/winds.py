@@ -4,7 +4,8 @@ if __name__ == "__main__":
 else :
     from supported_variables.utils.supported_variable import supported_variable,preprocessing
     import supported_variables.utils.utils as utils
-from cdo import Cdo
+
+from utils.import_cdo import cdo
 import numpy as np
 from typing import List,Union,Tuple
 import os.path as path
@@ -16,7 +17,6 @@ class Winds:
 
 @preprocessing(Winds,'BRIDGE')
 def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
-    cdo = Cdo()
     outputs = []
     
     
