@@ -8,11 +8,10 @@ from typing import Tuple
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import retrieve_data
+from utils.variables.variable import VariableNotFoundError, retrieve_data
 import file_managers.default_manager as default
 from utils.logger import Logger
 import time
-
 
 VERSION = '1.3'
 
@@ -54,21 +53,21 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids) as file_manager:
 
-        note = {}
+        note = {variable.name:((0,0),1) for variable in variables}
 
         for variable in file_manager.iter_variables():
             Logger.console().status("Starting conversion of", variable=variable.name)
             success = 0
             total = 0
+            status = 0
             for id,output_folder,iter in file_manager.iter_id_from(variable):
-                Logger.console().progress_bar()  
+                Logger.console().progress_bar(var_name=variable.name,id = id)  
                 total += 1
                 Logger.console().status("\tStarting conversion of", id=id)
                 logger = Logger.file(output_folder.out_log(),variable.name)
                 output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
                 hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
                 hyper_parameters['logger'] = logger
-                
                 files_var_binder = list(iter())
                 try:
                     for resolution in config.get_realm_hp(variable)['resolutions']:
@@ -96,13 +95,18 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         Logger.console().debug(f"{png_file}","SAVE")
                         logger.info(metadata.log(),"METADATA")
                     success += 1
+                    
+                except VariableNotFoundError as e :
+                    Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")
+                    status = 1
                 except Exception as e:
+                    status = -1
                     trace = Logger.trace() 
                     Logger.console().error(trace, "PNG CONVERTER")
                     logger.error(e.__repr__(), "PNG CONVERTER")   
                 Logger.console().status("conversion finished for",id=id)
             
-            note[variable.name] = (success,total)
+            note[variable.name] = ((success,total),status)
             
             Logger.console().status("conversion finished for",variable=variable.name)
 
@@ -132,7 +136,7 @@ def main(args):
     
     
     end = time.time()
-    if all( success == total for success,total in note.values()):
+    if all( status != -1 for (_,_),status in note.values()):
         Logger.console().success(note,end-start)
     else :
         Logger.console().failure(note,end-start)

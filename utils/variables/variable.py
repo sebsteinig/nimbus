@@ -86,7 +86,9 @@ def load(variable:Variable,file:str,var_name:str,hyper_parameters:dict,config:Co
         ).exec()
            
     return np_array,vs_metadata
-        
+
+class VariableNotFoundError(Exception):pass
+
 """
     retrieve data with the corresponding metadata from a list files and variable name
     param :
@@ -96,6 +98,12 @@ def load(variable:Variable,file:str,var_name:str,hyper_parameters:dict,config:Co
 """   
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,output_file:str,save:Callable) -> Tuple[List[Tuple[List[np.ndarray],str]],Metadata]:
     np_arrays_vs_metadata = []
+     
+    
+    for input_file,var_name in inputs:
+        with Dataset(input_file,"r",format="NETCDF4") as dataset:
+            if var_name not in dataset.variables:
+                raise VariableNotFoundError(var_name)
      
     inputs = variable.preprocess(inputs=inputs,\
         output_directory=hyper_parameters["tmp_directory"])
