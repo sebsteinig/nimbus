@@ -20,16 +20,28 @@ YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:
 6750-06-01 00:00:00
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List,Union,Set,Callable,Tuple,Dict,Type
 
+""" class Axis """
 @dataclass(eq=True)
 class Axis:
-    name   : str
-    bounds : Tuple[float,float]
-    step   : float
-    direction : str
+    name   : str = None
+    bounds : Tuple[float,float] = (None, None)
+    step   : float = None
+    direction : str = None
     
+    """
+        parse axis. example of inputs :
+            longitude : -180 to 176.25 by 3.75 degrees_east  circular
+            latitude : -90 to 90 by 2.5 degrees_north
+        example of output :
+            Axis(name = latitude, bounds = (-90, 90), step = 2.5, direction = degrees_north)
+        param :
+            src : str (string that contains info about axis)
+        return :
+            Axis 
+    """
     @staticmethod
     def parse(src : str):
         if src is None or src == "":
@@ -56,20 +68,22 @@ class Axis:
                 direction = tokens[cursor+2]
 
         return Axis(bounds=bounds, direction=direction, name=name, step=step)
-        
-    def to_dict(self):
-        return {
-            'name' : self.name,
-            'bounds':  [] if self.bounds is None else list(self.bounds),
-            'step' : self.step,
-            'direction':self.direction
-        }
+
+""" class Grid """  
 @dataclass(eq=True)
 class Grid:
-    category : str
-    points   : Tuple[int,Tuple[int,int]]
-    axis : Tuple[Axis,Axis]
+    category : str = None
+    points   : Tuple[int,Tuple[int,int]] = (None, (None, None))
+    axis : Tuple[Axis,Axis] = (None, None)
 
+    """
+        parser for Grid
+        param :
+            src : List[str]
+            cursor : int
+        return :
+            Grid
+    """
     @staticmethod
     def parse(src : List[str],cursor:int):
         header_tokens = src[cursor].strip().split(" ")
@@ -97,21 +111,22 @@ class Grid:
         axis = (Axis.parse(src[cursor+1]),Axis.parse(src[cursor+2]))
         return Grid(category=category,axis=axis,points=points)
 
-    def to_dict(self):
-        return {
-            'category' : self.category,
-            'points': [self.points[0],[self.points[1][0],self.points[1][1]]],
-            'axis' : [self.axis[0].to_dict(), self.axis[1].to_dict()]
-        }
-
 @dataclass(eq=True, frozen=True)
 class Vertical:
-    category : str
-    name     : str
-    levels   : int
-    bounds   : Tuple[float,float]
-    unit : str
+    category : str = None
+    name     : str = None
+    levels   : int = None
+    bounds   : Tuple[float,float] = (None, None)
+    unit : str = None
 
+    """
+        parse info for Vertical
+        param :
+            src : List[str]
+            cursor : int
+        return :
+            Vertical
+    """
     @staticmethod
     def parse(src : List[str],cursor:int):
         if cursor >= len(src):
@@ -151,42 +166,50 @@ class Vertical:
             unit = None
         return Vertical(category=category,name=name,levels=levels,bounds=bounds,unit=unit)
     
-    def to_dict(self):
-        return {
-            'category' : self.category,
-            'name': self.name,
-            'levels':self.levels,
-            'bounds': [] if self.bounds is None else list(self.bounds),
-            'unit':self.unit
-        }
-    
+""" class Time """
 @dataclass(eq=True, frozen=True)
 class Time:
-    name : str
-    step : int
+    name : str = None
+    step : int = None
+    timestamps : list = field(default_factory=lambda:[])
+    ref : str = None
+    format: str = None
+
+    """
+        parse info for time.
+        param :
+            src : str
+            dates : str
+        return :
+            Time
+    """
     @staticmethod
-    def parse(src : str):
+    def parse(src : str, dates : str):
         tmp = src.strip().split(" ")
-        return Time(name=tmp[0],step=int(tmp[-2]))
-    def to_dict(self):
-        return {
-            'name': self.name,
-            'step':self.step
-        }
+        tmp2 = dates[0].strip().split("  ")
+        format = dates[1].strip().split("  ")
+        timestamps = []
+        if len(dates) >= 2 :
+            for group in dates[2::]:
+                group_list = group.strip().split("  ")
+                for date in group_list:
+                    timestamps.append(date)
+        return Time(name=tmp[0],step=int(tmp[-2]), timestamps= timestamps, ref = f"{tmp2[1]}", format= format[0] if format != [] else None)
     
+""" class Info """
 @dataclass
 class Info:
     grids : List[Grid]
     verticals : List[Vertical]
     time : Time
     
-    def to_dict(self):
-        return {
-            'grids': [grid.to_dict() for grid in self.grids],
-            'verticals':[vertical.to_dict() for vertical in self.verticals],
-            'time' : self.time.to_dict()
-        }
-    
+    """
+        returns a dict containing the needed values in the metadata.
+        param :
+            None
+        return :
+            dict
+    """
     def to_metadata(self):
         res = {}
         grid = self.grids[0]
@@ -199,28 +222,67 @@ class Info:
         res['xinc'] = grid.axis[0].step
         res['yfirst'] = grid.axis[1].bounds[0]
         res['yinc'] = grid.axis[1].step
+        res['timestamps'] = self.time.timestamps
         return res
         
+    """
+        retrieve info with one grid and one vertical for specific dimensions.
+        param :
+            dimensions : List[str]
+        return :
+            Info
+    """
     def reduce(self,dimensions) -> 'Info':
         grid = self.get_grid(dimensions)
         vertical = self.get_vertical(dimensions)
         
         return Info(grids=[grid],verticals=[vertical],time=self.time)
     
+    """
+        retrieve the grid given dimensions
+        param :
+            dimensions : List[str]         
+        return :
+            Grid
+    """
     def get_grid(self,dimensions)->Grid:
         for grid in self.grids:
             if any(name in dimensions for name in (grid.axis[0].name,grid.axis[1].name)):
                 return grid
         return None
+
+    """
+        retrieve the vertical given dimensions
+        param :
+            dimensions : List[str]
+        return :
+            Vertical
+    """
     def get_vertical(self,dimensions)->Vertical:
         for vertical in self.verticals:
             if vertical.name in dimensions:
                 return vertical
         return None
+
+    """
+        retrieve the time given dimensions
+        param :
+            dimensions : List[str]
+        return :
+            Time
+    """
     def get_time(self,dimensions)->Time:
         if self.time is not None and self.time.name in dimensions:
             return self.time
         return None
+
+    """
+        calls the parse from the Grid class
+        param :
+            src : List[str]
+        return :
+            List[Grid]
+    """
     @staticmethod
     def parseGrids(src : List[str]) -> List[Grid]:
         n = len(src)
@@ -237,8 +299,16 @@ class Info:
             cursor += 3
             grid = Grid.parse(src,cursor)
         return grids
+
+    """
+        calls the parse from the Vertical class
+        param :
+            src : List[str]
+        return :
+            List[Vertical]
+    """    
     @staticmethod
-    def parseVerticals(src : List[str]) -> List[Grid]:
+    def parseVerticals(src : List[str]) -> List[Vertical]:
         n = len(src)
         cursor = 0
         while cursor < n and not src[cursor].startswith("Vertical"):
@@ -254,8 +324,15 @@ class Info:
             vertical = Vertical.parse(src,cursor)
         return verticals
     
+    """
+        calls the parse from the Time class
+        param :
+            src : List[str]
+        return :
+            None
+    """
     @staticmethod       
-    def parseTime(src : List[str]) -> List[Grid]:
+    def parseTime(src : List[str]) -> Time:
         n = len(src)
         cursor = 0
         while  cursor < n and not src[cursor].startswith("Time"):
@@ -263,7 +340,15 @@ class Info:
         if cursor >= n:
             return None
         cursor += 1
-        return Time.parse(src[cursor])
+        return Time.parse(src[cursor], src[cursor+1:n])
+    
+    """
+        main parse function that calls the others
+        param :
+            src : List[str]
+        return :
+            Info
+    """
     @staticmethod
     def parse(src : List[str]):
         grids = Info.parseGrids(src)
@@ -271,34 +356,8 @@ class Info:
         time = Info.parseTime(src)
         return Info(grids=grids,verticals=verticals,time=time)
 
-    
-
-def test():
-    src = ["Grid coordinates :",\
-        "1 : lonlat                   : points=7008 (96x73)",\
-        "longitude : -180 to 176.25 by 3.75 degrees_east  circular",\
-        "latitude : -90 to 90 by 2.5 degrees_north",\
-        "2 : lonlat                   : points=6912 (96x72)",\
-        "longitude_1 : -178.125 to 178.125 by 3.75 degrees_east  circular",\
-        "latitude_1 : -88.75 to 88.75 by 2.5 degrees_north",\
-        "Vertical coordinates :",\
-        "1 : generic                  : levels=19",\
-        "depth : 10 to 4885 m",\
-        "2 : generic                  : levels=1",\
-        "unspecified : -1 unspecified",\
-        "3 : generic                  : levels=20",\
-        "depth_1 : 5 to 5192.65 m",\
-        "Time coordinate :",\
-        "t : 1 step",\
-        "RefTime =  1850-12-00 00:00:00  Units = days  Calendar = 360_day",\
-        "YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss  YYYY-MM-DD hh:mm:ss",\
-        "6750-06-01 00:00:00"]
-    info = Info.parse(src)
-    print(info)
-
 
 if __name__ == "__main__":
-    test()
-    #print("Cannot execute in main")
-    #import sys
-    #sys.exit(1)
+    print("Cannot execute in main")
+    import sys
+    sys.exit(1)
