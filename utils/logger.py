@@ -6,7 +6,7 @@ import os
 import sys
 from typing import Union
 import os.path as path
-from datetime import timedelta
+
 @dataclass
 class Color:
     weight:int
@@ -16,6 +16,7 @@ class Color:
         if self.background is None:
             return f"\x1b[{self.weight};{self.color}m{msg}\x1b[0m"
         return f"\x1b[{self.weight};{self.color};{self.background}m {msg} \x1b[0m"
+
 class flag(Enum):
     INFO = (Color(1,37,44),Color(1,34,None),"INFO")
     STATUS = (Color(1,37,46),Color(1,36,None),"STATUS")
@@ -115,32 +116,38 @@ class _Logger:
         
         print(f"{flag.STATUS.get()} : {flag.STATUS.value[1].wrap(msg)} {''.join(suffixe)}")
     
-    def progress_bar(self):
+    def progress_bar(self,var_name,id):
         if Logger._status or Logger._debug:
             return
         loading_sign = [ '-' , '\\' , '|', '/' ,]
-        sys.stdout.write(flag.STATUS.tag(f'\r\tprogress {loading_sign[self.i]}'))
+        sys.stdout.write(flag.STATUS.tag(f"\r\tNimbus : processing {var_name} for {id} {loading_sign[self.i]}{' '*10}"))
         sys.stdout.flush()
         self.i = (self.i + 1) % 4
 
+    def summary(self,note):
+        summary = ""
+        def wrap(status,msg):
+            if status == 0:
+                return flag.SUCCESS.tag(msg)
+            elif status == 1:
+                return flag.WARNING.tag(msg)
+            else :
+                return flag.ERROR.tag(msg)
+                
+        for name,((success,total),status) in note.items():
+            summary += wrap(status,f"\t{name} : {success}/{total}\n")
+        
+        print()
+        print(flag.INFO.tag(f'Summary :\n{summary}'))
     
     def success(self,note,time):
         t = pretty_time_delta(time)
-        summary = ""
-        for name,(success,total) in note.items():
-            summary += f"\t{name} : {success}/{total}\n"
-        
-        print()
-        print(flag.SUCCESS.tag(f'Summary :\n{summary}'))
+        self.summary(note)
         print(f"{flag.SUCCESS.get()} :{flag.SUCCESS.tag(f'conversion to png finished in {t}')}")
+    
     def failure(self,note,time):
         t = pretty_time_delta(time)
-        summary = ""
-        for name,(success,total) in note.items():
-            summary += f"\t{name} : {success}/{total}\n"
-            
-        print()
-        print(flag.FAILURE.tag(f'Summary :\n{summary}'))
+        self.summary(note)
         print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")
            
     def print(self,flag,msg,tag):
