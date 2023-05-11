@@ -8,7 +8,7 @@ from typing import Tuple
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import retrieve_data
+from utils.variables.variable import VariableNotFoundError, retrieve_data
 import file_managers.default_manager as default
 from utils.logger import Logger
 from tqdm import tqdm
@@ -97,6 +97,9 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         Logger.console().debug(f"{png_file}","SAVE")
                         logger.info(metadata.log(),"METADATA")
                     success += 1
+                    
+                except VariableNotFoundError as e :
+                    Logger.console().warning(e.args, "PNG CONVERTER")
                 except Exception as e:
                     trace = Logger.trace() 
                     Logger.console().error(trace, "PNG CONVERTER")
