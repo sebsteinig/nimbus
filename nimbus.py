@@ -1,4 +1,8 @@
+from multiprocessing import Pool
+import multiprocessing
 import sys
+
+import numpy as np
 from utils.config import Config
 import utils.png_converter as png_converter
 from typing import List
@@ -10,7 +14,7 @@ from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
 from utils.variables.variable import VariableNotFoundError, retrieve_data
 import file_managers.default_manager as default
-from utils.logger import Logger
+from utils.logger import Logger,pretty_time_delta
 import time
 
 VERSION = '1.3'
@@ -39,6 +43,83 @@ def save(directory:str):
     return f
 
 
+def exec(args):
+    note,file_manager,hyper_parameters,config,variable = args
+    Logger.console().status("Starting conversion of", variable=variable.name)
+    success = 0
+    total = 0
+    status = 0
+    for id,output_folder,iter in file_manager.iter_id_from(variable):
+        Logger.console().progress_bar(var_name=variable.name,id = id)  
+        total += 1
+        Logger.console().status("\tStarting conversion of", id=id)
+        logger = Logger.file(output_folder.out_log(),variable.name)
+        output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
+        hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
+        hyper_parameters['logger'] = logger
+        files_var_binder = list(iter())
+        try:
+            for resolution in config.get_realm_hp(variable)['resolutions']:
+                hyper_parameters['resolution'] = resolution
+                    
+                res_suffixe = ""
+                if resolution[0] is not None and resolution[1] is not None:
+                    res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
+                _output_file = output_file + res_suffixe
+                
+                data,metadata = retrieve_data(inputs=files_var_binder,\
+                    variable=variable,\
+                    hyper_parameters=hyper_parameters,\
+                    config=config,\
+                    output_file = _output_file,\
+                    save=save(output_folder.out_nc()))
+                
+                
+                metadata.extends(version = VERSION)
+                
+                png_file = png_converter.convert(inputs=data,\
+                    threshold=config.get_hp(variable.name).threshold,\
+                    metadata=metadata,\
+                    logger=logger)
+                Logger.console().debug(f"{png_file}","SAVE")
+                logger.info(metadata.log(),"METADATA")
+            success += 1
+            
+        except VariableNotFoundError as e :
+            Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")
+            status = 1
+        except Exception as e:
+            status = -1
+            trace = Logger.trace() 
+            Logger.console().error(trace, "PNG CONVERTER")
+            logger.error(e.__repr__(), "PNG CONVERTER")   
+        Logger.console().status("conversion finished for",id=id)
+
+    note[variable.name] = ((success,total),status)
+    Logger.console().status("conversion finished for",variable=variable.name)
+    return note
+def convert_variables_parallel(config:Config,variables,ids,files,output,hyper_parameters):
+    if files is None:
+        files = config.hyper_parameters.dir
+        
+    if hyper_parameters['clean']:
+        default.FileManager.clean(ids, output)
+
+    with default.FileManager.mount(
+        input=files,\
+        output=output,\
+        config=config,\
+        variables=variables,\
+        ids=ids) as file_manager:
+
+        note = []
+        with Pool(multiprocessing.cpu_count()) as p :     
+            note = p.map(exec,file_manager.iter_variables({},file_manager,hyper_parameters,config))
+    notes = {}
+    for d in note :    
+        notes.update(d)
+    return notes
+
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
         files = config.hyper_parameters.dir
@@ -53,66 +134,13 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids) as file_manager:
 
-        note = {variable.name:((0,0),1) for variable in variables}
-
-        for variable in file_manager.iter_variables():
-            Logger.console().status("Starting conversion of", variable=variable.name)
-            success = 0
-            total = 0
-            status = 0
-            for id,output_folder,iter in file_manager.iter_id_from(variable):
-                Logger.console().progress_bar(var_name=variable.name,id = id)  
-                total += 1
-                Logger.console().status("\tStarting conversion of", id=id)
-                logger = Logger.file(output_folder.out_log(),variable.name)
-                output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
-                hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
-                hyper_parameters['logger'] = logger
-                files_var_binder = list(iter())
-                try:
-                    for resolution in config.get_realm_hp(variable)['resolutions']:
-                        hyper_parameters['resolution'] = resolution
-                            
-                        res_suffixe = ""
-                        if resolution[0] is not None and resolution[1] is not None:
-                            res_suffixe = f".rx{resolution[0]}.ry{resolution[1]}"
-                        _output_file = output_file + res_suffixe
-                        
-                        data,metadata = retrieve_data(inputs=files_var_binder,\
-                            variable=variable,\
-                            hyper_parameters=hyper_parameters,\
-                            config=config,\
-                            output_file = _output_file,\
-                            save=save(output_folder.out_nc()))
-                        
-                        
-                        metadata.extends(version = VERSION)
-                        
-                        png_file = png_converter.convert(inputs=data,\
-                            threshold=config.get_hp(variable.name).threshold,\
-                            metadata=metadata,\
-                            logger=logger)
-                        Logger.console().debug(f"{png_file}","SAVE")
-                        logger.info(metadata.log(),"METADATA")
-                    success += 1
-                    
-                except VariableNotFoundError as e :
-                    Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")
-                    status = 1
-                except Exception as e:
-                    status = -1
-                    trace = Logger.trace() 
-                    Logger.console().error(trace, "PNG CONVERTER")
-                    logger.error(e.__repr__(), "PNG CONVERTER")   
-                Logger.console().status("conversion finished for",id=id)
-            
-            note[variable.name] = ((success,total),status)
-            
-            Logger.console().status("conversion finished for",variable=variable.name)
-
-    return note
-
-
+        note = [] 
+        for args in file_manager.iter_variables({},file_manager,hyper_parameters,config):
+            note.append(exec(args))
+    notes = {}
+    for d in note :    
+        notes.update(d)
+    return notes
 
 def main(args):
     start = time.time()
@@ -127,12 +155,21 @@ def main(args):
 
     hyper_parameters = {'clean':bool(args.clean),}
     
-    note = convert_variables(config=config,\
-        variables=variables,\
-        ids= None if args.expids is None else args.expids.split(","),\
-        files=args.files,\
-        output=args.output if args.output is not None else "./",\
-        hyper_parameters=hyper_parameters)
+    if args.parallel:
+        multiprocessing.set_start_method('fork')
+        note = convert_variables_parallel(config=config,\
+            variables=variables,\
+            ids= None if args.expids is None else args.expids.split(","),\
+            files=args.files,\
+            output=args.output if args.output is not None else "./",\
+            hyper_parameters=hyper_parameters)
+    else :
+        note = convert_variables(config=config,\
+            variables=variables,\
+            ids= None if args.expids is None else args.expids.split(","),\
+            files=args.files,\
+            output=args.output if args.output is not None else "./",\
+            hyper_parameters=hyper_parameters)
     
     
     end = time.time()
@@ -151,7 +188,8 @@ if __name__ == "__main__" :
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
-    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')    
+    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log') 
+    parser.add_argument('--parallel',"-p", action ='store_true', help = 'run in parallel')    
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):

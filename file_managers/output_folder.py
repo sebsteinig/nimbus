@@ -4,7 +4,7 @@ from os import mkdir
 from typing import Union
 
 
-@dataclass
+@dataclass(eq=True,frozen=True)
 class OutputFolder:
     main_dir : str
     out_dir  : str

@@ -1,5 +1,6 @@
+import functools
 import os.path as path
-from os import mkdir,listdir,system,remove
+from os import mkdir,listdir,system,remove,link
 import shutil
 from typing import Any, Generator, List,Dict, Union, Tuple
 from utils.config import Config
@@ -17,6 +18,22 @@ def file_name(filepath:str)->str:
 def assert_nc_extension(file:str):
     return path.basename(file).split(".")[-1] == "nc"
 
+def memoize(f):
+    cache = {}
+    def memoized(files,output_file_name,output_folder):
+        if files in cache:
+            dest = output_folder.tmp_nc_file(output_file_name)
+            if not path.isfile(dest):
+                link(cache[files],dest)
+            return dest
+        else :
+            output = f(files,output_file_name,output_folder)
+            cache[files] = output
+            return output
+    return memoized
+        
+
+
 class FileManager:
     def __init__(self,main_folder:OutputFolder,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]], black_list : dict):
         self.main_folder = main_folder
@@ -31,12 +48,12 @@ class FileManager:
             shutil.rmtree(self.main_folder.tmp_dir)
         
     
-    def iter_variables(self) : 
+    def iter_variables(self,note,file_manager,hyper_parameters,config) : 
         for variable in self.io_bind.keys():
             if variable in self.black_list and self.black_list[variable] == True:
                 continue
             else :
-                yield variable
+                yield (note,file_manager,hyper_parameters,config,variable)
             
     def iter_id_from(self,variable):
         for id,binder in self.io_bind[variable].items() :
@@ -50,6 +67,7 @@ class FileManager:
                     # FILE REGEX
                     if type(files) is set:
                         output_file_name = f"{id}.{variable.name}.nc"
+                        files = "#@#".join(file for file in files)
                         input_file = FileManager.__mergetime(files,output_file_name,output_folder)
                     # FILE DESCRIPTOR
                     elif type(files) is str:
@@ -57,14 +75,14 @@ class FileManager:
                     # FILE SUM
                     else :
                         output_file_name = f"{id}.{variable.name}.nc"
+                        files = "#@#".join(file for file in files)
                         input_file = FileManager.__concatenate(files,output_file_name,output_folder)
                     yield input_file,nc_var_name
             yield id,output_folder,iter
             
-    
-    
-    @staticmethod
+    @memoize
     def __concatenate(files:List[str],output_file_name,output_folder):
+        files = files.split("#@#")
         tmp_files = []
         for file in files:
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
@@ -76,9 +94,10 @@ class FileManager:
         for tmp_path in tmp_files:
             remove(tmp_path)
         return output_path
-            
-    @staticmethod
+    
+    @memoize     
     def __mergetime(files:List[str],output_file_name,output_folder):
+        files = files.split("#@#")
         tmp_files = []
         for file in files:
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
