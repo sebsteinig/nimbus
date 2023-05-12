@@ -33,8 +33,8 @@ class Axis:
     
     """
         parse axis. example of inputs :
-            longitude : -180 to 176.25 by 3.75 degrees_east  circular
-            latitude : -90 to 90 by 2.5 degrees_north
+            "longitude : -180 to 176.25 by 3.75 degrees_east  circular"
+            "latitude : -90 to 90 by 2.5 degrees_north"
         example of output :
             Axis(name = latitude, bounds = (-90, 90), step = 2.5, direction = degrees_north)
         param :
@@ -78,6 +78,9 @@ class Grid:
 
     """
         parser for Grid
+        example of input : 
+            "1 : lonlat                   : points=7008 (96x73)"
+            {input parse Axis}
         param :
             src : List[str]
             cursor : int
@@ -88,7 +91,8 @@ class Grid:
     def parse(src : List[str],cursor:int):
         header_tokens = src[cursor].strip().split(" ")
         header_tokens = [ h for h in header_tokens if h != ""]
-        if not header_tokens[0].isdigit():
+        if (len(header_tokens) < 2 or not header_tokens[0].isdigit())\
+            or header_tokens[1] != ":":
             return None
         h_cursor = 2 # eat ':'
         n = len(header_tokens)
@@ -184,17 +188,18 @@ class Time:
             Time
     """
     @staticmethod
-    def parse(src : str, dates : str):
+    def parse(src : str, dates : List[str] = []):
         tmp = src.strip().split(" ")
-        tmp2 = dates[0].strip().split("  ")
-        format = dates[1].strip().split("  ")
         timestamps = []
         if len(dates) >= 2 :
+            tmp2 = dates[0].strip().split("  ")[1] if len(dates[0].strip().split("  "))> 1 else None
+            format = dates[1].strip().split("  ")[0] if len(dates[1].strip().split("  "))>0 else None
             for group in dates[2::]:
                 group_list = group.strip().split("  ")
                 for date in group_list:
                     timestamps.append(date)
-        return Time(name=tmp[0],step=int(tmp[-2]), timestamps= timestamps, ref = f"{tmp2[1]}", format= format[0] if format != [] else None)
+            return Time(name=tmp[0],step=int(tmp[-2]), timestamps= timestamps, ref = tmp2, format= format)
+        return Time(name=tmp[0],step=int(tmp[-2]), timestamps= timestamps, ref =None, format= None)
     
 """ class Info """
 @dataclass
@@ -340,7 +345,9 @@ class Info:
         if cursor >= n:
             return None
         cursor += 1
-        return Time.parse(src[cursor], src[cursor+1:n])
+        if src[cursor+1].startswith("RefTime") :
+            return Time.parse(src[cursor], src[cursor+1:n])
+        return Time.parse(src[cursor])
     
     """
         main parse function that calls the others
