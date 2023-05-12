@@ -85,7 +85,7 @@ class PngConverter :
         for num_var in range (self.mode.value):
             for index_level in range(self.level):
                 arr = np.reshape(out[index_level * self.lat : (index_level+1) * self.lat, :, num_var], (self.lat, self.time, self.lon))
-                self.output_mean[index_level * self.lat : (index_level+1) * self.lat, :, num_var] = np.mean(arr, axis = 1)
+                self.output_mean[index_level * self.lat : (index_level+1) * self.lat, :, num_var] = np.mean(arr, axis = 1, dtype = int)
         ### save two png files : "avg" for the output_mean and "ts" for the cleaned output ###
         PngConverter.save(self.output_mean, output_filename + ".avg", directory, metadata, self.mode.name)
         filename = PngConverter.save(out, output_filename + ".ts", directory, metadata, self.mode.name)
