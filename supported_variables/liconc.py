@@ -18,10 +18,8 @@ class Liconc:
 def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tuple[str,str]]:
     outputs = []
     for input_file,var_name in inputs:
-        sellevel = cdo.sellevel(9, input = input_file)
-        selvar = cdo.selvar(var_name, input=sellevel)
         name = path.basename(input_file).replace(".nc",".out.nc")
         out = path.join(output_directory,name)
-        cdo.sellonlatbox('-180,180,90,-90', input = selvar, output = out)
+        cdo.sellonlatbox('-180,180,90,-90', input = f"-selvar,{var_name} -sellevel,9 {input_file}", output = out)
         outputs.append((out,var_name))
     return outputs
