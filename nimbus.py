@@ -91,7 +91,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         png_file = png_converter.convert(inputs=data,\
                             threshold=config.get_hp(variable.name).threshold,\
                             metadata=metadata,\
-                            logger=logger)
+                            logger=logger,\
+                            chunks = hyper_parameters['chunks'])
                         Logger.console().debug(f"{png_file}","SAVE")
                         logger.info(metadata.log(),"METADATA")
                     success += 1
@@ -124,8 +125,9 @@ def main(args):
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
     
-
-    hyper_parameters = {'clean':bool(args.clean),}
+    chunks = int(args.chunks) if args.chunks != None else 0
+    hyper_parameters = {'clean':bool(args.clean),
+                        'chunks':chunks}
     
     note = convert_variables(config=config,\
         variables=variables,\
@@ -151,7 +153,8 @@ if __name__ == "__main__" :
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
-    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')    
+    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
+    parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images')    
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
