@@ -12,6 +12,18 @@ import re
 
 class ConfigException(Exception):pass
 
+def memoize(f):
+    cache = {}
+    def memoized(dir_path,file_name):
+        if file_name in cache:
+            return cache[file_name]
+        else :
+            output = f(dir_path,file_name)
+            cache[file_name] = output
+            return output
+    return memoized
+        
+
 @dataclass
 class FileSum:
     files : List['FileDescriptor']
@@ -44,12 +56,18 @@ class FileRegex:
         return :
             Set[str]
     """
-    def join(self,dir:str,id:str) -> List[str]:
-        dir_path = path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1]))
+    @memoize
+    def regex_match(dir_path,file_name):
         if not path.isdir(dir_path):
             return {}
-        regex = re.compile(self.file_parts[-1].replace("{id}",id))
+        regex = re.compile(file_name)
         return set(path.join(dir_path,f.name) for f in scandir(dir_path) if regex.match(f.name))
+    
+    def join(self,dir:str,id:str) -> List[str]:
+        dir_path = path.join(dir,*(part.replace("{id}",id) for part in self.file_parts[:-1]))
+        file_name = self.file_parts[-1].replace("{id}",id)
+        
+        return FileRegex.regex_match(dir_path,file_name)
     
 @dataclass
 class FileDescriptor:

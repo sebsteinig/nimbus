@@ -1,7 +1,9 @@
+import functools
 import os.path as path
-from os import mkdir,listdir,system,remove
+from os import mkdir,listdir,system,remove,link
 import shutil
 from typing import Any, Generator, List,Dict, Union, Tuple
+from supported_variables.utils.utils import default_preprocessing
 from utils.config import Config
 from utils.logger import Logger,_Logger
 if __name__ == "__main__" :
@@ -10,12 +12,33 @@ else :
     from file_managers.output_folder import OutputFolder
 
 from utils.import_cdo import cdo
+from netCDF4 import Dataset
+
+
+class VariableNotFoundError(Exception):pass
+
 
 def file_name(filepath:str)->str:
     return path.basename(filepath)
 
 def assert_nc_extension(file:str):
     return path.basename(file).split(".")[-1] == "nc"
+
+def memoize(f):
+    cache = {}
+    def memoized(files,output_file_name,output_folder):
+        if files in cache:
+            dest = output_folder.tmp_nc_file(output_file_name)
+            if not path.isfile(dest):
+                link(cache[files],dest)
+            return dest,cache[files]
+        else :
+            output = f(files,output_file_name,output_folder)
+            cache[files] = output
+            return output,output
+    return memoized
+        
+
 
 class FileManager:
     def __init__(self,main_folder:OutputFolder,io_bind:Dict[str,Dict[Any,Dict[str,Tuple[OutputFolder,Union[str,List[str]]]]]], black_list : dict):
@@ -29,7 +52,45 @@ class FileManager:
     def __exit__(self,*args,**kwargs):
         if path.exists(self.main_folder.tmp_dir):
             shutil.rmtree(self.main_folder.tmp_dir)
-        
+    
+    
+    def clusterize(self):
+        cluster_file = {}
+        self.cluster = {}
+        self.file_cluster_binder = {}
+        groups = {}
+        uid = 1
+        for variable in self.io_bind.keys():
+            if variable in self.black_list and self.black_list[variable] == True:
+                continue
+            
+            for id,binder in self.io_bind[variable].items() :
+                if id in self.black_list[variable] and self.black_list[variable][id]:
+                    continue
+                
+                if id not in self.cluster :
+                    cluster_file[id]:set = {}
+                    self.cluster[id]:set = {}
+                    self.file_cluster_binder[id]:set = {}
+                
+                if variable.preprocess == default_preprocessing:
+                    files = "#".join(*binder['binder'].values())
+                    if files in groups:
+                        groups[files].extend(binder['binder'].keys())
+                    else :
+                        groups[files] = [*binder['binder'].keys()]
+                        
+        for id in cluster_file:
+            for key in groups:
+                for value in groups[key]:
+                    cluster_file[id][value] = uid  
+                uid += 1
+            for name in cluster_file[id]:
+                uid = cluster_file[id][name]
+                self.cluster[id][name] = [n for n,v in cluster_file[id].items() if v == uid]
+
+                    
+            
     
     def iter_variables(self) : 
         for variable in self.io_bind.keys():
@@ -40,31 +101,35 @@ class FileManager:
             
     def iter_id_from(self,variable):
         for id,binder in self.io_bind[variable].items() :
-            if id in self.black_list and self.black_list[id]:
+            if id in self.black_list[variable] and self.black_list[variable][id]:
                 continue
             
             output_folder = binder['folder']
             
-            def iter():
+            def bind(id):
                 for nc_var_name,files in binder['binder'].items():
                     # FILE REGEX
                     if type(files) is set:
                         output_file_name = f"{id}.{variable.name}.nc"
-                        input_file = FileManager.__mergetime(files,output_file_name,output_folder)
+                        files = "#@#".join(file for file in files)
+                        input_file,real = FileManager.__mergetime(files,output_file_name,output_folder)
                     # FILE DESCRIPTOR
                     elif type(files) is str:
-                        input_file = files
+                        input_file,real = files,files
                     # FILE SUM
                     else :
                         output_file_name = f"{id}.{variable.name}.nc"
-                        input_file = FileManager.__concatenate(files,output_file_name,output_folder)
+                        files = "#@#".join(file for file in files)
+                        input_file,real = FileManager.__concatenate(files,output_file_name,output_folder)
+                    if nc_var_name in self.cluster[id]:
+                        self.file_cluster_binder[id][input_file] = (real,self.cluster[id][nc_var_name])    
+                    
                     yield input_file,nc_var_name
-            yield id,output_folder,iter
+            yield id,output_folder,bind
             
-    
-    
-    @staticmethod
+    @memoize
     def __concatenate(files:List[str],output_file_name,output_folder):
+        files = files.split("#@#")
         tmp_files = []
         for file in files:
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
@@ -76,13 +141,15 @@ class FileManager:
         for tmp_path in tmp_files:
             remove(tmp_path)
         return output_path
-            
-    @staticmethod
+    
+    @memoize     
     def __mergetime(files:List[str],output_file_name,output_folder):
+        files = files.split("#@#")
         tmp_files = []
         for file in files:
             tmp_path = output_folder.tmp_nc_file(file_name(file).replace(".nc",".tmp.nc"))
-            system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
+            if not path.isfile(tmp_path):
+                system(f"ncatted -a valid_min,,d,, -a valid_max,,d,, {file} {tmp_path}")
             tmp_files.append(tmp_path)
             
         output_path = output_folder.tmp_nc_file(output_file_name)

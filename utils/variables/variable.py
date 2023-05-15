@@ -11,7 +11,8 @@ from utils.metadata import Metadata, VariableSpecificMetadata
 from utils.variables.pipelines.horizontal_pipeline import HorizontalPipeline
 from utils.variables.pipelines.vertical_pipeline import VerticalPipeline
 from utils.variables.pipelines.cleaning_pipeline import CleaningPipeline
-
+import os.path as path
+from os import link
 
 cdo = Cdo()
 
@@ -89,6 +90,46 @@ def load(variable:Variable,file:str,var_name:str,hyper_parameters:dict,config:Co
 
 class VariableNotFoundError(Exception):pass
 
+
+def memoize(f):
+    cache = {}
+    def memoized(inputs:List[Tuple[str,str]],variable:Variable,tmp_directory:str,cluster):
+        file = None
+        for _file,var in inputs:
+            if _file in cluster:
+                file = _file
+                break
+        if file is not None:
+            real,vars = cluster[file]
+            
+            if real in cache:
+                outputs = cache[real]
+                return [(outputs,var) for file,var in inputs]
+            else :
+                modified_inputs = [(file,",".join(vars))]
+                outputs = f(modified_inputs,variable,tmp_directory,cluster)
+                cache[real] = outputs[0][0]
+                return [(outputs[0][0],var) for file,var in inputs]
+        else :
+            return f(inputs,variable,tmp_directory,cluster)
+    return memoized
+        
+
+@memoize
+def preprocess(inputs:List[Tuple[str,str]],variable:Variable,tmp_directory:str,cluster):
+    for input_file,var_name in inputs:
+        if "," in var_name:
+            var_name = var_name.split(",")
+        else :
+            var_name = [var_name]
+        with Dataset(input_file,"r",format="NETCDF4") as dataset:
+            if any(name not in dataset.variables for name in var_name):
+                raise VariableNotFoundError(var_name)
+     
+    inputs = variable.preprocess(inputs=inputs,\
+        output_directory=tmp_directory) 
+    return inputs
+
 """
     retrieve data with the corresponding metadata from a list files and variable name
     param :
@@ -99,14 +140,6 @@ class VariableNotFoundError(Exception):pass
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,output_file:str,save:Callable) -> Tuple[List[Tuple[List[np.ndarray],str]],Metadata]:
     np_arrays_vs_metadata = []
      
-    
-    for input_file,var_name in inputs:
-        with Dataset(input_file,"r",format="NETCDF4") as dataset:
-            if var_name not in dataset.variables:
-                raise VariableNotFoundError(var_name)
-     
-    inputs = variable.preprocess(inputs=inputs,\
-        output_directory=hyper_parameters["tmp_directory"])
     inputs = save(inputs)
     
     metadata = Metadata()

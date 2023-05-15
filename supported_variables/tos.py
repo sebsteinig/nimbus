@@ -30,8 +30,7 @@ def preprocessing_1(
     name = path.basename(file).replace(".nc", ".out.nc")
     output = path.join(output_directory, name)
 
-    selected = cdo.selvar(var, input=file)
-    cdo.sellonlatbox("-180,180,90,-90", input=selected, output=output)
+    cdo.sellonlatbox("-180,180,90,-90", input=f"-selvar,{var} {file}", output=output)
 
     return [(output, var)]
 
@@ -47,9 +46,8 @@ def preprocessing_2(
     name = path.basename(file).replace(".nc", ".out.nc")
     output = path.join(output_directory, name)
 
-    selected = cdo.selvar(var, input=file)
     cdo.sellonlatbox(
-        "-180,180,90,-90", input=f" -yearmean {selected}", output=output
+        "-180,180,90,-90", input=f" -yearmean -selvar,{var} {file}", output=output
     )
 
     return [(output, var)]

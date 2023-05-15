@@ -25,16 +25,11 @@ def preprocessing(inputs:List[Tuple[str,str]],output_directory:str) -> List[Tupl
     
     selvar = cdo.selvar(var_name, input=file)
     
+    cdo.sellonlatbox('-180,180,90,-90', input = f"-sellevidx,1,2,5 {selvar}", output = out_levels_1)
     
-    out_1 = cdo.sellevidx("1,2,5",input = selvar)
-    cdo.sellonlatbox('-180,180,90,-90', input = out_1, output = out_levels_1)
+    add = cdo.add(input=f"-sellevidx,3 {selvar} -sellevidx,4 {selvar}")
     
-    out_2 = cdo.sellevidx("8,9",input = selvar)
-    add_3 = cdo.sellevidx("3",input = selvar)
-    add_4 = cdo.sellevidx("4",input = selvar)
-    add = cdo.add(input=f"{add_3} {add_4}")
-    
-    out_2 = cdo.merge(input=f"{out_2} {add}")
+    out_2 = cdo.merge(input=f"-sellevidx,8,9 {selvar} {add}")
     
     cdo.sellonlatbox('-180,180,90,-90', input = out_2, output = out_levels_2)
 
