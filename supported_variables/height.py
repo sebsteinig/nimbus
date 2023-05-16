@@ -32,16 +32,15 @@ def preprocessing(
     orog, ht = inputs[0]
     output = path.join(output_directory, "height.out.nc")
     # prepare orography
-    selvar_orog = cdo.selvar(ht, input=orog)
     # add bathymetry to field for coupled experiments
     if len(inputs) > 1:
-        shifted_orog = cdo.sellonlatbox(-180, 180, 90, -90, input=selvar_orog)
+        shifted_orog = cdo.sellonlatbox(-180, 180, 90, -90, input=f"-selvar,{ht} {orog}")
         omask, depthdepth = inputs[1]
         # interpolate bathymtery to orography grid to guarentee grid consistency
         omask_remap = f"-setmisstoc,0 -mulc,-1 -remapnn,{shifted_orog} -selvar,{depthdepth} {omask}"
         # add both fields
         cdo.add(input=f"{shifted_orog} {omask_remap}", output=output)
     else:
-        output = cdo.sellonlatbox(-180, 180, 90, -90, input=selvar_orog)
+        output = cdo.sellonlatbox(-180, 180, 90, -90, input=f"-selvar,{ht} {orog}")
 
     return [(output, None)]

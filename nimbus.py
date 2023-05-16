@@ -1,4 +1,8 @@
+from multiprocessing import Pool
+import multiprocessing
 import sys
+
+import numpy as np
 from utils.config import Config
 import utils.png_converter as png_converter
 from typing import List
@@ -8,9 +12,9 @@ from typing import Tuple
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import VariableNotFoundError, retrieve_data
+from utils.variables.variable import VariableNotFoundError, retrieve_data,preprocess
 import file_managers.default_manager as default
-from utils.logger import Logger
+from utils.logger import Logger,pretty_time_delta
 import time
 
 VERSION = '1.3'
@@ -38,7 +42,6 @@ def save(directory:str):
         return outputs
     return f
 
-
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
         files = config.hyper_parameters.dir
@@ -53,14 +56,16 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids) as file_manager:
 
-        note = {variable.name:((0,0),1) for variable in variables}
+        file_manager.clusterize()
 
+        note = {}
+            
         for variable in file_manager.iter_variables():
             Logger.console().status("Starting conversion of", variable=variable.name)
             success = 0
             total = 0
             status = 0
-            for id,output_folder,iter in file_manager.iter_id_from(variable):
+            for id,output_folder,bind in file_manager.iter_id_from(variable):
                 Logger.console().progress_bar(var_name=variable.name,id = id)  
                 total += 1
                 Logger.console().status("\tStarting conversion of", id=id)
@@ -68,8 +73,12 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                 output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
                 hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
                 hyper_parameters['logger'] = logger
-                files_var_binder = list(iter())
+                
                 try:
+                    files_var_binder = list(bind(id))
+                    files_var_binder = preprocess(files_var_binder,variable,output_folder.tmp_nc(),file_manager.file_cluster_binder[id])
+                
+                    
                     for resolution in config.get_realm_hp(variable)['resolutions']:
                         hyper_parameters['resolution'] = resolution
                             
@@ -106,14 +115,11 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                     Logger.console().error(trace, "PNG CONVERTER")
                     logger.error(e.__repr__(), "PNG CONVERTER")   
                 Logger.console().status("conversion finished for",id=id)
-            
+
             note[variable.name] = ((success,total),status)
-            
             Logger.console().status("conversion finished for",variable=variable.name)
 
     return note
-
-
 
 def main(args):
     start = time.time()
