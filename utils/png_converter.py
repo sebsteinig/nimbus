@@ -44,7 +44,7 @@ class PngConverter :
         return :
             None
     """
-    def __init__(self, input):
+    def __init__(self, input : list):
         self.mode = PngConverter.get_mode(input)
         self.input, self.level, self.time, self.lat, self.lon = PngConverter.reshape_input(input)
         self.output = np.zeros(( self.lat * self.level, self.lon * self.time, self.mode.value))
@@ -79,7 +79,7 @@ class PngConverter :
         return :
             list (the name of the newly created file is added to te list)
     """
-    def save_output(self, directory : str, output_filename:str, png_outputs : list, metadata : Metadata) -> list:    
+    def save_output(self, directory : str, output_filename:str, png_outputs : list, metadata : Metadata, chunks : int) -> list:    
         out = PngConverter.clean(self.output)
         ### calcul of output_mean, after cleaning the output ###
         for num_var in range (self.mode.value):
@@ -87,9 +87,28 @@ class PngConverter :
                 arr = np.reshape(out[index_level * self.lat : (index_level+1) * self.lat, :, num_var], (self.lat, self.time, self.lon))
                 self.output_mean[index_level * self.lat : (index_level+1) * self.lat, :, num_var] = np.mean(arr, axis = 1, dtype = int)
         ### save two png files : "avg" for the output_mean and "ts" for the cleaned output ###
-        PngConverter.save(self.output_mean, output_filename + ".avg", directory, metadata, self.mode.name)
-        filename = PngConverter.save(out, output_filename + ".ts", directory, metadata, self.mode.name)
-        png_outputs.append(filename)
+        PngConverter.__save(self.output_mean, output_filename + ".avg", directory, metadata, self.mode.name)
+        png_outputs = self.save(out, output_filename, directory, metadata, chunks, png_outputs)
+        return png_outputs
+    
+    def save(self, out : np.ndarray, output_filename: str, directory :str, metadata : Metadata, chunks:int, png_outputs:list):
+        if chunks > 0 and chunks < self.time :
+            n_timesteps = self.time // chunks
+            remainder = self.time % chunks
+            bi = 0
+            for i in range(chunks):
+                if i >= chunks - remainder:
+                    bs = bi + self.lon * (n_timesteps + 1)
+                else:
+                    bs = self.lon * (i + 1) * n_timesteps
+                arr = out[:, bi : bs, :]
+                bi = bs
+                chunk_filename = output_filename + f".ts.{i+1}of{chunks}"
+                path = PngConverter.__save(arr, chunk_filename, directory, metadata, self.mode.name)
+                png_outputs.append(path)
+        else:
+            path = PngConverter.__save(out, output_filename + ".ts", directory, metadata, self.mode.name)
+            png_outputs.append(path)
         return png_outputs
 
     """
@@ -261,7 +280,7 @@ class PngConverter :
             str (the path to the output image)
     """
     @staticmethod
-    def save(out : np.ndarray, output_file : str, directory :str, metadata : Metadata, mode = 'L'):        
+    def __save(out : np.ndarray, output_file : str, directory :str, metadata : Metadata, mode : str = 'L'):        
         img_ym = Image.fromarray(np.uint8(np.squeeze(out)), mode)
         path = os.path.join(directory, output_file + ".png")
         img_ym.save(path, pnginfo = PngConverter.to_png_info(metadata))
@@ -280,7 +299,8 @@ class PngConverter :
     return :
         List[str] (the list of filenames of the created images)
 """
-def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]], threshold : float, metadata:Metadata, logger : Logger, directory:str = "") -> List[str]:
+def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],str]],\
+     threshold : float, metadata:Metadata, logger : Logger, chunks : int, directory:str = "") -> List[str]:
     png_outputs = []
     for input,output_filename in inputs:        
         tmp = list(zip(*input))
@@ -288,7 +308,7 @@ def convert(inputs:List[Tuple[List[Tuple[np.ndarray,VariableSpecificMetadata]],s
         vs_metadatas = list(tmp[1])
         png_converter = PngConverter(input)         
         metadata = png_converter.set_output(vs_metadatas, metadata, threshold, logger)
-        png_outputs = png_converter.save_output(directory, output_filename, png_outputs, metadata)
+        png_outputs = png_converter.save_output(directory, output_filename, png_outputs, metadata, chunks)
     return png_outputs
     
 if __name__ == "__main__":
