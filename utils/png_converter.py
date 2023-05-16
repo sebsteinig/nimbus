@@ -25,7 +25,7 @@ class Mode(Enum):
     RGBA = 4
 
 """
-    class PngConverter, which contains 4 non static methods which are called by the convert function.
+    class PngConverter, which contains 5 non static methods which are called by the convert function.
 """
 class PngConverter :
     level:int
@@ -38,7 +38,7 @@ class PngConverter :
     output_mean : np.ndarray
 
     """
-        (1/4) constructor of the PngConverter. intializes the size of the outputs
+        (1/5) constructor of the PngConverter. intializes the size of the outputs
         param :
             input : a list of ndarrays
         return :
@@ -51,7 +51,7 @@ class PngConverter :
         self.output_mean = np.zeros ((self.lat * self.level, self.lon, self.mode.value))
 
     """
-        (2/4) calculates the output
+        (2/5) calculates the output
         param :
             vs_metadatas : list
             metadata : Metadata
@@ -70,29 +70,44 @@ class PngConverter :
         return metadata
 
     """
-        (3/4) save the output as a png image, and calculates the mean
+        (3/5) save the output as a png image, and calculates the mean
         param :
             directory : str
             output_filename:str
             png_outputs : list
             metadata : Metadata
         return :
-            list (the name of the newly created file is added to te list)
+            list (png_outputs is updated with the new filename(s))
     """
-    def save_output(self, directory : str, output_filename:str, png_outputs : list, metadata : Metadata, chunks : int) -> list:    
+    def save_output(self, directory : str, output_filename:str, png_outputs : list, metadata : Metadata, chunks : int) -> List[str]:    
         out = PngConverter.clean(self.output)
         ### calcul of output_mean, after cleaning the output ###
         for num_var in range (self.mode.value):
             for index_level in range(self.level):
                 arr = np.reshape(out[index_level * self.lat : (index_level+1) * self.lat, :, num_var], (self.lat, self.time, self.lon))
                 self.output_mean[index_level * self.lat : (index_level+1) * self.lat, :, num_var] = np.mean(arr, axis = 1, dtype = int)
-        ### save two png files : "avg" for the output_mean and "ts" for the cleaned output ###
+        ### save multiple png files : 1 "avg" file for the output_mean and {chunks} "ts" file(s) for the timeseries output ###
         PngConverter.__save(self.output_mean, output_filename + ".avg", directory, metadata, self.mode.name)
         png_outputs = self.save(out, output_filename, directory, metadata, chunks, png_outputs)
         return png_outputs
     
-    def save(self, out : np.ndarray, output_filename: str, directory :str, metadata : Metadata, chunks:int, png_outputs:list):
-        if chunks > 0 and chunks < self.time :
+    """
+        (4/5) save {chunks} images or 1 if chunks was not specified
+        param :
+            out: ndarray (cleaned ndarray)
+            output_filename: str
+            directory: str
+            metadata: Metadata
+            chunks: int
+            png_outputs: list
+        return :
+            List[str] (updated png_outputs)
+    """
+    def save(self, out : np.ndarray, output_filename : str, directory : str, metadata : Metadata, chunks : int, png_outputs : list) -> List[str]:
+        if chunks > 0 :
+            if chunks > self.time :
+                Logger.console().info(f"the number of chunks : {chunks} is larger than the number of timesteps. Only one chunk will be created.")
+                chunks = 1
             n_timesteps = self.time // chunks
             remainder = self.time % chunks
             bi = 0
@@ -100,7 +115,7 @@ class PngConverter :
                 if i >= chunks - remainder:
                     bs = bi + self.lon * (n_timesteps + 1)
                 else:
-                    bs = self.lon * (i + 1) * n_timesteps
+                    bs = bi + self.lon * n_timesteps
                 arr = out[:, bi : bs, :]
                 bi = bs
                 chunk_filename = output_filename + f".ts.{i+1}of{chunks}"
@@ -112,7 +127,7 @@ class PngConverter :
         return png_outputs
 
     """
-        (4/4) function that fill the output with normalized input.
+        (5/5) function that fill the output with normalized input.
         it iterates over levels and times.
         param :
             num_var : int

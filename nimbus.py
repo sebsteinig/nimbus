@@ -130,8 +130,13 @@ def main(args):
     
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
-    
-    chunks = int(args.chunks) if args.chunks != None else 0
+    try:
+        chunks = int(args.chunks) if args.chunks != None else 0
+        if chunks <0 :
+            raise Exception
+    except Exception :
+        Logger.console().warning(f"the value {args.chunks} is not valid as a chunks number. Please retry with a positive integer.")
+        chunks = 0 
     hyper_parameters = {'clean':bool(args.clean),
                         'chunks':chunks}
     
