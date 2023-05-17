@@ -22,7 +22,7 @@ class VariableSpecificMetadata:
     original_ysize : str=None                  #TODO
     original_xinc : str=None                  
     original_yinc : str=None
-    min_max : list = None             #min and max values for each variable and dimension
+    bounds_matrix : list = None             #min and max values for each variable and dimension
     
     """
         function that sets values to attributes

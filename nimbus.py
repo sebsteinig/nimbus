@@ -4,6 +4,8 @@ import sys
 
 import numpy as np
 from utils.config import Config
+from utils.converters.converter import Converter
+from utils.converters.utils.utils import Extension
 import utils.png_converter as png_converter
 from typing import List
 import os
@@ -97,6 +99,19 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         
                         metadata.extends(version = VERSION)
                         
+                        converters = Converter.build_all(
+                            inputs = data,
+                            threshold = config.get_hp(variable.name).threshold,
+                            metadata = metadata,
+                            chunks =  hyper_parameters['chunks'],
+                            extension = Extension.PNG,
+                            nan_encoding = 255
+                        )
+                        
+                        for converter in converters:
+                            converter.exec()
+                        
+                        """
                         png_file = png_converter.convert(inputs=data,\
                             threshold=config.get_hp(variable.name).threshold,\
                             metadata=metadata,\
@@ -104,6 +119,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                             chunks = hyper_parameters['chunks'])
                         Logger.console().debug(f"{png_file}","SAVE")
                         logger.info(metadata.log(),"METADATA")
+                        """
                     success += 1
                     
                 except VariableNotFoundError as e :
