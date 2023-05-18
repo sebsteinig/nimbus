@@ -62,8 +62,8 @@ def bounds(arr : np.ndarray, threshold : float) -> Tuple[float, float]:
         ndarray
 """
 def reject_outliers(data, m = 3.):
-    d = np.abs(data - np.median(data))
-    mdev = np.median(d)
+    d = np.abs(data - np.ma.median(data))
+    mdev = np.ma.median(d)
     s = d/mdev if mdev else np.zeros(len(d))
     return data[s<m]
 
@@ -88,6 +88,11 @@ class Mode(Enum):
          
 class Extension(Enum):
     PNG = 'png'
+    WEBP = 'webp'
+    BMP = 'bmp'
+    JPEG = 'jpeg'
+    TGA = 'tga'
+    
     
 @dataclass
 class Shape:

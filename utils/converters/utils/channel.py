@@ -1,7 +1,7 @@
 
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 from utils.converters.utils.utils import Shape, bounds, clean, normalize
@@ -46,6 +46,27 @@ class Channel:
             data = converted_data,
             shape = self.shape 
         )
+        
+    def slices(self,chunks : int ) -> List['Channel'] :
+        if chunks <= 0 or chunks > self.shape.time :
+            return [(self,"")]
+        else :
+            sliced_arrays = np.array_split(self.data , chunks, axis = 1)
+            
+            return [       
+                (Channel(
+                    metadata=self.metadata,
+                    data = slice,
+                    shape = Shape(
+                        time = slice.shape[1],
+                        vertical = self.shape.vertical,
+                        latitude=self.shape.latitude,
+                        longitude=self.shape.longitude
+                    )
+                ),f".{i+1}of{chunks}") 
+                for i,slice in enumerate(sliced_arrays)
+            ]
+    
     def __convert_tile(self,
                        vertical:int,
                        time:int,

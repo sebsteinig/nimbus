@@ -4,6 +4,9 @@ from typing import List
 import numpy as np
 from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import Extension, Mode, Shape
+from utils.metadata import Metadata
+import os.path as path
+from PIL import Image as img
 
 
 @dataclass  
@@ -28,8 +31,20 @@ class ImageProvider:
                         time*longitude:(time+1)*longitude , index ] = channel.data[vertical,time,:,:]
         return encoding(np.squeeze(image))
     
-    def save(self,filename:str,channels : List[Channel]) -> List[str]:pass
-    
+    def save(self,filename:str,channels : List[Channel],metadata:Metadata) -> str:
+        image:np.ndarray = ImageProvider.reduce(channels,self.mode,self.encoding)
+        
+        file_path = path.join(f"{filename}.{self.extension.value}")
+        
+        image : img.Image = img.fromarray(image, self.mode.name)
+        image.save(file_path , format=self.extension.value,lossless = True,optimize=True)
+        return file_path
     @staticmethod  
-    def build(mode : Mode) -> 'ImageProvider': pass
- 
+    def build(mode : Mode,extension: Extension) -> 'ImageProvider':
+        if mode == Mode.RGBA:
+            raise Exception("can't use RGBA by default, only png is supported")
+        return ImageProvider(
+            encoding=np.int8,
+            extension=extension,
+            mode=mode
+        )

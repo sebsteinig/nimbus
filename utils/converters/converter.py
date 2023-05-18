@@ -6,12 +6,13 @@ import os
 import json
 from datetime import datetime
 from utils.converters.providers.default_provider import ImageProvider
-from utils.converters.providers.png_providers import PNG_Providers
+from utils.converters.providers.png_provider import PNG_Provider
+from utils.converters.providers.webp_provider import WEBP_Provider
 from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import ChannelDimensionException, Extension, Mode, Shape, bounds, clean, normalize
 from utils.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 from enum import Enum
 
 
@@ -23,9 +24,10 @@ class Converter:
     shape : Shape
     nan_encoding : int
     threshold : float
+    chunks : Union[int , float]
     filename : str
     
-    def exec(self) -> List[str]:
+    def exec(self) -> Tuple[List[str],str]:
         converted_channels = self.convert()
         
         mean_channels = self.mean(converted_channels)
@@ -35,14 +37,30 @@ class Converter:
 
         self.metadata.push((channel.metadata for channel in converted_channels))
         
-        files = self.provider.save(filename = self.filename + "ts",
-                                   channels = converted_channels,
-                                   metadata = self.metadata)
-        mean_files = self.provider.save(filename = self.filename + "avg",
+        ts_files = []
+        for channels,suffixe in self.slices(converted_channels):
+            ts_files.append(self.provider.save(filename = f"{self.filename}.ts{suffixe}" ,
+                                   channels = channels,
+                                   metadata = self.metadata))
+            
+        mean_file = self.provider.save(filename = self.filename + ".avg",
                                         channels = mean_channels,
                                    metadata = self.metadata)
         
-        return files
+        return ts_files,mean_file
+
+    def slices(self, converted_channels : List[Channel]):
+        
+        chunks = self.chunks
+        if type(chunks) is float:
+            chunks = int(self.shape.time/np.ceil(self.shape.time*chunks))
+        
+        sliced_channels = [ch.slices(chunks) for ch in  converted_channels]
+        n = len(sliced_channels[0])
+        for i in range(n):
+            channels = [sch[i][0] for sch in sliced_channels]
+            yield channels,sliced_channels[0][i][1]
+            
 
     def convert(self) -> List[Channel]:
         converted_channels : List[Channel] = []
@@ -88,7 +106,11 @@ class Converter:
         channels , shape = Converter.resolve_channels(inputs=inputs)
         
         if extension == Extension.PNG :
-            provider = PNG_Providers.build(mode=Mode.get(channels))
+            provider = PNG_Provider.build(mode=Mode.get(channels))
+        elif extension == Extension.WEBP :
+            provider = WEBP_Provider.build(mode=Mode.get(channels))
+        else :
+            provider = ImageProvider.build(mode=Mode.get(channels),extension=extension)
         
         
         return Converter(channels = channels,
@@ -96,6 +118,7 @@ class Converter:
                          nan_encoding = nan_encoding,
                          threshold = threshold,
                          filename = filename,
+                         chunks = chunks,
                          metadata = metadata,
                          provider = provider)
     

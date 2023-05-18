@@ -140,7 +140,7 @@ def preprocess(inputs:List[Tuple[str,str]],variable:Variable,tmp_directory:str,c
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,output_file:str,save:Callable) -> Tuple[List[Tuple[List[np.ndarray],str]],Metadata]:
     np_arrays_vs_metadata = []
      
-    inputs = save(inputs)
+    #inputs = save(inputs)
     
     metadata = Metadata()
     metadata.extends(variable_name=variable.name,\

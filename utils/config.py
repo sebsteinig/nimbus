@@ -3,7 +3,10 @@ import os.path as path
 from os import scandir
 from pathlib import PurePath,Path
 from typing import Any, Dict, Generator, List, Tuple, Union
+import numpy as np
 import tomli
+
+from utils.converters.utils.utils import Extension
 if __name__ == "__main__":
     from logger import Logger,_Logger
 else :
@@ -116,7 +119,9 @@ class HyperParametersConfig:
     threshold : float = 3.0
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
-    
+    nan_encoding : int = 255
+    chunks : float = 0
+    extension : Extension = Extension.PNG
     """
         check if the value provided for the key correct
         param :
@@ -147,6 +152,15 @@ class HyperParametersConfig:
                 else :
                     Logger.console().warning(f"can't convert resolutions to tuples, set to default instead")
                     return False
+        if key == "chunks":
+            return (type(value) is int or type(value) is float) and (value > 0)
+        
+        if key == "extension" :
+            return value in Extension._value2member_map_
+        
+        if key == "nan_encoding" :
+            return type(value) is int
+        
         return True
     """
         change the value of the given to the correct form
@@ -163,6 +177,13 @@ class HyperParametersConfig:
                 value["resolutions"] = [(None if r1 == "default" else r1, None if r2 == "default" else r2) for r1, r2 in value["resolutions"]]
             else :
                 value["resolutions"] = [(None,None)]
+        if key == "chunks" :
+            if value >= 1:
+                value = int(value)
+           
+        if key == "extension" :
+            value = Extension(value)   
+            
         return value
     """
         bind the create hyper parameters to the previous 
@@ -189,8 +210,8 @@ class HyperParametersConfig:
         types = self.__annotations__
         for key,value in kargs.items():
             if key in self.__dict__ and HyperParametersConfig.assert_key_value(key,value):
-                if type(value) is types[key]:
-                    self.__dict__[key] = HyperParametersConfig.map_key_value(key,types[key].__call__(value))
+                #if type(value) is types[key]:
+                self.__dict__[key] = HyperParametersConfig.map_key_value(key,value)
     """
         build the parameters with the given value if the key exist
         param :
@@ -204,8 +225,8 @@ class HyperParametersConfig:
         types = hp.__annotations__
         for key,value in kwargs.items():
             if key in hp.__dict__ and HyperParametersConfig.assert_key_value(key,value):
-                if type(value) is types[key]:
-                    hp.__dict__[key] = HyperParametersConfig.map_key_value(key,types[key].__call__(value))
+                #if type(value) is types[key]:
+                hp.__dict__[key] = HyperParametersConfig.map_key_value(key,value)
         return hp
         
 @dataclass

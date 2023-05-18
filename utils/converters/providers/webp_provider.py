@@ -5,12 +5,10 @@ from utils.converters.providers.default_provider import ImageProvider
 from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import Mode,Extension
 from PIL import Image as img
-from PIL.PngImagePlugin import PngInfo
-import json
 
 from utils.metadata import Metadata
 
-class PNG_Providers(ImageProvider):
+class WEBP_Provider(ImageProvider):
     
     def save(self,filename:str,channels : List[Channel],metadata:Metadata) -> str:
         image:np.ndarray = ImageProvider.reduce(channels,self.mode,self.encoding)
@@ -18,19 +16,13 @@ class PNG_Providers(ImageProvider):
         file_path = path.join(f"{filename}.{self.extension.value}")
         
         image : img.Image = img.fromarray(image, self.mode.name)
-        image.save(file_path , pnginfo = self.to_png_info(metadata))
+        image.save(file_path , format='webp',lossless = True)
         return file_path
     
-    def to_png_info(self,metadata : Metadata) -> PngInfo:
-        png_info = PngInfo()
-        for key,value in metadata.to_dict().items():
-            png_info.add_text(key,str(json.dumps(value)))
-        return png_info
-    
     @staticmethod
-    def build(mode : Mode) -> 'PNG_Providers':
-        return PNG_Providers(
+    def build(mode : Mode) -> 'WEBP_Provider':
+        return WEBP_Provider(
             encoding=np.int8,
-            extension=Extension.PNG,
+            extension=Extension.WEBP,
             mode=mode
         )
