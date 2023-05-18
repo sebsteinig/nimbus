@@ -105,7 +105,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                             metadata = metadata,
                             chunks =  chunks,
                             extension = hp.extension,
-                            nan_encoding = hp.nan_encoding
+                            nan_encoding = hp.nan_encoding, 
+                            lossless = hp.lossless
                         )
                         
                         for converter in converters:

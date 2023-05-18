@@ -16,13 +16,14 @@ class WEBP_Provider(ImageProvider):
         file_path = path.join(f"{filename}.{self.extension.value}")
         
         image : img.Image = img.fromarray(image, self.mode.name)
-        image.save(file_path , format='webp',lossless = True)
+        image.save(file_path , format='webp',lossless = self.lossless)
         return file_path
     
     @staticmethod
-    def build(mode : Mode) -> 'WEBP_Provider':
+    def build(mode : Mode, lossless:bool) -> 'WEBP_Provider':
         return WEBP_Provider(
             encoding=np.int8,
             extension=Extension.WEBP,
-            mode=mode
+            mode=mode,
+            lossless = lossless
         )

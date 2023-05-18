@@ -18,7 +18,7 @@ class PNG_Provider(ImageProvider):
         file_path = path.join(f"{filename}.{self.extension.value}")
         
         image : img.Image = img.fromarray(image, self.mode.name)
-        image.save(file_path , pnginfo = self.to_png_info(metadata) , optimize=True , format='png')
+        image.save(file_path , pnginfo = self.to_png_info(metadata) , lossless = self.lossless, optimize=True , format='png')
         return file_path
     
     def to_png_info(self,metadata : Metadata) -> PngInfo:
@@ -28,9 +28,10 @@ class PNG_Provider(ImageProvider):
         return png_info
     
     @staticmethod
-    def build(mode : Mode) -> 'PNG_Provider':
+    def build(mode : Mode, lossless : bool) -> 'PNG_Provider':
         return PNG_Provider(
             encoding=np.int8,
             extension=Extension.PNG,
-            mode=mode
+            mode=mode,
+            lossless = lossless
         )

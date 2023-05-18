@@ -122,6 +122,8 @@ class HyperParametersConfig:
     nan_encoding : int = 255
     chunks : float = 0
     extension : Extension = Extension.PNG
+    lossless : bool = True
+
     """
         check if the value provided for the key correct
         param :
@@ -161,6 +163,9 @@ class HyperParametersConfig:
         if key == "nan_encoding" :
             return type(value) is int
         
+        if key == "lossless":
+            return type(value) is bool
+        
         return True
     """
         change the value of the given to the correct form
@@ -183,7 +188,8 @@ class HyperParametersConfig:
            
         if key == "extension" :
             value = Extension(value)   
-            
+        if key == "lossless" :
+            value = bool(value)
         return value
     """
         bind the create hyper parameters to the previous 

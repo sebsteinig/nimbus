@@ -99,18 +99,19 @@ class Converter:
             extension : Extension,
             nan_encoding : int,
             threshold : float,
-            filename : str,
+            filename : str,            
             chunks : int,
-            metadata : Metadata) -> 'Converter':
+            metadata : Metadata,
+            lossless : bool) -> 'Converter':
         
         channels , shape = Converter.resolve_channels(inputs=inputs)
         
         if extension == Extension.PNG :
-            provider = PNG_Provider.build(mode=Mode.get(channels))
+            provider = PNG_Provider.build(mode=Mode.get(channels), lossless = lossless)
         elif extension == Extension.WEBP :
-            provider = WEBP_Provider.build(mode=Mode.get(channels))
+            provider = WEBP_Provider.build(mode=Mode.get(channels), lossless = lossless)
         else :
-            provider = ImageProvider.build(mode=Mode.get(channels),extension=extension)
+            provider = ImageProvider.build(mode=Mode.get(channels),extension=extension, lossless = lossless)
         
         
         return Converter(channels = channels,
@@ -128,7 +129,8 @@ class Converter:
             nan_encoding : int,
             extension : Extension,
             threshold : float,
-            chunks : int) -> List['Converter']:
+            chunks : int,
+            lossless : bool) -> List['Converter']:
             
         for input,output_filename in inputs:  
             yield Converter.build(inputs=input,
@@ -138,4 +140,5 @@ class Converter:
                                   metadata=metadata,
                                   nan_encoding=nan_encoding,
                                   threshold=threshold,
+                                  lossless = lossless
                                   )

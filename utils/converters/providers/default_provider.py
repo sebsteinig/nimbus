@@ -14,6 +14,7 @@ class ImageProvider:
     mode : Mode
     extension : Extension
     encoding : type
+    lossless : bool
     
     @staticmethod
     def reduce(channels : List[Channel],mode:Mode,encoding:type) -> np.ndarray:
@@ -37,14 +38,15 @@ class ImageProvider:
         file_path = path.join(f"{filename}.{self.extension.value}")
         
         image : img.Image = img.fromarray(image, self.mode.name)
-        image.save(file_path , format=self.extension.value,lossless = True,optimize=True)
+        image.save(file_path , format=self.extension.value,lossless = self.lossless,optimize=True)
         return file_path
     @staticmethod  
-    def build(mode : Mode,extension: Extension) -> 'ImageProvider':
+    def build(mode : Mode,extension: Extension, lossless:bool) -> 'ImageProvider':
         if mode == Mode.RGBA:
             raise Exception("can't use RGBA by default, only png is supported")
         return ImageProvider(
             encoding=np.int8,
             extension=extension,
-            mode=mode
+            mode=mode,
+            lossless = lossless
         )
