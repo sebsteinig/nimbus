@@ -1,10 +1,5 @@
-from multiprocessing import Pool
-import multiprocessing
-import sys
-
-import numpy as np
 from utils.config import Config
-import utils.png_converter as png_converter
+from utils.converters.converter import Converter
 from typing import List
 import os
 import shutil
@@ -14,7 +9,7 @@ from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
 from utils.variables.variable import VariableNotFoundError, retrieve_data,preprocess
 import file_managers.default_manager as default
-from utils.logger import Logger,pretty_time_delta
+from utils.logger import Logger
 import time
 
 VERSION = '1.3'
@@ -65,12 +60,15 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             success = 0
             total = 0
             status = 0
+            
+            hp = config.get_hp(variable.name)
+            
             for id,output_folder,bind in file_manager.iter_id_from(variable):
                 Logger.console().progress_bar(var_name=variable.name,id = id)  
                 total += 1
                 Logger.console().status("\tStarting conversion of", id=id)
                 logger = Logger.file(output_folder.out_log(),variable.name)
-                output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
+                output_file = output_folder.out_img_file(f"{config.name.lower()}.{id}.{variable.name}")
                 hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
                 hyper_parameters['logger'] = logger
                 
@@ -97,13 +95,25 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         
                         metadata.extends(version = VERSION)
                         
-                        png_file = png_converter.convert(inputs=data,\
-                            threshold=config.get_hp(variable.name).threshold,\
-                            metadata=metadata,\
-                            logger=logger,\
-                            chunks = hyper_parameters['chunks'])
-                        Logger.console().debug(f"{png_file}","SAVE")
+                        chunks = hp.chunks
+                        if hyper_parameters['chunks'] is not None:
+                            chunks = hyper_parameters['chunks']
+                        
+                        converters = Converter.build_all(
+                            inputs = data,
+                            threshold = hp.threshold,
+                            metadata = metadata,
+                            chunks =  chunks,
+                            extension = hp.extension,
+                            nan_encoding = hp.nan_encoding
+                        )
+                        
+                        for converter in converters:
+                            ts_files,mean_file = converter.exec()
+                            Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
+                        
                         logger.info(metadata.log(),"METADATA")
+
                     success += 1
                     
                 except VariableNotFoundError as e :
@@ -131,12 +141,16 @@ def main(args):
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
     try:
-        chunks = int(args.chunks) if args.chunks != None else 0
-        if chunks <0 :
-            raise Exception
+        chunks = args.chunks
+        if chunks is not None :
+            chunks = float(chunks)
+            if chunks > 1 :
+                chunks = int(chunks)
+            if chunks <0 :
+                raise Exception
     except Exception :
         Logger.console().warning(f"the value {args.chunks} is not valid as a chunks number. Please retry with a positive integer.")
-        chunks = 0 
+        chunks = None
     hyper_parameters = {'clean':bool(args.clean),
                         'chunks':chunks}
     

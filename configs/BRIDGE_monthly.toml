@@ -7,7 +7,7 @@
     dir = "climatearchive_sample_data/data"     # Path to data
     preprocessing = "BRIDGE"                    # Optional processing with CDO
     processing = "BRIDGE"                       # Optional processing with NumPy
-
+    extension = "png"
     [Model.Atmosphere]                         
         levels = [1000,850,700,500,200,100,10]  # Atmospheric levels to process
         unit = "hPa"
