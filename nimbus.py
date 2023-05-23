@@ -1,3 +1,4 @@
+from api.archive_db import ArchiveDB
 from utils.config import Config
 from utils.converters.converter import Converter
 from typing import List
@@ -44,6 +45,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
     if hyper_parameters['clean']:
         default.FileManager.clean(ids, output)
 
+    archive_db = ArchiveDB.build()
+
     with default.FileManager.mount(
         input=files,\
         output=output,\
@@ -55,15 +58,15 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 
         note = {}
             
-        for variable in file_manager.iter_variables():
-            Logger.console().status("Starting conversion of", variable=variable.name)
+        for id in file_manager.iter_id():
+            Logger.console().status("Starting conversion of", id=id)
             success = 0
             total = 0
             status = 0
             
-            hp = config.get_hp(variable.name)
-            
-            for id,output_folder,bind in file_manager.iter_id_from(variable):
+            var_note = {}
+            for variable,output_folder,bind in file_manager.iter_variables_from(id):
+                hp = config.get_hp(variable.name)
                 Logger.console().progress_bar(var_name=variable.name,id = id)  
                 total += 1
                 Logger.console().status("\tStarting conversion of", id=id)
@@ -108,15 +111,29 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                             nan_encoding = hp.nan_encoding, 
                             lossless = hp.lossless
                         )
-                        
+                        list_ts_files = []
+                        list_mean_files =[]
                         for converter in converters:
                             ts_files,mean_file = converter.exec()
+                            list_ts_files.extend(ts_files)
+                            list_mean_files.append(mean_file)
                             Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
                         
                         logger.info(metadata.log(),"METADATA")
 
                     success += 1
-                    
+                    archive_db.add(exp_id=id,
+                                   variable_name=variable.name,
+                                   config_name=config.name,
+                                   files_ts=list_ts_files,
+                                   files_mean=list_mean_files,
+                                   rx=resolution[0],
+                                   ry=resolution[1],
+                                   extension=hp.extension.value,
+                                   lossless=hp.lossless,
+                                   chunks=chunks,
+                                   metadata=metadata
+                                   )
                 except VariableNotFoundError as e :
                     Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")
                     status = 1
@@ -126,10 +143,14 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                     Logger.console().error(trace, "PNG CONVERTER")
                     logger.error(e.__repr__(), "PNG CONVERTER")   
                 Logger.console().status("conversion finished for",id=id)
+                var_note[variable.name] = status
 
-            note[variable.name] = ((success,total),status)
+            note[id] = ((success,total),var_note)
             Logger.console().status("conversion finished for",variable=variable.name)
 
+    if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
+        archive_db.commit()
+        archive_db.push()
     return note
 
 def main(args):
@@ -163,8 +184,8 @@ def main(args):
         hyper_parameters=hyper_parameters)
     
     
-    end = time.time()
-    if all( status != -1 for (_,_),status in note.values()):
+    end = time.time()    
+    if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
         Logger.console().success(note,end-start)
     else :
         Logger.console().failure(note,end-start)

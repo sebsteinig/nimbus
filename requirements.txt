@@ -7,3 +7,5 @@ pillow
 toml
 tomli
 xarray
+requests
+python-dotenv
