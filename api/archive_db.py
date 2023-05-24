@@ -21,12 +21,21 @@ class ArchiveDB:
             lossless:bool,
             chunks:float,
             metadata:Metadata):
-        row = {
-            "name":variable_name,
+        table_nimbus_execution_row = {
             "exp_id":exp_id,
+            "config_name":config_name,
+            "extension":extension,
+            "lossless":lossless,
+            "nan_value_encoding":metadata.general_metadata.nan_value_encoding,
+            "threshold":metadata.general_metadata.threshold,
+            "chunks":chunks,
+            "rx":0 if rx is None else rx,
+            "ry":0 if ry is None else ry,
+        }
+        table_variable_row = {
+            "name":variable_name,
             "paths_ts":files_ts,
             "paths_mean":files_mean,
-            "config_name":config_name,
             "levels":metadata.general_metadata.levels,
             "timesteps":metadata.general_metadata.timesteps,
             "xsize":metadata.general_metadata.xsize,
@@ -35,19 +44,15 @@ class ArchiveDB:
             "ysize":metadata.general_metadata.ysize,
             "yfirst":metadata.general_metadata.yfirst,
             "yinc":metadata.general_metadata.yinc,
-            "extension":extension,
-            "lossless":lossless,
-            "nan_value_encoding":metadata.general_metadata.nan_value_encoding,
-            "threshold":metadata.general_metadata.threshold,
-            "chunks":chunks,
-            "rx":0 if rx is None else rx,
-            "ry":0 if ry is None else ry,
             "metadata":{"metadata":[vs.to_dict() for vs in metadata.vs_metadata]},
         }
         if exp_id in self.experiments:
-            self.experiments[exp_id].append(row)
+            self.experiments[exp_id]['table_variable'].append(table_variable_row)
         else :
-            self.experiments[exp_id] = [row]
+            self.experiments[exp_id] = {
+                'table_nimbus_execution' : table_nimbus_execution_row,
+                'table_variable' : [table_variable_row]
+            }
     
     def commit(self):
         #print(self.experiments)
@@ -58,8 +63,7 @@ class ArchiveDB:
         for exp_id,rows in self.experiments.items():
             url = f"{self.url}/experiment/{exp_id}/add"
             Logger.console().info(url)
-            Logger.console().info([row["name"] for row in rows])
-            res = requests.post(url,json={"variables":rows})
+            res = requests.post(url,json={"request":rows})
             Logger.console().info(res.status_code)
             Logger.console().info(res.text)
             
