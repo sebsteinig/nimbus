@@ -60,12 +60,12 @@ class FileManager:
         self.file_cluster_binder = {}
         groups = {}
         uid = 1
-        for variable in self.io_bind.keys():
-            if variable in self.black_list and self.black_list[variable] == True:
+        for id in self.io_bind.keys():
+            if id in self.black_list and self.black_list[id] == True:
                 continue
             
-            for id,binder in self.io_bind[variable].items() :
-                if id in self.black_list[variable] and self.black_list[variable][id]:
+            for variable,binder in self.io_bind[id].items() :
+                if variable in self.black_list[id] and self.black_list[id][variable]:
                     continue
                 
                 if id not in self.cluster :
@@ -92,16 +92,16 @@ class FileManager:
                     
             
     
-    def iter_variables(self) : 
-        for variable in self.io_bind.keys():
-            if variable in self.black_list and self.black_list[variable] == True:
+    def iter_id(self) : 
+        for id in self.io_bind.keys():
+            if id in self.black_list and self.black_list[id] == True:
                 continue
             else :
-                yield variable
+                yield id
             
-    def iter_id_from(self,variable):
-        for id,binder in self.io_bind[variable].items() :
-            if id in self.black_list[variable] and self.black_list[variable][id]:
+    def iter_variables_from(self,id):
+        for variable,binder in self.io_bind[id].items() :
+            if id in self.black_list[id] and self.black_list[id][variable]:
                 continue
             
             output_folder = binder['folder']
@@ -125,7 +125,7 @@ class FileManager:
                         self.file_cluster_binder[id][input_file] = (real,self.cluster[id][nc_var_name])    
                     
                     yield input_file,nc_var_name
-            yield id,output_folder,bind
+            yield variable,output_folder,bind
             
     @memoize
     def __concatenate(files:List[str],output_file_name,output_folder):
@@ -199,26 +199,26 @@ class FileManager:
         main_folder = FileManager.__mount_output(output)
         if ids is None:
             raise Exception("Experiment ids must be specified")
-        io_bind = {variable:{id:{'binder':{},'folder':None} for id in ids} for variable in variables} 
+        io_bind = {id:{variable:{'binder':{},'folder':None} for variable in variables} for id in ids} 
         
         black_list = {}
         
-        for variable in variables:
-            ids_black_list = {}
-            for id in ids:
+        for id in ids:
+            variables_black_list = {}
+            for variable in variables:
                 out_folder_id = main_folder.append(id)
                 out_folder_id.mount()
-                io_bind[variable][id]['folder'] = out_folder_id
+                io_bind[id][variable]['folder'] = out_folder_id
                 try :
                     for input_files,nc_var_name in config.look_up(input_folder=input_folder,id=id,variable=variable):
-                        io_bind[variable][id]['binder'][nc_var_name] = input_files
+                        io_bind[id][variable]['binder'][nc_var_name] = input_files
                 except :
-                    ids_black_list[id] = True
-                    Logger.console().warning(f"experiment {id} will not be processed for variable {variable.name}")
-            black_list[variable] = ids_black_list
-            if len(ids_black_list) == len(ids) :
-                black_list[variable] = True
-                Logger.console().warning(f"variable {variable.name} will not be processed")
+                    variables_black_list[variable] = True
+                    Logger.console().warning(f"variable {variable.name} will not be processed for id {id}")
+            black_list[id] = variables_black_list
+            if len(variables_black_list) == len(variables) :
+                black_list[id] = True
+                Logger.console().warning(f"variable {id} will not be processed")
             
         return FileManager(main_folder=main_folder,io_bind=io_bind, black_list = black_list)
     
