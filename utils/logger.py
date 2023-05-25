@@ -142,16 +142,21 @@ class _Logger:
                 summary += wrap(status,f"\t\t{var_name}") + "\n"
             print(summary)
     
-    def success(self,note,time):
+    def success(self,note,time,push_success):
         t = pretty_time_delta(time)
         self.summary(note)
         print(f"{flag.SUCCESS.get()} :{flag.SUCCESS.tag(f'conversion to png finished in {t}')}")
+        if push_success :
+            print(f"\t{flag.SUCCESS.tag(f'push to archive db success')}")
+        else :
+            print(f"\t{flag.FAILURE.tag(f'push to archive db failed')}")
     
-    def failure(self,note,time):
+    def failure(self,note,time,push_success):
         t = pretty_time_delta(time)
         self.summary(note)
-        print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")
-           
+        print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")   
+        print(f"\t{flag.FAILURE.tag(f'push to archive db failed')}")
+        
     def print(self,flag,msg,tag):
         if self.std_output is None:
             print()

@@ -150,9 +150,9 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 
     if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
         archive_db.commit()
-        archive_db.push()
-    return note
-
+        return note,archive_db.push()
+    else :
+        return note,False
 def main(args):
     start = time.time()
     Logger.blacklist()
@@ -176,7 +176,7 @@ def main(args):
     hyper_parameters = {'clean':bool(args.clean),
                         'chunks':chunks}
     
-    note = convert_variables(config=config,\
+    note,push_success = convert_variables(config=config,\
         variables=variables,\
         ids= None if args.expids is None else args.expids.split(","),\
         files=args.files,\
@@ -186,9 +186,10 @@ def main(args):
     
     end = time.time()    
     if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
-        Logger.console().success(note,end-start)
+        Logger.console().success(note,end-start,push_success)
     else :
-        Logger.console().failure(note,end-start)
+        Logger.console().failure(note,end-start,push_success)
+    
         
  
 
