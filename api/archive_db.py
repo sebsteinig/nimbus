@@ -14,6 +14,7 @@ class ArchiveDB:
     url:str
     experiments : dict
     commit_dir : str
+    api_key : str
     
     def add(self,exp_id:str,
             variable_name:str,
@@ -78,7 +79,7 @@ class ArchiveDB:
             for exp_id,rows in self.experiments.items():
                 url = f"{self.url}/insert/{exp_id}"
                 try :
-                    res = requests.post(url,json={"request":rows})          
+                    res = requests.post(url,json={"request":rows},cookies={"access_token":self.api_key})          
                     if not res.ok:
                         result = False
                 except :
@@ -94,7 +95,10 @@ class ArchiveDB:
             for file,request in requests_list:
                 url = f"{self.url}/insert/{request['exp_id']}"
                 try :
-                    res = requests.post(url,json=request['body'])
+                    res = requests.post(url,json=request['body'],cookies={"access_token":self.api_key})
+                    Logger.console().info(res.status_code)
+                    
+                    Logger.console().info(res.text)
                     if res.ok:
                         remove(file)
                     else :
@@ -107,6 +111,7 @@ class ArchiveDB:
         config = dotenv_values(".env")
         
         return ArchiveDB(
+            api_key =  config["API_KEY"],
             commit_dir = "./migrations",
             url = config["ARCHIVE_DB_URL"],
             experiments={}
