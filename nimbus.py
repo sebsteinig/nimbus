@@ -13,7 +13,7 @@ import file_managers.default_manager as default
 from utils.logger import Logger
 import time
 
-VERSION = '1.3'
+VERSION = '1.4'
 
 
 
