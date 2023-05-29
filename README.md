@@ -1,4 +1,4 @@
-### internship-climate-archive
+### nimbus
 
 # Description
 This program is a data converter that allows you to preprocess data from netCDF4 files and convert them into images for 3D visualization on https://climatearchive.org. It offers a wide range of options and features to customize the data conversion process to the user's needs. The program supports conversion of files (or folders of files) provided by the user.
@@ -16,33 +16,33 @@ Options:
 * --files, -f: Convert the given file or folder.
 * --output, -o: Select file or folder.
 * --clean, -cl: Clean the output directory.
-* --debug, -d: Show debugs in the console
+* --debug, -d: Show debugs in the console.
 
 Usage Examples:
 1. To select variables for conversion in one file :
 ```console
-    python nc_to_img.py -v variable1,variable2,variable3 -f file.nc -c config.toml
+    python nimbus.py -v variable1,variable2,variable3 -f file.nc -c config.toml
 ```
 2. To select all variables for conversion in one file:
 ```console
-    python nc_to_img.py -v all -f file.nc -c config.toml
+    python nimbus.py -v all -f file.nc -c config.toml
 ```
 3. To select an experience for conversion:
 ```console
-    python nc_to_img.py -v variable1 -e expid -c config.toml
+    python nimbus.py -v variable1 -e expid -c config.toml
 ```
 4. To clean the output directory:
 ```console
-    python nc_to_img.py -v variable1 -e expid -c config.toml -cl
+    python nimbus.py -v variable1 -e expid -c config.toml -cl
 ```
 5. To convert the given file or folder:
 ```console
-    python nc_to_img.py -v variable1 -f folder -c config.toml 
+    python nimbus.py -v variable1 -f folder -c config.toml 
 ```
 
 # Configuration
 
-To convert netCDF files, one must define the variables that are in these files. Many variables are already defined in the [Bridge configuration file](BRIDGE.toml).
+To convert netCDF files, one must define the variables that are in these files. Many variables are already defined in the [Bridge configuration file](configs/BRIDGE_monthly.toml).
 The configuration file can be written as follows, using the TOML language. Here is a simple example :
 ```console
     [Model]
@@ -71,7 +71,7 @@ In order to add a new variable, one must define a new python file in the folder 
 ```console
     @preprocessing(currents,'BRIDGE')
 ```
-And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE.toml](BRIDGE.toml)).
+And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE_monthly.toml](configs/BRIDGE_monthly.toml)).
 
 # Output
 This program outputs images in the png folder, the output of the processed netCDF files given in input in the netcdf folder, and a log folder.  These 3 folders are in a folder named as the expID.  
@@ -89,7 +89,7 @@ In order to add a new variable, one must define a new python file in the folder 
 ```console
     @preprocessing(OceanCurrents,'BRIDGE')
 ```
-And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE.toml](BRIDGE.toml)).
+And the argument 'BRIDGE' corresponds to the value assigned to 'preprocessing' in the TOML configuration file ([See BRIDGE_monthly.toml](configs/BRIDGE_monthly.toml)).
 # bridge-variable
 1. clt :\
     named "totCloud_mm_ua" in bridge netcdf files

@@ -1,6 +1,6 @@
-import sys
+from api.archive_db import ArchiveDB
 from utils.config import Config
-import utils.png_converter as png_converter
+from utils.converters.converter import Converter
 from typing import List
 import os
 import shutil
@@ -8,12 +8,12 @@ from typing import Tuple
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import utils.variables.variable_builder as vb
-from utils.variables.variable import VariableNotFoundError, retrieve_data
+from utils.variables.variable import VariableNotFoundError, retrieve_data,preprocess
 import file_managers.default_manager as default
 from utils.logger import Logger
 import time
 
-VERSION = '1.3'
+VERSION = '1.4'
 
 
 
@@ -38,13 +38,14 @@ def save(directory:str):
         return outputs
     return f
 
-
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
         files = config.hyper_parameters.dir
         
     if hyper_parameters['clean']:
         default.FileManager.clean(ids, output)
+
+    archive_db = ArchiveDB.build()
 
     with default.FileManager.mount(
         input=files,\
@@ -53,23 +54,32 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         variables=variables,\
         ids=ids) as file_manager:
 
-        note = {variable.name:((0,0),1) for variable in variables}
+        file_manager.clusterize()
 
-        for variable in file_manager.iter_variables():
-            Logger.console().status("Starting conversion of", variable=variable.name)
+        note = {}
+            
+        for id in file_manager.iter_id():
+            Logger.console().status("Starting conversion of", id=id)
             success = 0
             total = 0
             status = 0
-            for id,output_folder,iter in file_manager.iter_id_from(variable):
+            
+            var_note = {}
+            for variable,output_folder,bind in file_manager.iter_variables_from(id):
+                hp = config.get_hp(variable.name)
                 Logger.console().progress_bar(var_name=variable.name,id = id)  
                 total += 1
                 Logger.console().status("\tStarting conversion of", id=id)
                 logger = Logger.file(output_folder.out_log(),variable.name)
-                output_file = output_folder.out_png_file(f"{config.name.lower()}.{id}.{variable.name}")
+                output_file = output_folder.out_img_file(f"{config.name.lower()}.{id}.{variable.name}")
                 hyper_parameters['tmp_directory'] = output_folder.tmp_nc()
                 hyper_parameters['logger'] = logger
-                files_var_binder = list(iter())
+                
                 try:
+                    files_var_binder = list(bind(id))
+                    files_var_binder = preprocess(files_var_binder,variable,output_folder.tmp_nc(),file_manager.file_cluster_binder[id])
+                
+                    
                     for resolution in config.get_realm_hp(variable)['resolutions']:
                         hyper_parameters['resolution'] = resolution
                             
@@ -88,14 +98,42 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         
                         metadata.extends(version = VERSION)
                         
-                        png_file = png_converter.convert(inputs=data,\
-                            threshold=config.get_hp(variable.name).threshold,\
-                            metadata=metadata,\
-                            logger=logger)
-                        Logger.console().debug(f"{png_file}","SAVE")
+                        chunks = hp.chunks
+                        if hyper_parameters['chunks'] is not None:
+                            chunks = hyper_parameters['chunks']
+                        
+                        converters = Converter.build_all(
+                            inputs = data,
+                            threshold = hp.threshold,
+                            metadata = metadata,
+                            chunks =  chunks,
+                            extension = hp.extension,
+                            nan_encoding = hp.nan_encoding, 
+                            lossless = hp.lossless
+                        )
+                        list_ts_files = []
+                        list_mean_files =[]
+                        for converter in converters:
+                            ts_files,mean_file = converter.exec()
+                            list_ts_files.extend(ts_files)
+                            list_mean_files.append(mean_file)
+                            Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
+                        
                         logger.info(metadata.log(),"METADATA")
+
                     success += 1
-                    
+                    archive_db.add(exp_id=id,
+                                   variable_name=variable.name,
+                                   config_name=config.name,
+                                   files_ts=list_ts_files,
+                                   files_mean=list_mean_files,
+                                   rx=resolution[0],
+                                   ry=resolution[1],
+                                   extension=hp.extension.value,
+                                   lossless=hp.lossless,
+                                   chunks=chunks,
+                                   metadata=metadata
+                                   )
                 except VariableNotFoundError as e :
                     Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")
                     status = 1
@@ -105,15 +143,16 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                     Logger.console().error(trace, "PNG CONVERTER")
                     logger.error(e.__repr__(), "PNG CONVERTER")   
                 Logger.console().status("conversion finished for",id=id)
-            
-            note[variable.name] = ((success,total),status)
-            
+                var_note[variable.name] = status
+
+            note[id] = ((success,total),var_note)
             Logger.console().status("conversion finished for",variable=variable.name)
 
-    return note
-
-
-
+    if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
+        archive_db.commit()
+        return note,archive_db.push()
+    else :
+        return note,False
 def main(args):
     start = time.time()
     Logger.blacklist()
@@ -123,11 +162,21 @@ def main(args):
     
     config = load_config(args.config)
     variables = load_variables(args.variables,config)
+    try:
+        chunks = args.chunks
+        if chunks is not None :
+            chunks = float(chunks)
+            if chunks > 1 :
+                chunks = int(chunks)
+            if chunks <0 :
+                raise Exception
+    except Exception :
+        Logger.console().warning(f"the value {args.chunks} is not valid as a chunks number. Please retry with a positive integer.")
+        chunks = None
+    hyper_parameters = {'clean':bool(args.clean),
+                        'chunks':chunks}
     
-
-    hyper_parameters = {'clean':bool(args.clean),}
-    
-    note = convert_variables(config=config,\
+    note,push_success = convert_variables(config=config,\
         variables=variables,\
         ids= None if args.expids is None else args.expids.split(","),\
         files=args.files,\
@@ -135,11 +184,12 @@ def main(args):
         hyper_parameters=hyper_parameters)
     
     
-    end = time.time()
-    if all( status != -1 for (_,_),status in note.values()):
-        Logger.console().success(note,end-start)
+    end = time.time()    
+    if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
+        Logger.console().success(note,end-start,push_success)
     else :
-        Logger.console().failure(note,end-start)
+        Logger.console().failure(note,end-start,push_success)
+    
         
  
 
@@ -151,7 +201,8 @@ if __name__ == "__main__" :
     parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
-    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')    
+    parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
+    parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images')    
     args = parser.parse_args()
     
     if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):

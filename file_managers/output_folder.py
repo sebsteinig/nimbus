@@ -4,7 +4,7 @@ from os import mkdir
 from typing import Union
 
 
-@dataclass
+@dataclass(eq=True,frozen=True)
 class OutputFolder:
     main_dir : str
     out_dir  : str
@@ -29,10 +29,10 @@ class OutputFolder:
             return None
         return path.join(self.tmp_dir,self.name)
     
-    def out_png(self)  -> Union[str,None]:
+    def out_img(self)  -> Union[str,None]:
         if self.name is None:
             return None
-        return path.join(self.out(),"png")
+        return path.join(self.out(),"img")
     
     def out_log(self)  -> Union[str,None]:
         if self.name is None:
@@ -44,30 +44,30 @@ class OutputFolder:
             return None
         return path.join(self.out(),"netcdf")
     
-    def tmp_png(self) -> Union[str,None]:
+    def tmp_img(self) -> Union[str,None]:
         if self.name is None:
             return None
-        return path.join(self.tmp(),"png")
+        return path.join(self.tmp(),"img")
     
     def tmp_nc(self) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.tmp(),"netcdf")
     
-    def out_png_file(self,file_name:str) -> Union[str,None]:
+    def out_img_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
-        return path.join(self.out_png(),file_name)
+        return path.join(self.out_img(),file_name)
     
     def out_nc_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
         return path.join(self.out_nc(),file_name)
     
-    def tmp_png_file(self,file_name:str) -> Union[str,None]:
+    def tmp_img_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
             return None
-        return path.join(self.tmp_png(),file_name)
+        return path.join(self.tmp_img(),file_name)
     
     def tmp_nc_file(self,file_name:str) -> Union[str,None]:
         if self.name is None:
@@ -77,12 +77,12 @@ class OutputFolder:
     
     def mount(self):
         self.mount_folder()
-        if not path.isdir(self.out_png()):
-            mkdir(self.out_png())
+        if not path.isdir(self.out_img()):
+            mkdir(self.out_img())
         if not path.isdir(self.out_nc()):
             mkdir(self.out_nc())
-        if not path.isdir(self.tmp_png()):
-            mkdir(self.tmp_png())
+        if not path.isdir(self.tmp_img()):
+            mkdir(self.tmp_img())
         if not path.isdir(self.tmp_nc()):
             mkdir(self.tmp_nc())
             

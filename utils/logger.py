@@ -125,31 +125,38 @@ class _Logger:
         self.i = (self.i + 1) % 4
 
     def summary(self,note):
-        summary = ""
         def wrap(status,msg):
             if status == 0:
-                return flag.SUCCESS.tag(msg)
+                return flag.SUCCESS.tag(msg + " success")
             elif status == 1:
-                return flag.WARNING.tag(msg)
+                return flag.WARNING.tag(msg + " skipped")
             else :
-                return flag.ERROR.tag(msg)
+                return flag.ERROR.tag(msg + " error")
                 
-        for name,((success,total),status) in note.items():
-            summary += wrap(status,f"\t{name} : {success}/{total}\n")
-        
         print()
-        print(flag.INFO.tag(f'Summary :\n{summary}'))
+        print(flag.INFO.tag(f'Summary :\n'))
+        for name,((success,total),var_notes) in note.items():
+            summary = ""
+            print(flag.INFO.tag(f'\t{name} :{success}/{total}\n'))
+            for var_name,status in var_notes.items():
+                summary += wrap(status,f"\t\t{var_name}") + "\n"
+            print(summary)
     
-    def success(self,note,time):
+    def success(self,note,time,push_success):
         t = pretty_time_delta(time)
         self.summary(note)
         print(f"{flag.SUCCESS.get()} :{flag.SUCCESS.tag(f'conversion to png finished in {t}')}")
+        if push_success :
+            print(f"\t{flag.SUCCESS.tag(f'push to archive db success')}")
+        else :
+            print(f"\t{flag.FAILURE.tag(f'push to archive db failed')}")
     
-    def failure(self,note,time):
+    def failure(self,note,time,push_success):
         t = pretty_time_delta(time)
         self.summary(note)
-        print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")
-           
+        print(f"{flag.FAILURE.get()} :{flag.FAILURE.tag(f'conversion to png finished in {t}')}")   
+        print(f"\t{flag.FAILURE.tag(f'push to archive db failed')}")
+        
     def print(self,flag,msg,tag):
         if self.std_output is None:
             print()
@@ -229,7 +236,9 @@ class Logger:
     @staticmethod
     def file(dir:str,variable_name) -> _Logger:
         if not os.path.exists(dir):
-            os.mkdir(dir)
+            try :
+                os.mkdir(dir)
+            except:pass
         log_path = path.join(dir,str(variable_name) + datetime.now().strftime("%d_%m_%Y_%H:%M") + ".log")
         return _Logger(log_path)
 
