@@ -96,9 +96,6 @@ class ArchiveDB:
                 url = f"{self.url}/insert/{request['exp_id']}"
                 try :
                     res = requests.post(url,json=request['body'],cookies={"access_token":self.api_key})
-                    Logger.console().info(res.status_code)
-                    
-                    Logger.console().info(res.text)
                     if res.ok:
                         remove(file)
                     else :
