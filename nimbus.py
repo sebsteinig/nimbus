@@ -64,6 +64,12 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             total = 0
             status = 0
             
+            id_metadata = {"exp_id":id}
+            if config.id_metadata is not None:
+                parse = config.id_metadata.handle(id)
+                id_metadata["metadata"] = parse()
+                id_metadata["labels"] = config.id_metadata.labels
+            
             var_note = {}
             for variable,output_folder,bind in file_manager.iter_variables_from(id):
                 hp = config.get_hp(variable.name)
@@ -132,7 +138,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                                    extension=hp.extension.value,
                                    lossless=hp.lossless,
                                    chunks=chunks,
-                                   metadata=metadata
+                                   metadata=metadata,
+                                   id_metadata=id_metadata
                                    )
                 except VariableNotFoundError as e :
                     Logger.console().warning(f"Variable {e.args[0]} not found for {id} in {variable.name}")

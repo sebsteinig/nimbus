@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import json
 from utils.logger import Logger
-from utils.metadata import Metadata
+from utils.metadata.metadata import Metadata
 from dataclasses import dataclass
 from typing import List, Union
 import requests
@@ -25,6 +25,7 @@ class ArchiveDB:
             ry:Union[float,None],
             extension:str,
             lossless:bool,
+            id_metadata:dict,
             chunks:float,
             metadata:Metadata):
         table_nimbus_execution_row = {
@@ -58,7 +59,8 @@ class ArchiveDB:
         else :
             self.experiments[exp_id] = {
                 'table_nimbus_execution' : table_nimbus_execution_row,
-                'table_variable' : [table_variable_row]
+                'table_variable' : [table_variable_row],
+                'exp_metadata' : id_metadata
             }
     
     def commit(self):

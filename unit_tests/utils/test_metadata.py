@@ -1,5 +1,5 @@
 import unittest
-from utils.metadata import *
+from utils.metadata.metadata import *
 from unit_tests.utils.mock_metadata import MockMetadata
 
 class TestMetadata(unittest.TestCase):

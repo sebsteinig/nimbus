@@ -8,7 +8,7 @@ from PIL import Image as img
 from PIL.PngImagePlugin import PngInfo
 import json
 
-from utils.metadata import Metadata
+from utils.metadata.metadata import Metadata
 
 class PNG_Provider(ImageProvider):
     
