@@ -209,10 +209,13 @@ if __name__ == "__main__" :
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
     parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
-    parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images')    
+    parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images') 
+    parser.add_argument('--publication',"-p", dest = 'publication', help = 'fill the database with publications information')   
     args = parser.parse_args()
-    
-    if args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
+    if args.publication is not None:
+        import papers_parser
+        papers_parser.add_publication(args.publication)
+    elif args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
         main(args)
     else :
         Logger.console().warning(f"Missing arguments \n {parser.format_help()}")
