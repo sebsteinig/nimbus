@@ -31,7 +31,7 @@ class DatProvider:
                 data["expts_web"] = list(set(to_list(data["expts_web"])))
             if "expts_paper" in data:
                 data["expts_paper"] = to_list(data["expts_paper"])
-            res[path.basename().split(".")[0]] = data
+            res[path.basename(file).split(".")[0]] = data
             for key in data:
                 if data[key] is None:
                     del data[key]
@@ -44,5 +44,5 @@ class DatProvider:
             
             return DatProvider(files=[filepath])
         return DatProvider(
-            files = [path.join(filepath, file) for file in listdir(filepath) if file not in blacklist]
+            files = [path.join(filepath, file) for file in listdir(filepath) if file not in blacklist and file.endswith("dat")]
         )
