@@ -1,3 +1,4 @@
+import codecs
 from dataclasses import dataclass
 import os.path as path
 from os import listdir
@@ -23,7 +24,7 @@ class HtmlProvider:
         tags = {key:tag for key,tag in TAGS.items() if tag in tags}
         res = {}
         for file in self.files:
-            with open(file, "r") as f:
+            with codecs.open(file, "r",  encoding='utf-8', errors='ignore') as f:
                 data = default_tags.copy()
                 data.update(HtmlProvider.parse_html(f.read(), tags))
             if "year" in data:
