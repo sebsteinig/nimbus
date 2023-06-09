@@ -1,6 +1,8 @@
+from __future__ import print_function
 from dataclasses import dataclass
 import json
 import os.path as path
+import smtplib
 from api.providers.DatProvider import DatProvider
 from dotenv import dotenv_values
 import requests
@@ -74,7 +76,17 @@ class PublicationAPI:
         return data
         
     def notify(self,requested_exp_ids:list) :
-        Logger.console().warning(requested_exp_ids)
+        
+        f = open("request_ids.json", "w+")
+        s = f.read()
+        content = json.loads(s) if s != "" else {}
+        if "request_ids" in content :
+            ids = set(content["request_ids"])
+            ids.update(requested_exp_ids)
+            requested_exp_ids = list(ids)
+        f.write(json.dumps({"request_ids" : requested_exp_ids}))
+        Logger.console().warning(f"requested ids are : {requested_exp_ids}")
+     
         
     
     @staticmethod
