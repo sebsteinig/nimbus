@@ -73,7 +73,7 @@ class PublicationAPI:
 
         return data
         
-    def notify(requested_exp_ids:list) :
+    def notify(self,requested_exp_ids:list) :
         Logger.console().warning(requested_exp_ids)
         
     
