@@ -14,8 +14,10 @@ def For(*names):
 
 @For("bridge","dat")
 def bridge_parse(default_tags:dict,tags,file):
-    
-    config = dotenv_values(file)
+    try:
+        config = dotenv_values(file)
+    except:
+        return {}
     metadata = default_tags.copy()
     for tag in tags:
         if tag in config:
