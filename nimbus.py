@@ -212,9 +212,12 @@ if __name__ == "__main__" :
     parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images') 
     parser.add_argument('--publication',"-p", dest = 'publication', help = 'fill the database with publications information')   
     args = parser.parse_args()
+    
     if args.publication is not None:
-        import papers_parser
-        papers_parser.add_publication(args.publication)
+        from api.publication_api import PublicationAPI
+        api = PublicationAPI.build(args.publication)
+        api.send()
+        
     elif args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
         main(args)
     else :

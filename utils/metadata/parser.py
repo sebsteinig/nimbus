@@ -21,35 +21,6 @@ def bridge_parse(default_tags:dict,tags,file):
         if tag in config:
             metadata[tag] = config[tag]
     return metadata
-    """
-    metadata = default_tags.copy()
-    with open(file,'r') as f:
-        on_multiple_lines, key_multpile_lines = False, ""
-        try:
-            for line in f.readlines():
-                print(on_multiple_lines)
-                print(line)
-                if not on_multiple_lines:
-                    _splitted = line.strip().split('=')
-                    key = _splitted[0]
-                    print(key)
-                    value = retrieve_value(_splitted[-1])                    
-                    if key in tags :
-                        metadata[key] = value
-                    if _splitted[-1].startswith("\"") and not _splitted[-1].endswith("\""):
-                        on_multiple_lines, key_multpile_lines = True, key
-                    if line.endswith("\""):
-                        on_multiple_lines = False
-                else :
-                    if key_multpile_lines in tags :
-                        metadata[key_multpile_lines] += "\n" + line.replace('"','')
-                    if line.endswith("\""):
-                        on_multiple_lines = False
-        except:
-            pass
-    print(metadata)
-    """
-    return metadata
 
 def retrieve_value(value : str):
     if value.startswith("(") and value.endswith(")"):

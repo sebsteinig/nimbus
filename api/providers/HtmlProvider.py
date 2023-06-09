@@ -53,7 +53,7 @@ class HtmlProvider:
                 res["expts_paper"].append(td.text.strip())
             a = exp.find('a')
             if a:
-                res["expts_web"].append(exp.text.strip())
+                res["expts_web"].append(a.text.strip())
         return res
     
     

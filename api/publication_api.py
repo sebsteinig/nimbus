@@ -25,7 +25,7 @@ class PublicationAPI:
             )    
             
             if res.status_code == 409:
-                response = json.load(res.text)
+                response = json.loads(res.text)
                 if "requested_id" in response:
                     self.notify(response["requested_id"])
             elif not res.ok :
@@ -36,42 +36,38 @@ class PublicationAPI:
         
     def merge(self) -> dict:
         default_tags= {}
-        tags = []
+        tags = ["title", "authors_short", "authors_full", "journal", "year", "volume", "pages",\
+             "doi", "owner_name", "owner_email", "abstract", "brief_desc", "expts_paper", "expts_web"]
         
         dat_data = self.dat_provider.parse(default_tags,tags)
+        data = {}
         #clean dat data
         for file in dat_data:
+            data[file] = {}
             for key,value in dat_data[file].items():
-                if value is None or value == "":
-                    del dat_data[file][key]
-        print("DAT :")
-        print(dat_data)
+                if value is not None and value != "" and value != []:
+                    data[file][key] = value
+        #print("DAT :")
+        #print(dat_data)
         
         html_data = self.html_provider.parse(default_tags,tags)
         #clean html data
         for file in html_data:
             for key,value in html_data[file].items():
-                if value is None or value == "":
-                    del html_data[file][key]
+                if value is not None and value != "" and value != []:
+                    data[file][key] = value
         
-        print("HTML :") 
-        print(html_data)
-        
-        # merge 
-        merged_data = dat_data
-        merged_data.update(html_data)
-        merged_data = list(merged_data.values())
+        data = list(data.values())
         
         #grep all exp ids
-        _exp_ids = [publication["expts_web"] for publication in merged_data]
+        _exp_ids = [publication["expts_web"] for publication in data]
         exp_ids = []
         for ids in _exp_ids:
             exp_ids.extend(ids)
         exp_ids = list(set(exp_ids))
         
-        
         data = {
-            "publication" : merged_data,
+            "publications" : data,
             "exp_ids" : exp_ids,
         }
 
