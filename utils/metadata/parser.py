@@ -1,6 +1,7 @@
 
 import json
 
+from dotenv import dotenv_values
 
 parsers = {}
 
@@ -13,14 +14,29 @@ def For(*names):
 
 @For("bridge","dat")
 def bridge_parse(default_tags:dict,tags,file):
+    try:
+        config = dotenv_values(file)
+    except:
+        return {}
     metadata = default_tags.copy()
-    with open(file,'r') as f:
-        for line in f.readlines():
-            _splitted = line.strip().split('=')
-            key,value = _splitted[0],_splitted[-1].replace('"','')
-            if key in tags:
-                metadata[key] = value
+    for tag in tags:
+        if tag in config:
+            metadata[tag] = config[tag]
     return metadata
+
+def retrieve_value(value : str):
+    if value.startswith("(") and value.endswith(")"):
+        if value.find('"') != -1:
+            res = value.removeprefix("(").removesuffix(")")
+            res = res.split('" "')
+            res[0] = res[0].removeprefix('"')
+            res[-1] = res[-1].removesuffix('"')
+        else :
+            res = value.removeprefix("(").removesuffix(")").split(" ")
+        return res
+    else:
+        return value.replace('"','')
+    
 
 @For("json")
 def json_parse(default_tags:dict,tags,file):
