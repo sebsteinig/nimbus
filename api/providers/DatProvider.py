@@ -32,10 +32,6 @@ class DatProvider:
             if "expts_paper" in data:
                 data["expts_paper"] = to_list(data["expts_paper"])
             res[path.basename(file).split(".")[0]] = data
-
-            for key in data:
-                if data[key] is None:
-                    del data[key]
         return res
     
     @staticmethod
