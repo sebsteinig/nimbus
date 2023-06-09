@@ -6,7 +6,7 @@ from typing import List, Tuple
 import numpy as np
 from utils.converters.utils.utils import Shape, bounds, clean, normalize
 
-from utils.metadata import VariableSpecificMetadata
+from utils.metadata.metadata import VariableSpecificMetadata
 
 
 @dataclass

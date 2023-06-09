@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import Extension, Mode, Shape
-from utils.metadata import Metadata
+from utils.metadata.metadata import Metadata
 import os.path as path
 from PIL import Image as img
 

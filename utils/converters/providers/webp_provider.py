@@ -6,7 +6,7 @@ from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import Mode,Extension
 from PIL import Image as img
 
-from utils.metadata import Metadata
+from utils.metadata.metadata import Metadata
 
 class WEBP_Provider(ImageProvider):
     

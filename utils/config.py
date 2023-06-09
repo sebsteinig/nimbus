@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import os.path as path
 from os import scandir
+import utils.metadata.parser as parser
 from pathlib import PurePath,Path
 from typing import Any, Dict, Generator, List, Tuple, Union
 import numpy as np
@@ -276,12 +277,51 @@ class VariableDescription:
         return VariableDescription(name=name,\
             nc_file_var_binder=nc_file_var_binder,\
             hyper_parameters=hyper_parameters)
-        
+@dataclass
+class IdMetadata:
+    dir : str
+    file : FileDescriptor
+    tags : List[str]
+    defaults : Dict[str,str]
+    labels : List[str]
+    parser : str
+    
+    def handle(self,id):
+        parse = parser.parsers[self.parser]
+        def func():
+            file = self.file.join(self.dir,id)
+            metadata = parse(self.defaults,self.tags,file)
+            return metadata
+        return func
+
+    @staticmethod
+    def build(id_metatada:dict) -> 'IdMetadata':
+        dir = id_metatada.get("dir","")
+        tags = id_metatada.get("tags",[])
+        labels = id_metatada.get("labels",[])
+        parser = id_metatada.get("parser","")
+        file = None
+        if "file" in id_metatada:
+            file = FileDescriptor.build(id_metatada["file"])        
+        defaults = {}
+        for key,value in id_metatada.items():
+            if key not in ("dir","file","tags","labels"):
+                defaults[key] = value
+        return IdMetadata(
+            dir=dir,
+            file=file,
+            parser=parser,
+            tags=tags,
+            defaults=defaults,
+            labels=labels
+        )            
+
 @dataclass
 class Config:
     name : str
     supported_variables : Dict[str,VariableDescription]
     hyper_parameters : HyperParametersConfig
+    id_metadata : IdMetadata
     """
         get hyper parameters of the variable
         param :
@@ -369,6 +409,11 @@ class Config:
             raise ConfigException(f"{desc} is not a valid config file, please provide a name in the Model tag")
         name = model["name"]
         
+        if "metadata" in model:
+            id_metadata = IdMetadata.build(model["metadata"])
+        else :
+            id_metadata = None
+
         hyper_parameters = HyperParametersConfig.build(**model)
         
         supported_variable = {}
@@ -378,7 +423,12 @@ class Config:
                 continue
             supported_variable[var_name] = VariableDescription.build(var_desc=var_desc,name = var_name,hyper_parameters_config = hyper_parameters)
             
-        return Config(name=name,supported_variables=supported_variable,hyper_parameters=hyper_parameters)
+        return Config(
+            name=name,
+            supported_variables=supported_variable,
+            hyper_parameters=hyper_parameters,
+            id_metadata=id_metadata
+        )
 
 
     

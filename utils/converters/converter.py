@@ -10,7 +10,7 @@ from utils.converters.providers.png_provider import PNG_Provider
 from utils.converters.providers.webp_provider import WEBP_Provider
 from utils.converters.utils.channel import Channel
 from utils.converters.utils.utils import ChannelDimensionException, Extension, Mode, Shape, bounds, clean, normalize
-from utils.metadata import Metadata,VariableSpecificMetadata
+from utils.metadata.metadata import Metadata,VariableSpecificMetadata
 from utils.logger import Logger,_Logger
 from typing import List, Tuple, Dict, Union
 from enum import Enum

@@ -1,4 +1,4 @@
-from utils.metadata import *
+from utils.metadata.metadata import *
 
 class MockMetadata:
     var_s_1 : VariableSpecificMetadata

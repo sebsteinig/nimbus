@@ -7,7 +7,7 @@ import sys
 from utils.config import Config
 import utils.variables.info as inf
 from utils.logger import Logger,_Logger
-from utils.metadata import Metadata, VariableSpecificMetadata
+from utils.metadata.metadata import Metadata, VariableSpecificMetadata
 from utils.variables.pipelines.horizontal_pipeline import HorizontalPipeline
 from utils.variables.pipelines.vertical_pipeline import VerticalPipeline
 from utils.variables.pipelines.cleaning_pipeline import CleaningPipeline
