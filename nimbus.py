@@ -13,7 +13,7 @@ import file_managers.default_manager as default
 from utils.logger import Logger
 import time
 
-VERSION = '1.6'
+VERSION = '1.7'
 
 
 
@@ -70,7 +70,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             if config.id_metadata is not None:
                 parse = config.id_metadata.handle(id)
                 id_metadata["metadata"] = parse()
-                id_metadata["labels"].extends(config.id_metadata.labels)
+                id_metadata["labels"].extend(config.id_metadata.labels)
             
             var_note = {}
             for variable,output_folder,bind in file_manager.iter_variables_from(id):
