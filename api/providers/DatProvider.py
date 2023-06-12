@@ -24,7 +24,7 @@ class DatProvider:
     def parse(self,default_tags,tags) -> dict :
         res = {}
         for file in self.files:
-            data = parser.bridge_parse(default_tags, tags, file)
+            data = parser.dat_parse(default_tags, tags, file)
             if "year" in data:
                 data["year"] = to_int(data["year"])
             if "expts_web" in data:
