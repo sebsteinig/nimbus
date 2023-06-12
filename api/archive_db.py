@@ -57,6 +57,14 @@ class ArchiveDB:
         if exp_id in self.experiments:
             self.experiments[exp_id]['table_variable'].append(table_variable_row)
         else :
+            if "date_original" in id_metadata["metadata"]:
+                id_metadata["metadata"]["date_original"] = datetime.strptime(id_metadata["metadata"]["date_original"], '%Y_%m_%d_%H_%M').isoformat()
+            if "date_modified" in id_metadata["metadata"]:
+                id_metadata["metadata"]["date_modified"] = datetime.strptime(id_metadata["metadata"]["date_modified"], '%Y_%m_%d_%H_%M').isoformat()
+
+            if "realistic" in (l.lower() for l in id_metadata["labels"]):
+                id_metadata["metadata"]["realistic"] = True
+
             self.experiments[exp_id] = {
                 'table_nimbus_execution' : table_nimbus_execution_row,
                 'table_variable' : [table_variable_row],

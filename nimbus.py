@@ -65,10 +65,12 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
             status = 0
             
             id_metadata = {"exp_id":id}
+            id_metadata["labels"] = []
+            id_metadata["labels"].extend(hyper_parameters["labels"])
             if config.id_metadata is not None:
                 parse = config.id_metadata.handle(id)
                 id_metadata["metadata"] = parse()
-                id_metadata["labels"] = config.id_metadata.labels
+                id_metadata["labels"].extends(config.id_metadata.labels)
             
             var_note = {}
             for variable,output_folder,bind in file_manager.iter_variables_from(id):
@@ -180,8 +182,13 @@ def main(args):
     except Exception :
         Logger.console().warning(f"the value {args.chunks} is not valid as a chunks number. Please retry with a positive integer.")
         chunks = None
+
+    labels = []
+    if args.labels is not None :
+        labels.extend(args.labels.split(","))
+
     hyper_parameters = {'clean':bool(args.clean),
-                        'chunks':chunks}
+                        'chunks':chunks,"labels":labels}
     
     note,push_success = convert_variables(config=config,\
         variables=variables,\
@@ -210,6 +217,7 @@ if __name__ == "__main__" :
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
     parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
     parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images') 
+    parser.add_argument('--labels',"-l", dest = 'labels', help = 'specify labels') 
     parser.add_argument('--publication',"-p", dest = 'publication', help = 'fill the database with publications information')   
     args = parser.parse_args()
     

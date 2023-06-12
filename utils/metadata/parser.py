@@ -12,8 +12,8 @@ def For(*names):
         return func
     return wrapper
 
-@For("bridge","dat")
-def bridge_parse(default_tags:dict,tags,file):
+@For("dat")
+def dat_parse(default_tags:dict,tags,file):
     try:
         config = dotenv_values(file)
     except:
@@ -24,19 +24,16 @@ def bridge_parse(default_tags:dict,tags,file):
             metadata[tag] = config[tag]
     return metadata
 
-def retrieve_value(value : str):
-    if value.startswith("(") and value.endswith(")"):
-        if value.find('"') != -1:
-            res = value.removeprefix("(").removesuffix(")")
-            res = res.split('" "')
-            res[0] = res[0].removeprefix('"')
-            res[-1] = res[-1].removesuffix('"')
-        else :
-            res = value.removeprefix("(").removesuffix(")").split(" ")
-        return res
-    else:
-        return value.replace('"','')
-    
+@For("bridge")
+def bridge_parse(default_tags:dict,tags,file):
+    metadata = default_tags.copy()
+    with open(file,'r') as f:
+        for line in f.readlines():
+            _splitted = line.strip().split('=')
+            key,value = _splitted[0],_splitted[-1].replace('"','').replace(";","")
+            if key in tags:
+                metadata[key] = value
+    return metadata
 
 @For("json")
 def json_parse(default_tags:dict,tags,file):
