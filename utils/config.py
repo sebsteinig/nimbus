@@ -283,7 +283,7 @@ class IdMetadata:
     file : FileDescriptor
     tags : List[str]
     defaults : Dict[str,str]
-    labels : List[str]
+    labels : List[dict]
     parser : str
     
     def handle(self,id):
@@ -300,6 +300,19 @@ class IdMetadata:
         tags = id_metatada.get("tags",[])
         labels = id_metatada.get("labels",[])
         parser = id_metatada.get("parser","")
+        if len(labels) > 0:
+            for i in range(len(labels)):
+                if type(labels[i]) is str:
+                    labels[i] = {
+                        "labels" : labels[i],
+                        "metadata" : {}
+                    }
+                elif type(labels[i]) is dict :
+                    if "labels" not in labels[i]:
+                        raise Exception(f"Malformed labels in config : {labels[i]}\nLabels must be either a string or a dict with \"label\" and \"metadata\"")
+                    if "metadata" not in labels[i]:
+                        raise Exception(f"Malformed labels in config : {labels[i]}\nLabels must be either a string or a dict with \"label\" and \"metadata\"")
+                   
         file = None
         if "file" in id_metatada:
             file = FileDescriptor.build(id_metatada["file"])        
