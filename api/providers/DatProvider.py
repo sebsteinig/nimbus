@@ -38,7 +38,8 @@ class DatProvider:
     def build(filepath : str) -> 'DatProvider':
         blacklist = ("default_settings.dat")
         if path.isfile(filepath):
-            
+            if filepath.endswith("html"):
+                filepath = filepath.replace("html", "dat")
             return DatProvider(files=[filepath])
         return DatProvider(
             files = [path.join(filepath, file) for file in listdir(filepath) if file not in blacklist and file.endswith("dat")]

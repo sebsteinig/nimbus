@@ -52,9 +52,13 @@ class PublicationAPI:
         #print("DAT :")
         #print(dat_data)
         
+        #si 3eme colonne
+
         html_data = self.html_provider.parse(default_tags,tags)
         #clean html data
         for file in html_data:
+            if not file in data.keys():
+                data[file] = {}
             for key,value in html_data[file].items():
                 if value is not None and value != "" and value != []:
                     data[file][key] = value
@@ -92,15 +96,19 @@ class PublicationAPI:
     @staticmethod
     def build(filepath : str) -> 'PublicationAPI':
         if not path.exists(filepath):
-            raise Exception(f"{filepath} does not exist")
-        
+            dat_provider = DatProvider([])
+            html_provider, ok = HtmlProvider.build_from_src(filepath)
+            if not ok :
+                raise Exception(f"{filepath} does not exist or not accessible")
+        else :
+            dat_provider = DatProvider.build(filepath)
+            html_provider = HtmlProvider.build(filepath)
+
         route = "insert/publication"
         config = dotenv_values(".env")
         url = f"{config['ARCHIVE_DB_URL']}/{route}"
         api_key = config['API_KEY']
         
-        dat_provider = DatProvider.build(filepath)
-        html_provider = HtmlProvider.build(filepath)
         return PublicationAPI(
             dat_provider = dat_provider,
             html_provider = html_provider,
