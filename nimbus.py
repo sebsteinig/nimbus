@@ -16,10 +16,6 @@ import time
 VERSION = '1.7'
 
 
-
-def load_config(arg_config) -> Config:
-    return Config.build(arg_config)
-
 def load_variables(arg_variables,config:Config):
     variables = vb.build(config)
     if arg_variables == "all":
@@ -162,6 +158,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         return note,archive_db.push()
     else :
         return note,False
+    
 def main(args):
     start = time.time()
     Logger.blacklist()
@@ -169,7 +166,7 @@ def main(args):
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
-    config = load_config(args.config)
+    config = Config.build(args.config)
     variables = load_variables(args.variables,config)
     try:
         chunks = args.chunks
@@ -224,7 +221,8 @@ if __name__ == "__main__" :
     if args.publication is not None:
         from api.publication_api import PublicationAPI
         api = PublicationAPI.build(args.publication)
-        api.send()
+        if api is not None :
+            api.send()
         
     elif args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
         main(args)

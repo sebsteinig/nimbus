@@ -133,9 +133,14 @@ def preprocess(inputs:List[Tuple[str,str]],variable:Variable,tmp_directory:str,c
 """
     retrieve data with the corresponding metadata from a list files and variable name
     param :
-        
+        inputs:List[Tuple[str,str]]
+        variable:Variable
+        hyper_parameters:dict
+        config:Config
+        output_file:str
+        save:Callable
     return :
-        None
+        Tuple[List[Tuple[List[np.ndarray],str]],Metadata]
 """   
 def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters:dict,config:Config,output_file:str,save:Callable) -> Tuple[List[Tuple[List[np.ndarray],str]],Metadata]:
     np_arrays_vs_metadata = []
