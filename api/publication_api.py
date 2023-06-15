@@ -25,6 +25,7 @@ class PublicationAPI:
     def send(self) :
         data = self.merge()
         try :    
+            print(data)
             res = requests.post(
                 self.url,
                 json=data,
@@ -74,8 +75,8 @@ class PublicationAPI:
         _exp_ids = [publication["expts_web"] for publication in data]
         exp_ids = []
         for ids in _exp_ids:
-            exp_ids.extend(ids)
-        #exp_ids = list(set(exp_ids))
+            exp_ids.extend([id["exp_id"] for id in ids])
+        exp_ids = list(set(exp_ids))
         
         data = {
             "publications" : data,
