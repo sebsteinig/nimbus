@@ -7,8 +7,13 @@ from api.providers.DatProvider import DatProvider
 from dotenv import dotenv_values
 import requests
 from api.providers.HtmlProvider import HtmlProvider
-
 from utils.logger import Logger
+
+#OUTPUT [{paper_name : {expts_web : [{exp_id : value, labels : [{label : value, metadata : value}, {...}, {...} ]}, {}],
+#                      authors_short : ...,
+#                      brief_desc : ...,
+#                      authors_full : ...,
+#                      ...}}]
 
 @dataclass
 class PublicationAPI:
@@ -70,7 +75,7 @@ class PublicationAPI:
         exp_ids = []
         for ids in _exp_ids:
             exp_ids.extend(ids)
-        exp_ids = list(set(exp_ids))
+        #exp_ids = list(set(exp_ids))
         
         data = {
             "publications" : data,
@@ -99,7 +104,7 @@ class PublicationAPI:
             dat_provider = DatProvider([])
             html_provider, ok = HtmlProvider.build_from_src(filepath)
             if not ok :
-                raise Exception(f"{filepath} does not exist or not accessible")
+                raise Exception(f"{filepath} does not exist or could not be accessed")
         else :
             dat_provider = DatProvider.build(filepath)
             html_provider = HtmlProvider.build(filepath)
