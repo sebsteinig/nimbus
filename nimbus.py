@@ -13,7 +13,7 @@ import file_managers.default_manager as default
 from utils.logger import Logger
 import time
 
-VERSION = '1.7'
+VERSION = '1.8'
 
 
 def load_variables(arg_variables,config:Config):
