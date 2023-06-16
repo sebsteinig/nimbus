@@ -13,12 +13,8 @@ import file_managers.default_manager as default
 from utils.logger import Logger
 import time
 
-VERSION = '1.7'
+VERSION = '1.8'
 
-
-
-def load_config(arg_config) -> Config:
-    return Config.build(arg_config)
 
 def load_variables(arg_variables,config:Config):
     variables = vb.build(config)
@@ -162,6 +158,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
         return note,archive_db.push()
     else :
         return note,False
+    
 def main(args):
     start = time.time()
     Logger.blacklist()
@@ -169,7 +166,7 @@ def main(args):
     Logger.filter("REQUESTS", "CDO INFO","SHAPE","DIMENSION","RESOLUTION")
     Logger.console().info("Starting conversion to png")
     
-    config = load_config(args.config)
+    config = Config.build(args.config)
     variables = load_variables(args.variables,config)
     try:
         chunks = args.chunks
@@ -212,7 +209,7 @@ if __name__ == "__main__" :
     parser.add_argument('--variables',"-v", dest = 'variables', help = 'select variables')
     parser.add_argument('--config',"-c", dest = 'config', help = 'select configurations files')
     parser.add_argument('--experiments',"-e", dest = 'expids', help = 'select experiments')
-    parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
+    parser.add_argument('--folder',"-f", dest = 'files', help = 'select input folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
     parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
@@ -224,7 +221,8 @@ if __name__ == "__main__" :
     if args.publication is not None:
         from api.publication_api import PublicationAPI
         api = PublicationAPI.build(args.publication)
-        api.send()
+        if api is not None :
+            api.send()
         
     elif args.variables is not None and args.config is not None and (args.expids is not None or args.files is not None):
         main(args)

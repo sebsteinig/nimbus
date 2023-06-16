@@ -64,6 +64,15 @@ class ArchiveDB:
 
             if "realistic" in (l.lower() for l in id_metadata["labels"]):
                 id_metadata["metadata"]["realistic"] = True
+                for i in [i for i,l in enumerate(id_metadata["labels"]) if l.lower() == "realistic"]:
+                    del id_metadata["labels"][i]
+
+            for i in range(len(id_metadata["labels"])):
+                if type(id_metadata["labels"][i]) is str:
+                    id_metadata["labels"][i] = {
+                        "labels" : id_metadata["labels"][i],
+                        "metadata" : {}
+                    }
 
             self.experiments[exp_id] = {
                 'table_nimbus_execution' : table_nimbus_execution_row,

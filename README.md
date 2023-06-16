@@ -10,35 +10,27 @@ python nimbus.py [OPTIONS]
 python nimbus.py [OPTIONS]
 ```
 Options:
-* --variables, -v: Select variables for conversion, 'all' for every variable specified in the configuration file. [See more](#configuration)
+* --variables, -v: Select one or more variables (coma separated values) for conversion, 'all' for every variable specified in the configuration file. [See more](#configuration)
 * --config, -c : Select configuration files. [See more](#configuration)
-* --experiences, -e: Select experience id for conversion .
+* --experiences, -e: Select one or more experiments id (coma separated values) for conversion .
 * --files, -f: Convert the given file or folder.
 * --output, -o: Select file or folder.
 * --clean, -cl: Clean the output directory.
 * --debug, -d: Show debugs in the console.
+* --chunks, -ch: specify the number of output images.
+* --labels, -l: specify labels for the given experiments for later use in the climate archive api.
+* --publication, -p: only used with the climate archive api, specify a folder, a file or a url that contains information about published papers for more precise filtering of experiments in the climate archive api.
 
 Usage Examples:
-1. To select variables for conversion in one file :
-```console
-    python nimbus.py -v variable1,variable2,variable3 -f file.nc -c config.toml
-```
-2. To select all variables for conversion in one file:
-```console
-    python nimbus.py -v all -f file.nc -c config.toml
-```
-3. To select an experience for conversion:
+1. To select an experience for conversion:
 ```console
     python nimbus.py -v variable1 -e expid -c config.toml
 ```
-4. To clean the output directory:
+2. Send publication information to the database:
 ```console
-    python nimbus.py -v variable1 -e expid -c config.toml -cl
+    python nimbus.py -p file.html
 ```
-5. To convert the given file or folder:
-```console
-    python nimbus.py -v variable1 -f folder -c config.toml 
-```
+
 
 # Configuration
 
@@ -53,6 +45,11 @@ The configuration file can be written as follows, using the TOML language. Here 
     processing="PROCESS_REF"
     files=["file1.nc", "file2.nc"]
     variable = "variable_name_in_netcdf_file"
+    [Model.metadata]
+    file = "file/containing/experiment/metadata"
+    parser="type of parser for the file [bridge, dat, json]"
+    tags = ["key of metadata that you want to store"]
+    *any additional key value pair will be considered as default metadata tags
 ```
 
 The preprocessing and processing attributes allows to reference the processing steps that should be applied to the data before conversion. ([See More](https://github.com/WillemNicolas/internship-climate-archive/edit/main/README.md#add-new-variables)). Here is a list of specification that can be added in the Model section of the configuration file :
