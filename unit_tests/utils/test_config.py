@@ -59,7 +59,7 @@ class TestConfig(unittest.TestCase):
         config = Config(name="",
             supported_variables=
                 {"var":VariableDescription(name="var",nc_file_var_binder=[],hyper_parameters=hp)},
-            hyper_parameters=hp)
+            hyper_parameters=hp,id_metadata=None)
         assert(config.get_hp("var").preprocessing == "NEW")
         
     def test_get_realm_hp_success(self):
@@ -71,7 +71,7 @@ class TestConfig(unittest.TestCase):
         config = Config(name="",
             supported_variables=
                 {"var":VariableDescription(name="var",nc_file_var_binder=[],hyper_parameters=hp)},
-            hyper_parameters=hp)
+            hyper_parameters=hp,id_metadata=None)
         assert("levels" in config.get_realm_hp(MockVariable(name="var",realm="a")))
         assert("unit" in config.get_realm_hp(MockVariable(name="var",realm="a")))
         assert("resolutions" in config.get_realm_hp(MockVariable(name="var",realm="a")))
@@ -86,7 +86,7 @@ class TestConfig(unittest.TestCase):
         config = Config(name="",
             supported_variables=
                 {"var":VariableDescription(name="var",nc_file_var_binder=[(FileDescriptor.build(["/{id}/climate/{id}a.pccljan.nc","{id}/climate/{id}a.pcclfeb.nc"]),"varname",False)],hyper_parameters=hp)},
-            hyper_parameters=hp)
+            hyper_parameters=hp,id_metadata=None)
         mock_variable = MockVariable(name="var",realm=None)
         res = (list(config.look_up(input_folder="climatearchive_sample_data/data",
                                    id="texpa1",

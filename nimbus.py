@@ -212,7 +212,7 @@ if __name__ == "__main__" :
     parser.add_argument('--variables',"-v", dest = 'variables', help = 'select variables')
     parser.add_argument('--config',"-c", dest = 'config', help = 'select configurations files')
     parser.add_argument('--experiments',"-e", dest = 'expids', help = 'select experiments')
-    parser.add_argument('--files',"-f", dest = 'files', help = 'select file or folder')
+    parser.add_argument('--folder',"-f", dest = 'files', help = 'select input folder')
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
     parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
