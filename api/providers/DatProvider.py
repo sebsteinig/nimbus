@@ -3,6 +3,10 @@ import os.path as path
 from os import listdir
 from utils.metadata import parser
 
+
+TAGS = ["title", "authors_short", "authors_full", "journal", "year", "volume", "pages",\
+             "doi", "owner_name", "owner_email", "abstract", "brief_desc", "expts_web"]
+
 def to_int(_data):
     try:
         return int(_data)
@@ -29,16 +33,13 @@ class DatProvider:
                 data["year"] = to_int(data["year"])
             if "expts_web" in data:
                 data["expts_web"] = list(set(to_list(data["expts_web"])))
-            if "expts_paper" in data:
-                data["expts_paper"] = to_list(data["expts_paper"])
             res[path.basename(file).split(".")[0]] = data
         return res
     
     @staticmethod
     def build(filepath : str) -> 'DatProvider':
         blacklist = ("default_settings.dat")
-        if path.isfile(filepath):
-            
+        if path.isfile(filepath) and filepath.endswith("dat"):
             return DatProvider(files=[filepath])
         return DatProvider(
             files = [path.join(filepath, file) for file in listdir(filepath) if file not in blacklist and file.endswith("dat")]
