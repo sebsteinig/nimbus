@@ -169,30 +169,6 @@ class FileManager:
         if not path.isdir(tmp):
             mkdir(tmp)
         return OutputFolder(main_dir=main,out_dir=out,tmp_dir=tmp)
-
-    @staticmethod
-    def __mount_file(input:str,output:str,config:Config,variables,ids) -> 'FileManager':
-        if not assert_nc_extension(input):
-            raise Exception(f"{input} is not a netCDF file")
-        
-        main_folder = FileManager.__mount_output(output)
-        out_folder = main_folder.append("user")
-        
-        out_folder.mount()
-        
-        shutil.copyfile(input, out_folder.tmp_nc_file(file_name(input)))
-        
-        supported_variables = {}
-        for name,sv in config.supported_variables.items():
-            for v in variables:
-                if name == v.name:
-                    supported_variables[v] = [x[1] for x in sv.nc_file_var_binder]
-        
-        name = path.splitext(input)[0]
-        
-        io_bind = {variable:{name:{var_name:(out_folder,input) for var_name in supported_variables[variable] }} for variable in variables} 
-        
-        return FileManager(main_folder=main_folder,io_bind=io_bind)
     
     @staticmethod
     def __mount_folder(input_folder:str,output:str,config:Config,variables,ids) -> 'FileManager':
@@ -229,10 +205,7 @@ class FileManager:
         if not path.exists(input):
             raise Exception(f"{input} does not exist")
         
-        if path.isfile(input):
-            return FileManager.__mount_file(input,output,config,variables,ids)
-        elif path.isdir(input):
-            return FileManager.__mount_folder(input,output,config,variables,ids)    
+        return FileManager.__mount_folder(input,output,config,variables,ids)    
         
 
     @staticmethod

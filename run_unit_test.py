@@ -1,6 +1,5 @@
 import unittest
 from unit_tests.utils.test_metadata import TestMetadata
-from unit_tests.utils.test_png_converter import TestPngConverter
 from unit_tests.utils.variables.pipelines.test_cleaning_pipelines import TestCleaningPipeLine
 from utils.logger import Logger
 from unit_tests.test import Test
@@ -17,7 +16,6 @@ test_classes = [
     Test,
     TestConfig,
     TestMetadata,
-    TestPngConverter,
     TestVariableBuilder,
     TestSupportedVariable,
     TestHorizontalPipeLine,
