@@ -46,27 +46,52 @@ class Channel:
             data = converted_data,
             shape = self.shape 
         )
-        
-    def slices(self,chunks : int ) -> List['Channel'] :
-        if chunks <= 0 or chunks > self.shape.time :
-            return [(self,"")]
-        else :
-            sliced_arrays = np.array_split(self.data , chunks, axis = 1)
-            
-            return [       
-                (Channel(
+    
+    def slices_one_dimension(self,chunks: int, axis : int, data):
+            mode = "t" if axis == 1 else "v"
+            return [(Channel(
                     metadata=self.metadata,
                     data = slice,
                     shape = Shape(
-                        time = slice.shape[1],
-                        vertical = self.shape.vertical,
+                        time = slice.shape[1] if axis == 1 else self.shape.time,
+                        vertical = slice.shape[0] if axis == 0 else self.shape.vertical,
                         latitude=self.shape.latitude,
-                        longitude=self.shape.longitude
-                    )
-                ),f".{i+1}of{chunks}") 
-                for i,slice in enumerate(sliced_arrays)
-            ]
-    
+                        longitude=self.shape.longitude)),
+                    f".{mode}{i+1}of{chunks}") 
+                for i,slice in enumerate(data)]
+
+    def slices(self,chunks_t : int, chunks_v : int) -> List['Channel'] :
+        if chunks_t <= 0 or chunks_t > self.shape.time:
+            if chunks_v <= 0 or chunks_v > self.shape.vertical:
+                return [(self,"")]
+            else : 
+                sliced_arrays = np.array_split(self.data , chunks_v, axis = 0)
+                return self.slices_one_dimension(chunks=chunks_v, axis=0, data=sliced_arrays)
+        else :
+            sliced_arrays = np.array_split(self.data , chunks_t, axis = 1)
+            if chunks_v<= 0 or chunks_v > self.shape.vertical:
+                return self.slices_one_dimension(chunks=chunks_t, axis = 1, data = sliced_arrays)
+            else:
+                slices = []
+                for slice in sliced_arrays:
+                    slices.extend(np.array_split(slice, chunks_v, axis = 0))
+                res = []
+                for i in range (chunks_t):
+                    for j in range(chunks_v):
+                        slice = slices[i*chunks_t +j]
+                        res.append((Channel(
+                        metadata=self.metadata,
+                        data = slice,
+                        shape = Shape(
+                            time = slice.shape[1],
+                            vertical = slice.shape[0],
+                            latitude=self.shape.latitude,
+                            longitude=self.shape.longitude)),
+                    f".t{i+1}of{chunks_t}.v{j+1}of{chunks_v}"))
+                return res
+
+
+
     def __convert_tile(self,
                        vertical:int,
                        time:int,
