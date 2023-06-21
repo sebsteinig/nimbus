@@ -2,16 +2,13 @@
 
 # Description
 This program is a data converter that allows you to preprocess data from netCDF4 files and convert them into images for 3D visualization on https://climatearchive.org. It offers a wide range of options and features to customize the data conversion process to the user's needs. The program supports conversion of files (or folders of files) provided by the user.
-Usage:
-python nimbus.py [OPTIONS]
-
 ## Usage:
 ```console
 python nimbus.py [OPTIONS]
 ```
 Options:
 * --variables, -v: Select one or more variables (coma separated values) for conversion, 'all' for every variable specified in the configuration file. [See more](#configuration)
-* --config, -c : Select configuration files. [See more](#configuration)
+* --config, -c: Select configuration files. [See more](#configuration)
 * --experiments, -e: Select one or more experiments id (coma separated values) for conversion .
 * --folder, -f: Convert the given file or folder.
 * --output, -o: Select file or folder.
