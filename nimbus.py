@@ -34,6 +34,20 @@ def save(directory:str):
         return outputs
     return f
 
+def verify_chunks(chunks) :
+    try:
+        if chunks is not None :
+            chunks = float(chunks)
+            if chunks > 1 :
+                chunks = int(chunks)
+            if chunks <0 :
+                raise Exception
+    except Exception :
+        Logger.console().warning(f"the value {chunks} is not valid as a chunks number. Please retry with a positive integer.")
+        chunks = None
+    return chunks
+
+
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
         files = config.hyper_parameters.dir
@@ -102,15 +116,20 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         
                         metadata.extends(version = VERSION)
                         
-                        chunks = hp.chunks
-                        if hyper_parameters['chunks'] is not None:
-                            chunks = hyper_parameters['chunks']
+                        chunks_t = hp.chunks_time
+                        if hyper_parameters['chunks_t'] is not None:
+                            chunks_t = hyper_parameters['chunks_t']
+                        
+                        chunks_v = hp.chunks_vertical
+                        if hyper_parameters['chunks_v'] is not None:
+                            chunks_v = hyper_parameters['chunks_v']
                         
                         converters = Converter.build_all(
                             inputs = data,
                             threshold = hp.threshold,
                             metadata = metadata,
-                            chunks =  chunks,
+                            chunks_t =  chunks_t,
+                            chunks_v =  chunks_v,
                             extension = hp.extension,
                             nan_encoding = hp.nan_encoding, 
                             lossless = hp.lossless
@@ -121,6 +140,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                             ts_files,mean_file = converter.exec()
                             list_ts_files.extend(ts_files)
                             list_mean_files.append(mean_file)
+                            chunks_t, chunks_v = converter.chunks_t, converter.chunks_v
                             Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
                         
                         logger.info(metadata.log(),"METADATA")
@@ -135,7 +155,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                                    ry=resolution[1],
                                    extension=hp.extension.value,
                                    lossless=hp.lossless,
-                                   chunks=chunks,
+                                   chunks_t= chunks_t, 
+                                   chunks_v = chunks_v,
                                    metadata=metadata,
                                    id_metadata=id_metadata
                                    )
@@ -168,24 +189,16 @@ def main(args):
     
     config = Config.build(args.config)
     variables = load_variables(args.variables,config)
-    try:
-        chunks = args.chunks
-        if chunks is not None :
-            chunks = float(chunks)
-            if chunks > 1 :
-                chunks = int(chunks)
-            if chunks <0 :
-                raise Exception
-    except Exception :
-        Logger.console().warning(f"the value {args.chunks} is not valid as a chunks number. Please retry with a positive integer.")
-        chunks = None
 
+    chunks_t = verify_chunks(args.chunks_t)
+    chunks_v = verify_chunks(args.chunks_v)
+    
     labels = []
     if args.labels is not None :
         labels.extend(args.labels.split(","))
 
     hyper_parameters = {'clean':bool(args.clean),
-                        'chunks':chunks,"labels":labels}
+                         'chunks_t':chunks_t, 'chunks_v':chunks_v,"labels":labels}
     
     note,push_success = convert_variables(config=config,\
         variables=variables,\
@@ -213,7 +226,8 @@ if __name__ == "__main__" :
     parser.add_argument('--output',"-o", dest = 'output', help = 'select file or folder')
     parser.add_argument('--clean',"-cl",action = 'store_true', help = 'clean the out directory') 
     parser.add_argument('--debug',"-d", action ='store_true', help = 'add debug information in the log')
-    parser.add_argument('--chunks',"-ch", dest = 'chunks', help = 'specify the number of output images') 
+    parser.add_argument('--chunkstime',"-ct", dest = 'chunks_t', help = 'specify the number of chunks (in time)') 
+    parser.add_argument('--chunksvertical',"-cv", dest = 'chunks_v', help = 'specify the number of chunks (in vertical)') 
     parser.add_argument('--labels',"-l", dest = 'labels', help = 'specify labels') 
     parser.add_argument('--publication',"-p", dest = 'publication', help = 'fill the database with publications information')   
     args = parser.parse_args()

@@ -26,7 +26,8 @@ class ArchiveDB:
             extension:str,
             lossless:bool,
             id_metadata:dict,
-            chunks:float,
+            chunks_t:int,
+            chunks_v:int,
             metadata:Metadata):
         table_nimbus_execution_row = {
             "exp_id":exp_id,
@@ -36,7 +37,8 @@ class ArchiveDB:
             "lossless":lossless,
             "nan_value_encoding":metadata.general_metadata.nan_value_encoding,
             "threshold":metadata.general_metadata.threshold,
-            "chunks":chunks,
+            "chunks_time":chunks_t,
+            "chunks_vertical":chunks_v,
             "rx":0 if rx is None else rx,
             "ry":0 if ry is None else ry,
         }
