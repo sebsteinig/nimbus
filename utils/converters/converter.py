@@ -28,7 +28,7 @@ class Converter:
     chunks_v : int
     filename : str
     
-    def exec(self) -> Tuple[List[str],str]:
+    def exec(self) -> Tuple[List[str],List[str]]:
         converted_channels = self.convert()
         
         mean_channels = self.mean(converted_channels)
@@ -43,12 +43,14 @@ class Converter:
             ts_files.append(self.provider.save(filename = f"{self.filename}.ts{suffixe}" ,
                                    channels = channels,
                                    metadata = self.metadata))
-            
-        mean_file = self.provider.save(filename = self.filename + ".avg",
-                                        channels = mean_channels,
-                                   metadata = self.metadata)
         
-        return ts_files,mean_file
+        mean_files = []
+        for channels,suffixe in self.slices_vertical(mean_channels):
+            mean_files.append(self.provider.save(filename = f"{self.filename}.avg{suffixe}",
+                                        channels = mean_channels,
+                                   metadata = self.metadata))
+        
+        return ts_files,mean_files
 
     def slices(self, converted_channels : List[Channel]):
         sliced_channels = [ch.slices(self.chunks_t, self.chunks_v) for ch in converted_channels]
@@ -57,6 +59,12 @@ class Converter:
             channels = [sch[i][0] for sch in sliced_channels]
             yield channels,sliced_channels[0][i][1]
             
+    def slices_vertical(self, converted_channels : List[Channel]):
+        sliced_channels = [ch.slices(0, self.chunks_v) for ch in converted_channels]
+        n = len(sliced_channels[0])
+        for i in range(n):
+            channels = [sch[i][0] for sch in sliced_channels]
+            yield channels,sliced_channels[0][i][1]      
 
     def convert(self) -> List[Channel]:
         converted_channels : List[Channel] = []

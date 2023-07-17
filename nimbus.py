@@ -138,7 +138,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                         list_mean_files =[]
                         for converter in converters:
                             ts_files,mean_file = converter.exec()
-                            list_ts_files.extend(ts_files)
+                            list_ts_files.append(ts_files)
                             list_mean_files.append(mean_file)
                             chunks_t, chunks_v = converter.chunks_t, converter.chunks_v
                             Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
@@ -149,8 +149,8 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                     archive_db.add(exp_id=id,
                                    variable_name=variable.name,
                                    config_name=config.name,
-                                   files_ts=list_ts_files,
-                                   files_mean=list_mean_files,
+                                   list_files_ts=list_ts_files,
+                                   list_files_mean=list_mean_files,
                                    rx=resolution[0],
                                    ry=resolution[1],
                                    extension=hp.extension.value,

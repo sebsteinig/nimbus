@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 import json
+
+import numpy as np
 from utils.logger import Logger
 from utils.metadata.metadata import Metadata
 from dataclasses import dataclass
@@ -8,6 +10,27 @@ import requests
 from dotenv import dotenv_values
 import os.path as path
 from os import listdir, mkdir, remove
+
+def to_grid(list_files,chunks_t,chunks_v):
+    grids = []
+    for files in list_files:
+        grid = [[None for t in range(chunks_t)] for v in range(chunks_v)]
+        for file in files :
+            desc = path.basename(file).split(".")
+            t = 1
+            v = 1
+            for d in desc[2:]:
+                if "of" in d :
+                    if d[0] == 't':
+                        t = int(d[1:].split("of")[0])
+                    if d[0] == 'v':
+                        v = int(d[1:].split("of")[0])
+            grid[v-1][t-1] = file
+        
+        grid = [[cell for cell in row if cell is not None] for row in grid]
+        grid = [ row for row in grid if len(row) > 0]
+        grids.append({"grid":grid})
+    return grids
 
 @dataclass
 class ArchiveDB:
@@ -18,8 +41,8 @@ class ArchiveDB:
     
     def add(self,exp_id:str,
             variable_name:str,
-            files_ts:List[str],
-            files_mean:List[str],
+            list_files_ts:List[List[str]],
+            list_files_mean:List[List[str]],
             config_name:str,
             rx:Union[float,None],
             ry:Union[float,None],
@@ -29,6 +52,13 @@ class ArchiveDB:
             chunks_t:int,
             chunks_v:int,
             metadata:Metadata):
+        
+        ct = chunks_t if chunks_t > 1 else 1
+        cv = chunks_v if chunks_v > 1 else 1
+        paths_ts = to_grid(list_files_ts,ct,cv)
+        paths_mean = to_grid(list_files_ts,ct,cv)
+        
+        
         table_nimbus_execution_row = {
             "exp_id":exp_id,
             "config_name":config_name,
@@ -37,15 +67,14 @@ class ArchiveDB:
             "lossless":lossless,
             "nan_value_encoding":metadata.general_metadata.nan_value_encoding,
             "threshold":metadata.general_metadata.threshold,
-            "chunks_time":chunks_t,
-            "chunks_vertical":chunks_v,
             "rx":0 if rx is None else rx,
             "ry":0 if ry is None else ry,
         }
+
         table_variable_row = {
             "name":variable_name,
-            "paths_ts":files_ts,
-            "paths_mean":files_mean,
+            "paths_ts":{"paths":paths_ts},
+            "paths_mean":{"paths":paths_mean},
             "levels":metadata.general_metadata.levels,
             "timesteps":metadata.general_metadata.timesteps,
             "xsize":metadata.general_metadata.xsize,
