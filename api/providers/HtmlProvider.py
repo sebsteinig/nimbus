@@ -39,12 +39,18 @@ class HtmlProvider:
         res = {}
         if self.html_text != None:
             data = self.parse_html(self.html_text, tags, default_tags.copy())
-            res[self.url.split("/")[-1].split(".")[0]] = data
+            if len(data.keys()) == 0:
+                Logger.console().warning(f"data from {file} will be ignored")
+            else :
+                res[self.url.split("/")[-1].split(".")[0]] = data
         else:    
             for file in self.files:
                 with codecs.open(file, "r",  encoding='utf-8', errors='ignore') as f:
                     data = self.parse_html(f.read(), tags, default_tags.copy())
-                    res[path.basename(file).split(".")[0]] = data 
+                    if len(data.keys()) == 0:
+                        Logger.console().warning(f"data from {file} will be ignored")
+                    else :
+                        res[path.basename(file).split(".")[0]] = data 
         return res
     
     """
@@ -65,7 +71,10 @@ class HtmlProvider:
         if len(rows) > 1 :
             number_columns = len(rows[1].find_all('td'))
             if  number_columns == 3 :
-                data["expts_web"].extend(self.find_experiments(rows))
+                exps = self.find_experiments(rows)
+                if len(exps) == 0 :
+                    return {}
+                data["expts_web"].extend(exps)
             elif number_columns == 2 :
                 data["expts_web"].extend(HtmlProvider.experiments_when_2_columns(rows))
         #check types

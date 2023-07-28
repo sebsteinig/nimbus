@@ -24,10 +24,11 @@ class Converter:
     shape : Shape
     nan_encoding : int
     threshold : float
-    chunks : Union[int , float]
+    chunks_t : int
+    chunks_v : int
     filename : str
     
-    def exec(self) -> Tuple[List[str],str]:
+    def exec(self) -> Tuple[List[str],List[str]]:
         converted_channels = self.convert()
         
         mean_channels = self.mean(converted_channels)
@@ -42,25 +43,28 @@ class Converter:
             ts_files.append(self.provider.save(filename = f"{self.filename}.ts{suffixe}" ,
                                    channels = channels,
                                    metadata = self.metadata))
-            
-        mean_file = self.provider.save(filename = self.filename + ".avg",
-                                        channels = mean_channels,
-                                   metadata = self.metadata)
         
-        return ts_files,mean_file
+        mean_files = []
+        for channels,suffixe in self.slices_vertical(mean_channels):
+            mean_files.append(self.provider.save(filename = f"{self.filename}.avg{suffixe}",
+                                        channels = mean_channels,
+                                   metadata = self.metadata))
+        
+        return ts_files,mean_files
 
     def slices(self, converted_channels : List[Channel]):
-        
-        chunks = self.chunks
-        if type(chunks) is float:
-            chunks = int(self.shape.time/np.ceil(self.shape.time*chunks))
-        
-        sliced_channels = [ch.slices(chunks) for ch in  converted_channels]
+        sliced_channels = [ch.slices(self.chunks_t, self.chunks_v) for ch in converted_channels]
         n = len(sliced_channels[0])
         for i in range(n):
             channels = [sch[i][0] for sch in sliced_channels]
             yield channels,sliced_channels[0][i][1]
             
+    def slices_vertical(self, converted_channels : List[Channel]):
+        sliced_channels = [ch.slices(0, self.chunks_v) for ch in converted_channels]
+        n = len(sliced_channels[0])
+        for i in range(n):
+            channels = [sch[i][0] for sch in sliced_channels]
+            yield channels,sliced_channels[0][i][1]      
 
     def convert(self) -> List[Channel]:
         converted_channels : List[Channel] = []
@@ -100,7 +104,8 @@ class Converter:
             nan_encoding : int,
             threshold : float,
             filename : str,            
-            chunks : int,
+            chunks_t : Union[int , float] , 
+            chunks_v : Union[int , float],
             metadata : Metadata,
             lossless : bool) -> 'Converter':
         
@@ -112,14 +117,18 @@ class Converter:
             provider = WEBP_Provider.build(mode=Mode.get(channels), lossless = lossless)
         else :
             provider = ImageProvider.build(mode=Mode.get(channels),extension=extension, lossless = lossless)
-        
-        
+        if type(chunks_t) is float:
+            chunks_t = int(shape.time/np.ceil(shape.time*chunks_t))
+        if type(chunks_v) is float:
+            chunks_v = int(shape.vertical/np.ceil(shape.vertical*chunks_v))
+
         return Converter(channels = channels,
                          shape = shape,
                          nan_encoding = nan_encoding,
                          threshold = threshold,
                          filename = filename,
-                         chunks = chunks,
+                         chunks_t = chunks_t,
+                         chunks_v = chunks_v,
                          metadata = metadata,
                          provider = provider)
     
@@ -129,12 +138,14 @@ class Converter:
             nan_encoding : int,
             extension : Extension,
             threshold : float,
-            chunks : int,
+            chunks_t : Union[int , float],
+            chunks_v : Union[int , float],
             lossless : bool) -> List['Converter']:
             
         for input,output_filename in inputs:  
             yield Converter.build(inputs=input,
-                                  chunks=chunks,
+                                  chunks_t=chunks_t, 
+                                  chunks_v =chunks_v,
                                   extension=extension,
                                   filename=output_filename,
                                   metadata=metadata,

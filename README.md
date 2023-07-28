@@ -2,27 +2,25 @@
 
 # Description
 This program is a data converter that allows you to preprocess data from netCDF4 files and convert them into images for 3D visualization on https://climatearchive.org. It offers a wide range of options and features to customize the data conversion process to the user's needs. The program supports conversion of files (or folders of files) provided by the user.
-Usage:
-python nimbus.py [OPTIONS]
-
 ## Usage:
 ```console
 python nimbus.py [OPTIONS]
 ```
 Options:
 * --variables, -v: Select one or more variables (coma separated values) for conversion, 'all' for every variable specified in the configuration file. [See more](#configuration)
-* --config, -c : Select configuration files. [See more](#configuration)
-* --experiences, -e: Select one or more experiments id (coma separated values) for conversion .
-* --files, -f: Convert the given file or folder.
+* --config, -c: Select configuration files. [See more](#configuration)
+* --experiments, -e: Select one or more experiments id (coma separated values) for conversion .
+* --folder, -f: Convert the given file or folder.
 * --output, -o: Select file or folder.
 * --clean, -cl: Clean the output directory.
 * --debug, -d: Show debugs in the console.
-* --chunks, -ch: specify the number of output images.
+* --chunkstime, -ct: specify the number of chunks (horizontally).
+* --chunksvertical, -cv: specify the number of chunks (vertically).
 * --labels, -l: specify labels for the given experiments for later use in the climate archive api.
 * --publication, -p: only used with the climate archive api, specify a folder, a file or a url that contains information about published papers for more precise filtering of experiments in the climate archive api.
 
 Usage Examples:
-1. To select an experience for conversion:
+1. To select an experiment for conversion:
 ```console
     python nimbus.py -v variable1 -e expid -c config.toml
 ```
@@ -39,6 +37,7 @@ The configuration file can be written as follows, using the TOML language. Here 
 ```console
     [Model]
     dir="your/directory/containig/data"
+    output_dir="your/output/directory"
     name="your_name"
     [variable1]
     preprocessing="PREPROCESS_REF"
@@ -63,6 +62,11 @@ The preprocessing and processing attributes allows to reference the processing s
 ```
 Here we specify the list of levels that we are interested to display in the output images, the unit of these levels, and the resolutions. The resolutions are a list of lists where each list contains new values for longitude and latitude spacing in degrees. For each couple of values, an image will be produced with the desired resolution. If no resolutions are specified, or if the couple ```["default", "default"]``` is in the list, there will be no resizing of the input data.
 
+2. resolutions, as a list of tuples where each tuple contains new values for longitude and latitude spacing in degrees. For example:
+```console
+    resolutions = [(3.5, -5)]
+```
+
 # Add New Variables
 In order to add a new variable, one must define a new python file in the folder [supported_variables](supported_variables). The preprocessing and processing functions can be defined in this file, as well as the realm that corresponds to the variable. For example the variable [currents](supported_variables/currents.py) has a specific preprocessing function that we annotate with :
 ```console
@@ -77,10 +81,7 @@ The images are named as follows :
 ```{configNAME}.{expID}.{variableNAME}.ts.png``` for the time serie image.   
 If resolutions are specified in the config file (and different than "default"), the resolutions will be specified in the image name :   
 ```{configNAME}.{expID}.{variableNAME}.rx{xVALUE}.ry{yVALUE}.[avg¦ts].png```
-2. resolutions, as a list of tuples where each tuple contains new values for longitude and latitude spacing in degrees. For example:
-```console
-    resolutions = [(3.5, -5)]
-```
+
 # Add New Variables
 In order to add a new variable, one must define a new python file in the folder [supported_variables](supported_variables). The preprocessing and processing functions can be defined in this file, as well as the realm that corresponds to the variable. For example the variable [oceanCurrents](supported_variables/oceanCurrents.py) has a specific preprocessing function that we annotate with :
 ```console

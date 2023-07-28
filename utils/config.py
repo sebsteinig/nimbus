@@ -114,6 +114,7 @@ class FileDescriptor:
 @dataclass
 class HyperParametersConfig:
     dir : str = ''
+    output_dir : str = ''
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
@@ -121,7 +122,8 @@ class HyperParametersConfig:
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
     nan_encoding : int = 255
-    chunks : float = 0
+    chunks_time : float = 0
+    chunks_vertical : float = 0
     extension : Extension = Extension.PNG
     lossless : bool = True
 
@@ -155,7 +157,7 @@ class HyperParametersConfig:
                 else :
                     Logger.console().warning(f"can't convert resolutions to tuples, set to default instead")
                     return False
-        if key == "chunks":
+        if key == "chunks_time" or key == "chunks_vertical":
             return (type(value) is int or type(value) is float) and (value > 0)
         
         if key == "extension" :
@@ -183,10 +185,10 @@ class HyperParametersConfig:
                 value["resolutions"] = [(None if r1 == "default" else r1, None if r2 == "default" else r2) for r1, r2 in value["resolutions"]]
             else :
                 value["resolutions"] = [(None,None)]
-        if key == "chunks" :
+        if key == "chunks_time" or key == "chunks_vertical":
             if value >= 1:
                 value = int(value)
-           
+
         if key == "extension" :
             value = Extension(value)   
         if key == "lossless" :

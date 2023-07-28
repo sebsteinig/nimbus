@@ -8,7 +8,9 @@
     preprocessing = "BRIDGE"                    # Optional processing with CDO
     processing = "BRIDGE"                       # Optional processing with NumPy
     extension = "png"
-    [Model.Atmosphere]                         
+    #chunks_time = 3                            # Chunkenize horizontaly (optional)
+    #chunks_vertical = 4                        # Chunkenize verticaly (optional)                               
+    [Model.Atmosphere]                      
         levels = [1000,850,700,500,200,100,10]  # Atmospheric levels to process
         unit = "hPa"
     [Model.Ocean]
