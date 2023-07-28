@@ -114,6 +114,7 @@ class FileDescriptor:
 @dataclass
 class HyperParametersConfig:
     dir : str = ''
+    output_dir : str = ''
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
