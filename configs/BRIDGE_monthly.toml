@@ -4,7 +4,8 @@
 ####################################################################################################
 [Model]
     name = "BRIDGE_monthly"                     # Name for this configuration
-    dir = "climatearchive_sample_data/data"     # Path to data
+    dir = "/home/bridge/wb19586/ummodel/data"     # Path to data
+    output_dir="/home/bridge/wb19586/ummodel/data/nimbus/"
     preprocessing = "BRIDGE"                    # Optional processing with CDO
     processing = "BRIDGE"                       # Optional processing with NumPy
     extension = "png"
@@ -17,7 +18,8 @@
         levels = [0,100,200,500,1000,2000,4000] # Ocean levels to process
         unit = "m"
     [Model.metadata]
-        file = "./{id}.dat"
+        dir="/home/bridge/swsvalde/ummodel/scripts/html_list/jobs"
+        file = "{id}.dat"
         parser="bridge"
         tags = ["co2","gmst","date_original","date_modified","coast"]
         
