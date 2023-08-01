@@ -51,7 +51,10 @@ def verify_chunks(chunks) :
 def convert_variables(config:Config,variables,ids,files,output,hyper_parameters):
     if files is None:
         files = config.hyper_parameters.dir
-        
+    
+    if os.path.exists(config.hyper_parameters.output_dir) and output == "./":
+        output = config.hyper_parameters.output_dir
+    
     if hyper_parameters['clean']:
         default.FileManager.clean(ids, output)
 

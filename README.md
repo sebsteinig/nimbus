@@ -37,6 +37,7 @@ The configuration file can be written as follows, using the TOML language. Here 
 ```console
     [Model]
     dir="your/directory/containig/data"
+    output_dir="your/output/directory"
     name="your_name"
     [variable1]
     preprocessing="PREPROCESS_REF"
