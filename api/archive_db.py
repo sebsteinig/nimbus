@@ -58,7 +58,7 @@ class ArchiveDB:
         paths_ts = to_grid(list_files_ts,ct,cv)
         paths_mean = to_grid(list_files_ts,ct,cv)
         
-        
+        threshold = metadata.general_metadata.threshold
         table_nimbus_execution_row = {
             "exp_id":exp_id,
             "config_name":config_name,
@@ -66,7 +66,7 @@ class ArchiveDB:
             "extension":extension,
             "lossless":lossless,
             "nan_value_encoding":metadata.general_metadata.nan_value_encoding,
-            "threshold":metadata.general_metadata.threshold,
+            "threshold":0 if threshold is None else float(threshold),
             "rx":0 if rx is None else rx,
             "ry":0 if ry is None else ry,
         }

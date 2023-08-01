@@ -146,7 +146,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
                             chunks_t, chunks_v = converter.chunks_t, converter.chunks_v
                             Logger.console().debug(f"Time series : {ts_files}\nMean : {mean_file}","SAVE")
                         
-                        logger.info(metadata.log(),"METADATA")
+                        logger.info(metadata.log())
 
                     success += 1
                     archive_db.add(exp_id=id,
@@ -179,7 +179,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 
     if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
         archive_db.commit()
-        return note,archive_db.push()
+        return note,False#archive_db.push()
     else :
         return note,False
     

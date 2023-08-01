@@ -118,7 +118,7 @@ class HyperParametersConfig:
     preprocessing : str = 'default'
     processing : str = 'default'
     realm : str = None
-    threshold : float = 3.0
+    threshold : Union[float,None] = 3.0
     Atmosphere : dict = field(default_factory=lambda: {'levels':[1000, 850, 700, 500, 200, 100, 10],'unit':'hPa','resolutions':[(None,None)]}) 
     Ocean : dict = field(default_factory=lambda: {'levels':[0, 100, 200, 500, 1000, 2000, 4000],'unit':'m','resolutions':[(None,None)]})
     nan_encoding : int = 255
@@ -168,7 +168,8 @@ class HyperParametersConfig:
         
         if key == "lossless":
             return type(value) is bool
-        
+        if key == "threshold":
+            return type(value) is float or type(value) is str
         return True
     """
         change the value of the given to the correct form
@@ -193,6 +194,9 @@ class HyperParametersConfig:
             value = Extension(value)   
         if key == "lossless" :
             value = bool(value)
+        if key == "threshold" :
+            if type(value) is str:
+                return None
         return value
     """
         bind the create hyper parameters to the previous 

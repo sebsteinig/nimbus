@@ -61,7 +61,9 @@ def bounds(arr : np.ndarray, threshold : float) -> Tuple[float, float]:
     return :
         ndarray
 """
-def reject_outliers(data, m = 3.):
+def reject_outliers(data, m):
+    if m is None :
+        return data
     d = np.abs(data - np.ma.median(data))
     mdev = np.ma.median(d)
     s = d/mdev if mdev else np.zeros(len(d))
