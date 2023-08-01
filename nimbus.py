@@ -179,7 +179,7 @@ def convert_variables(config:Config,variables,ids,files,output,hyper_parameters)
 
     if all( all(status != -1 for status in var_note.values()) for (_,_),var_note in note.values()):
         archive_db.commit()
-        return note,False#archive_db.push()
+        return note,archive_db.push()
     else :
         return note,False
     
