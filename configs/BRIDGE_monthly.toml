@@ -8,7 +8,7 @@
     output_dir="/home/bridge/wb19586/ummodel/data/nimbus/"
     preprocessing = "BRIDGE"                    # Optional processing with CDO
     processing = "BRIDGE"                       # Optional processing with NumPy
-    extension = "png"
+    extension = "webp"
     #chunks_time = 3                            # Chunkenize horizontaly (optional)
     #chunks_vertical = 4                        # Chunkenize verticaly (optional)                               
     [Model.Atmosphere]                      
@@ -32,10 +32,12 @@
         files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
         variable = "temp_mm_1_5m"
 
-[pr]                                            # Total Precipitation [mm/day]
+[pr]         
+    threshold = "None"                                  # Total Precipitation [mm/day]
     [[pr.variables]]
         files="{regex}{id}/climate/{id}a.pdcl(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).nc"
         variable = "precip_mm_srf"
+
 
 [clt]                                           # Total Cloud Fraction [0-1]
     [[clt.variables]]
