@@ -93,7 +93,7 @@ class GeneralMetadata:
         types = self.__annotations__
         for key,value in kargs.items():
             if key in self.__dict__:
-                self.__dict__[key] = types[key].__call__(value)
+                self.__dict__[key] = value
         
     
     """
@@ -124,9 +124,12 @@ class GeneralMetadata:
     This class contains all the information that will be in the image metadata.
 """
 class Metadata:
-    vs_metadata : List[VariableSpecificMetadata] = []
-    general_metadata : Union[GeneralMetadata, None] = GeneralMetadata()
 
+    def __init__(self) :
+        self.vs_metadata : List[VariableSpecificMetadata] = []
+        self.general_metadata : Union[GeneralMetadata, None] = GeneralMetadata()
+        
+    
     """
         call the extends function from GeneralMetadata
         param :
