@@ -191,16 +191,16 @@ class HtmlProvider:
             new_url = url
             if not path.exists(url):
                 if folder is not None :
-                    new_url = path.join(folder, url if not url.startswith("/") else url[1:-1])
+                    new_url = path.join(folder, url if not url.startswith("/") else url[1:])
                 else :
                     idx = files[0].find(url.split("/")[0])
                     if idx != -1:
-                        new_url = path.join(files[0][0:idx], url if not url.startswith("/") else url[1:-1])
+                        new_url = path.join(files[0][0:idx], url if not url.startswith("/") else url[1:])
 
             if path.exists(new_url):
-                html_text = codecs.open(url, "r",  encoding='utf-8', errors='ignore').read()
+                html_text = codecs.open(new_url, "r",  encoding='utf-8', errors='ignore').read()
             else :                
-                Logger.console().warning(f"local path {url} not found")
+                Logger.console().warning(f"local path {new_url} not found")
         return html_text        
 
     """
