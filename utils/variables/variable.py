@@ -117,6 +117,9 @@ def memoize(f):
 
 @memoize
 def preprocess(inputs:List[Tuple[str,str]],variable:Variable,tmp_directory:str,cluster):
+    if len(inputs) == 0 :
+        raise Exception("No inputs file")
+    
     for input_file,var_name in inputs:
         if "," in var_name:
             var_name = var_name.split(",")
@@ -146,6 +149,9 @@ def retrieve_data(inputs:List[Tuple[str,str]],variable:Variable,hyper_parameters
     np_arrays_vs_metadata = []
      
     #inputs = save(inputs)
+    
+    if len(inputs) == 0 :
+        raise Exception("No inputs")
     
     metadata = Metadata()
     metadata.extends(variable_name=variable.name,\

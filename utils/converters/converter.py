@@ -81,6 +81,9 @@ class Converter:
     
     @staticmethod
     def resolve_channels(inputs : List[Tuple[np.ndarray,VariableSpecificMetadata]]) -> Tuple[List[Channel],Shape]:
+        if len(inputs) == 0 :
+            raise ChannelDimensionException("No inputs")
+            
         if any(inputs[0][0].shape != data.shape for data,_ in inputs):
             raise ChannelDimensionException("All inputs must have the same shape")
         shape = inputs[0][0].shape
