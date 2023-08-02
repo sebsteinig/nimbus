@@ -107,7 +107,7 @@ class PublicationAPI:
             PublicationAPI
     """
     @staticmethod
-    def build(filepath : str) -> 'PublicationAPI':
+    def build(filepath : str, folder : str = None) -> 'PublicationAPI':
         if not path.exists(filepath):
             #dat_provider = DatProvider([])
             html_provider, ok = HtmlProvider.build_from_src(filepath)
@@ -116,7 +116,7 @@ class PublicationAPI:
                 return None
         else :
             #dat_provider = DatProvider.build(filepath)
-            html_provider = HtmlProvider.build(filepath)
+            html_provider = HtmlProvider.build(filepath, folder)
 
         route = "insert/publication"
         config = dotenv_values(".env")
