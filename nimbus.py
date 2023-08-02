@@ -233,11 +233,12 @@ if __name__ == "__main__" :
     parser.add_argument('--chunksvertical',"-cv", dest = 'chunks_v', help = 'specify the number of chunks (in vertical)') 
     parser.add_argument('--labels',"-l", dest = 'labels', help = 'specify labels') 
     parser.add_argument('--publication',"-p", dest = 'publication', help = 'fill the database with publications information')   
+    parser.add_argument('--publicationfolder',"-pf", dest = 'publication_folder', help = 'specify the folder in which to search files')   
     args = parser.parse_args()
     
     if args.publication is not None:
         from api.publication_api import PublicationAPI
-        api = PublicationAPI.build(args.publication)
+        api = PublicationAPI.build(args.publication, args.publication_folder)
         if api is not None :
             api.send()
         

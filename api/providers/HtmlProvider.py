@@ -25,6 +25,7 @@ class HtmlProvider:
     files : list
     html_text : str
     url : str
+    folder : str
     
     """
     parse for each file in files or directly the html_text if a url was given
@@ -144,7 +145,8 @@ class HtmlProvider:
                     data_column_2 = {"text" : a[0].text.strip()}
                     html_text = HtmlProvider.retrieve_html_text(url_base = self.url, 
                                                                 url = a[1].attrs['href'], 
-                                                                files = self.files)
+                                                                files = self.files,
+                                                                folder=self.folder)
                     if html_text != "":
                         soup = BeautifulSoup(html_text, 'html.parser')
                         try :
@@ -174,7 +176,7 @@ class HtmlProvider:
             str : the html source code
     """
     @staticmethod
-    def retrieve_html_text(url_base : str, url:str, files : list) -> str:
+    def retrieve_html_text(url_base : str, url:str, files : list, folder:str = None) -> str:
         html_text = ""
         if url_base != None and len(files) == 0:
             try :
@@ -185,9 +187,19 @@ class HtmlProvider:
             except :
                 Logger.console().warning(f"url {url} could not be accessed")
         else :
-            if path.exists(url):
+
+            new_url = url
+            if not path.exists(url):
+                if folder is not None :
+                    new_url = path.join(folder, url if not url.startswith("/") else url[1:-1])
+                else :
+                    idx = files[0].find(url.split("/")[0])
+                    if idx != -1:
+                        new_url = path.join(files[0][0:idx], url if not url.startswith("/") else url[1:-1])
+
+            if path.exists(new_url):
                 html_text = codecs.open(url, "r",  encoding='utf-8', errors='ignore').read()
-            else :
+            else :                
                 Logger.console().warning(f"local path {url} not found")
         return html_text        
 
@@ -199,14 +211,15 @@ class HtmlProvider:
             HtmlProvider
     """
     @staticmethod
-    def build(filepath : str) -> 'HtmlProvider':
+    def build(filepath : str, folder : str = None) -> 'HtmlProvider':
         blacklist = ("default_settings.dat")
         if path.isfile(filepath) and filepath.endswith("html"):            
-            return HtmlProvider(files=[filepath], html_text = None, url = None)
+            return HtmlProvider(files=[filepath], html_text = None, url = None, folder=folder)
         return HtmlProvider(
             files = [path.join(filepath, file.replace("dat","html")) for file in listdir(filepath) if file not in blacklist and file.endswith("dat")],
             html_text = None,
-            url = None
+            url = None,
+            folder=folder
         )    
 
     """
