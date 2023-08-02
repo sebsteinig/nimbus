@@ -25,7 +25,7 @@ class HtmlProvider:
     files : list
     html_text : str
     url : str
-    folder : str | None
+    folder : str
     
     """
     parse for each file in files or directly the html_text if a url was given
@@ -176,7 +176,7 @@ class HtmlProvider:
             str : the html source code
     """
     @staticmethod
-    def retrieve_html_text(url_base : str, url:str, files : list, folder:str|None) -> str:
+    def retrieve_html_text(url_base : str, url:str, files : list, folder:str = None) -> str:
         html_text = ""
         if url_base != None and len(files) == 0:
             try :
@@ -211,10 +211,10 @@ class HtmlProvider:
             HtmlProvider
     """
     @staticmethod
-    def build(filepath : str, folder : str|None) -> 'HtmlProvider':
+    def build(filepath : str, folder : str = None) -> 'HtmlProvider':
         blacklist = ("default_settings.dat")
         if path.isfile(filepath) and filepath.endswith("html"):            
-            return HtmlProvider(files=[filepath], html_text = None, url = None)
+            return HtmlProvider(files=[filepath], html_text = None, url = None, folder=folder)
         return HtmlProvider(
             files = [path.join(filepath, file.replace("dat","html")) for file in listdir(filepath) if file not in blacklist and file.endswith("dat")],
             html_text = None,

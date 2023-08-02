@@ -107,7 +107,7 @@ class PublicationAPI:
             PublicationAPI
     """
     @staticmethod
-    def build(filepath : str, folder : str|None) -> 'PublicationAPI':
+    def build(filepath : str, folder : str = None) -> 'PublicationAPI':
         if not path.exists(filepath):
             #dat_provider = DatProvider([])
             html_provider, ok = HtmlProvider.build_from_src(filepath)
