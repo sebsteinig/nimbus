@@ -190,12 +190,13 @@ class HtmlProvider:
 
             new_url = url
             if not path.exists(url):
+                url = url if not url.startswith("/") else url[1:]
                 if folder is not None :
-                    new_url = path.join(folder, url if not url.startswith("/") else url[1:])
+                    new_url = path.join(folder, url)
                 else :
                     idx = files[0].find(url.split("/")[0])
                     if idx != -1:
-                        new_url = path.join(files[0][0:idx], url if not url.startswith("/") else url[1:])
+                        new_url = path.join(files[0][0:idx], url)
 
             if path.exists(new_url):
                 html_text = codecs.open(new_url, "r",  encoding='utf-8', errors='ignore').read()
