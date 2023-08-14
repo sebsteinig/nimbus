@@ -76,7 +76,7 @@ class Converter:
     def mean(self,channels:List[Channel]) -> List[Channel]:
         mean_channels : List[Channel] = []
         for channel in channels : 
-            mean_channels.append(channel.mean()) 
+            mean_channels.append(channel.mean(channel.metadata.bounds_matrix)) 
         return mean_channels
     
     @staticmethod

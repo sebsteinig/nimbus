@@ -15,8 +15,16 @@ class Channel:
     data : np.ndarray
     shape : Shape
     
-    def mean(self) -> 'Channel':
+    def mean(self, bounds_matrix : list) -> 'Channel':
         mean = np.mean(self.data, axis = 1, dtype = int,keepdims=True)
+        bounds_avg_matrix = np.empty(shape = (self.shape.vertical, 1), dtype = dict)
+        
+        for vertical in range(self.shape.vertical):
+            min = np.mean([float(e["min"]) for e in bounds_matrix[vertical]])
+            max = np.mean([float(e["max"]) for e in bounds_matrix[vertical]])
+            bounds_avg_matrix[vertical] = {"min" : str(min), "max" : str(max)}
+            
+        self.metadata.extends(bounds_matrix = bounds_avg_matrix.tolist())
         return Channel(
             metadata = self.metadata,
             data = mean,
@@ -27,6 +35,7 @@ class Channel:
                 vertical=self.shape.vertical
             )
         )
+    
     def convert(self,nan_encoding:int,threshold:float) -> 'Channel':
         converted_data = np.zeros(self.data.shape)
         bounds_matrix = np.empty(shape = (self.shape.vertical, self.shape.time), dtype = dict)
