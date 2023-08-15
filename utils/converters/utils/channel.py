@@ -24,7 +24,7 @@ class Channel:
             max = np.mean([float(e["max"]) for e in bounds_matrix[vertical]])
             bounds_avg_matrix[vertical] = {"min" : str(min), "max" : str(max)}
             
-        self.metadata.extends(bounds_matrix = bounds_avg_matrix.tolist())
+        self.metadata.extends(bounds_matrix_avg = bounds_avg_matrix.tolist())
         return Channel(
             metadata = self.metadata,
             data = mean,
@@ -48,7 +48,7 @@ class Channel:
                                                                                   nan_encoding=nan_encoding)
                 bounds_matrix[vertical,time] = {"min" : str(min), "max" : str(max)}
         
-        self.metadata.extends(bounds_matrix = bounds_matrix.tolist())
+        self.metadata.extends(bounds_matrix_ts = bounds_matrix.tolist())
         converted_data = clean(converted_data,nan_encoding=nan_encoding)
         return Channel(
             metadata = self.metadata,
