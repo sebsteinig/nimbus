@@ -76,11 +76,14 @@ class Converter:
     def mean(self,channels:List[Channel]) -> List[Channel]:
         mean_channels : List[Channel] = []
         for channel in channels : 
-            mean_channels.append(channel.mean()) 
+            mean_channels.append(channel.mean(channel.metadata.bounds_matrix_ts)) 
         return mean_channels
     
     @staticmethod
     def resolve_channels(inputs : List[Tuple[np.ndarray,VariableSpecificMetadata]]) -> Tuple[List[Channel],Shape]:
+        if len(inputs) == 0 :
+            raise ChannelDimensionException("No inputs")
+            
         if any(inputs[0][0].shape != data.shape for data,_ in inputs):
             raise ChannelDimensionException("All inputs must have the same shape")
         shape = inputs[0][0].shape

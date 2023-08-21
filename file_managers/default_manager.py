@@ -16,6 +16,7 @@ from netCDF4 import Dataset
 
 
 class VariableNotFoundError(Exception):pass
+class FilesNotFoundError(Exception):pass
 
 
 def file_name(filepath:str)->str:
@@ -101,12 +102,14 @@ class FileManager:
             
     def iter_variables_from(self,id):
         for variable,binder in self.io_bind[id].items() :
-            if id in self.black_list[id] and self.black_list[id][variable]:
+            if variable in self.black_list[id] and self.black_list[id][variable]:
                 continue
             
             output_folder = binder['folder']
             
             def bind(id):
+                if len(binder['binder'].items()) == 0 :
+                    raise FilesNotFoundError("No file found")
                 for nc_var_name,files in binder['binder'].items():
                     # FILE REGEX
                     if type(files) is set:
@@ -186,8 +189,12 @@ class FileManager:
                 out_folder_id.mount()
                 io_bind[id][variable]['folder'] = out_folder_id
                 try :
+                    i = 0
                     for input_files,nc_var_name in config.look_up(input_folder=input_folder,id=id,variable=variable):
+                        i +=1
                         io_bind[id][variable]['binder'][nc_var_name] = input_files
+                    if i == 0:
+                        raise Exception()
                 except :
                     variables_black_list[variable] = True
                     Logger.console().warning(f"variable {variable.name} will not be processed for id {id}")

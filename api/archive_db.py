@@ -56,7 +56,7 @@ class ArchiveDB:
         ct = chunks_t if chunks_t > 1 else 1
         cv = chunks_v if chunks_v > 1 else 1
         paths_ts = to_grid(list_files_ts,ct,cv)
-        paths_mean = to_grid(list_files_ts,ct,cv)
+        paths_mean = to_grid(list_files_mean,ct,cv)
         
         threshold = metadata.general_metadata.threshold
         table_nimbus_execution_row = {
